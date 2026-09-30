@@ -11,12 +11,14 @@ import {
   FolderKanban,
   GripVertical,
   Layers,
+  MessageCircle,
   Plus,
   Tag,
   Trash2,
   Upload,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { WhatsAppSettings } from './settings/WhatsAppSettings';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { STAGE_KIND, SWATCHES } from '../lib/constants';
@@ -25,7 +27,7 @@ import { TABLES } from '../lib/types';
 import { byPosition, cn, downloadFile, nowIso, toCalendarEmbedUrl, today, uid } from '../lib/utils';
 import { Badge, Button, Card, CardHeader, Checkbox, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, Select, Tabs, Textarea } from '../components/ui';
 
-type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'dados';
+type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'whatsapp' | 'dados';
 
 export default function SettingsPage() {
   const [params, setParams] = useSearchParams();
@@ -43,6 +45,7 @@ export default function SettingsPage() {
           { id: 'funil', label: <span className="inline-flex items-center gap-1.5"><FolderKanban className="h-4 w-4" />Etapas do funil</span> },
           { id: 'origens', label: <span className="inline-flex items-center gap-1.5"><Tag className="h-4 w-4" />Origens de leads</span> },
           { id: 'agenda', label: <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />Google Agenda</span> },
+          { id: 'whatsapp', label: <span className="inline-flex items-center gap-1.5"><MessageCircle className="h-4 w-4" />WhatsApp e assistente</span> },
           { id: 'dados', label: <span className="inline-flex items-center gap-1.5"><Database className="h-4 w-4" />Backup</span> },
         ]}
       />
@@ -51,6 +54,7 @@ export default function SettingsPage() {
       {tab === 'origens' && <SourcesSettings />}
       {tab === 'agenda' && <CalendarSettings />}
       {tab === 'escritorio' && <OfficeSettings />}
+      {tab === 'whatsapp' && <WhatsAppSettings />}
       {tab === 'dados' && <DataSettings />}
     </div>
   );

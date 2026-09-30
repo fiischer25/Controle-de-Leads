@@ -174,7 +174,17 @@ export class SupabaseBackend implements Backend {
 
   async invokeFunction(name: string, body: Record<string, unknown>) {
     const { data, error } = await this.client.functions.invoke(name, { body });
-    if (error) throw new Error(translateError(error.message));
+    if (error) {
+      let message = error.message;
+      try {
+        const ctx = (error as { context?: Response }).context;
+        const parsed = ctx ? await ctx.json() : null;
+        if (parsed?.error) message = parsed.error;
+      } catch {
+        /* resposta sem JSON */
+      }
+      throw new Error(translateError(message));
+    }
     return data;
   }
 

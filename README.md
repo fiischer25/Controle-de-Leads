@@ -45,6 +45,20 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Projetos por etapa, prazos críticos, **Google Agenda espelhado**, minhas tarefas, próximos
   14 dias, funil, origem dos clientes, carga da equipe e atividade recente.
 
+**Assistente no WhatsApp (e dentro do sistema)**
+- A equipe conversa com o número do escritório no WhatsApp — ou pelo botão **Assistente** no topo — em
+  linguagem natural: “agenda reunião amanhã 14h com a Ana”, “passa pro Bruno revisar a marcenaria até
+  sexta”, “concluí o levantamento métrico”, “lança 1h30 na modelagem 3D”, “o que tenho essa semana?”.
+- Ele cria e designa tarefas, conclui, remarca, troca responsável, comenta, lança horas, consulta a agenda,
+  agenda/remarca/cancela reuniões, busca clientes e projetos e cadastra oportunidades.
+- Reconhece cada pessoa pelo telefone do cadastro e age com as permissões dela; números desconhecidos não
+  acessam nada. Usa o modelo Claude (Anthropic).
+
+**Reuniões e identidade visual**
+- Reuniões na Agenda com participantes (notificados), local/link, vínculo com projeto ou oportunidade,
+  link “adicionar ao Google Agenda” e sincronização automática opcional com a agenda do escritório.
+- Logo do escritório em **Configurações → Escritório e logo**: substitui o nome no menu, no login e na aba.
+
 **Mais**
 - Agenda mensal com entregas, inícios, prazos de tarefas e retornos de leads + Google Agenda.
 - Relatórios: conversão por origem, motivos de perda, tempo médio de fechamento, entregas no
@@ -72,8 +86,9 @@ Para uso real pela equipe, configure o Supabase.
 ## Colocando em produção (Supabase + hospedagem)
 
 1. **Crie um projeto** gratuito em [supabase.com](https://supabase.com).
-2. **Banco de dados:** abra *SQL Editor*, cole o conteúdo de
-   `supabase/migrations/20260929000000_airos_schema.sql` e execute
+2. **Banco de dados:** abra *SQL Editor* e execute, nesta ordem, o conteúdo de
+   `supabase/migrations/20260929000000_airos_schema.sql` e
+   `supabase/migrations/20260930000000_meetings_logo_agent.sql`
    (ou use `supabase db push` com a CLI).
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):
    ```bash
@@ -93,6 +108,39 @@ Para uso real pela equipe, configure o Supabase.
 7. Abra o sistema: a primeira conta criada vira **administrador**. Em seguida, cadastre a equipe em
    **Equipe → Novo membro** e revise **Configurações → Tipos de projeto e tarefas**.
 
+### Assistente no WhatsApp
+O passo a passo completo está no próprio sistema, em **Configurações → WhatsApp e assistente**. Resumo:
+
+1. Crie uma chave em [console.anthropic.com](https://console.anthropic.com/settings/keys).
+2. No [Meta for Developers](https://developers.facebook.com/apps), crie um app *Business* com o produto
+   **WhatsApp**, cadastre o número do escritório, gere um token permanente e copie o *App secret*.
+3. Guarde os segredos e publique as funções:
+   ```bash
+   npx supabase secrets set ANTHROPIC_API_KEY=... WHATSAPP_TOKEN=... WHATSAPP_PHONE_NUMBER_ID=... \
+     WHATSAPP_APP_SECRET=... WHATSAPP_VERIFY_TOKEN=uma-frase-secreta APP_URL=https://seu-sistema.vercel.app
+   npx supabase functions deploy whatsapp-agent --no-verify-jwt
+   npx supabase functions deploy agent-chat
+   npx supabase functions deploy calendar-sync
+   ```
+4. No painel da Meta, configure o webhook para
+   `https://SEU-PROJETO.supabase.co/functions/v1/whatsapp-agent` com o mesmo token de verificação e assine
+   o campo **messages**.
+5. Cadastre o telefone (WhatsApp) de cada membro em **Equipe**.
+
+Observações:
+- O custo é por uso: a API da Anthropic cobra por mensagem processada e a Meta cobra pelas conversas do
+  WhatsApp Business conforme a tabela dela.
+- Avisos enviados pelo assistente a outra pessoa (“o Bruno recebeu uma tarefa”) só chegam pelo WhatsApp se
+  essa pessoa tiver falado com o número do escritório nas últimas 24 h (regra da Meta); a notificação dentro
+  do sistema sempre é criada.
+- Variáveis opcionais: `AGENT_TIMEZONE` (padrão `America/Sao_Paulo`) e `AGENT_EFFORT` (`low`, padrão;
+  `medium` ou `high` para raciocínio mais cuidadoso, com respostas mais lentas).
+
+**Google Agenda automático (opcional):** crie uma conta de serviço no Google Cloud com a Google Calendar API
+ativada, compartilhe a agenda do escritório com o e-mail da conta de serviço (“Fazer alterações nos eventos”)
+e guarde `GOOGLE_SERVICE_ACCOUNT_JSON` (o JSON da chave) e `GOOGLE_CALENDAR_ID` como segredos. Reuniões
+criadas no sistema ou pelo assistente passam a aparecer no Google Agenda do escritório.
+
 ### Google Agenda
 Em **Configurações → Google Agenda**, cole o *código de incorporação* da agenda do escritório
 (Google Agenda → Configurações → sua agenda → Integrar agenda). Para que os eventos apareçam,
@@ -107,10 +155,12 @@ agenda em **Meu perfil**.
 ## Tecnologias
 
 React 18 + TypeScript + Vite, Tailwind CSS, lucide-react, React Router e Supabase
-(Postgres, Auth, Realtime e Edge Functions).
+(Postgres, Auth, Realtime e Edge Functions em Deno). O assistente usa a API do Claude (Anthropic) e a
+WhatsApp Business Cloud API (Meta).
 
 ```bash
 npm run typecheck   # checagem de tipos
 npm run lint        # lint
 npm run build       # build de produção
+cd supabase/functions && deno test --allow-env   # testes do assistente (requer Deno)
 ```

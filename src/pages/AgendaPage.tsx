@@ -161,7 +161,7 @@ export default function AgendaPage() {
                     onDoubleClick={() => setCreatingOn(key)}
                     title="Clique duas vezes para agendar uma reunião"
                     className={cn(
-                      'min-h-[92px] border-b border-r border-line/70 p-1.5 text-left align-top transition-colors hover:bg-canvas/60 sm:min-h-[116px]',
+                      'flex min-h-[92px] flex-col items-stretch justify-start border-b border-r border-line/70 p-1.5 text-left transition-colors hover:bg-canvas/60 sm:min-h-[116px]',
                       !inMonth && 'bg-canvas/40 text-stone-300',
                       selected === key && 'bg-canvas ring-1 ring-inset ring-ink-900/15',
                     )}
@@ -217,9 +217,11 @@ export default function AgendaPage() {
             </Card>
             <Card className="space-y-2 p-4">
               <h3 className="mb-1 font-display text-sm font-semibold">Mostrar</h3>
-              {(Object.keys(KIND_META) as Kind[]).map((k) => (
-                <Checkbox key={k} checked={kinds[k]} onChange={(v) => setKinds((s) => ({ ...s, [k]: v }))} label={KIND_META[k].label} className="flex" />
-              ))}
+              <div className="flex flex-col gap-2">
+                {(Object.keys(KIND_META) as Kind[]).map((k) => (
+                  <Checkbox key={k} checked={kinds[k]} onChange={(v) => setKinds((s) => ({ ...s, [k]: v }))} label={KIND_META[k].label} />
+                ))}
+              </div>
             </Card>
           </div>
         </div>

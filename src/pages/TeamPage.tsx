@@ -221,7 +221,7 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
           </div>
         </Field>
         <Field label="Cargo / função"><Input value={v.job_title} onChange={(e) => setV({ ...v, job_title: e.target.value })} placeholder="Ex.: Arquiteta, Estagiário, Comercial" /></Field>
-        <Field label="Telefone"><Input value={v.phone} onChange={(e) => setV({ ...v, phone: maskPhone(e.target.value) })} /></Field>
+        <Field label="Telefone / WhatsApp" hint="Usado para falar com o assistente pelo WhatsApp."><Input value={v.phone} onChange={(e) => setV({ ...v, phone: maskPhone(e.target.value) })} /></Field>
         <Field label="Nível de acesso" hint={member?.id === me.id ? 'Você não pode alterar o próprio nível.' : 'Administradores gerenciam equipe e configurações.'}>
           <Select value={v.role} onChange={(e) => setV({ ...v, role: e.target.value as Role })} disabled={member?.id === me.id}>
             <option value="member">Membro</option>

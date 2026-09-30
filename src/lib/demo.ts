@@ -30,9 +30,9 @@ export async function buildDemoData(
     return d.toISOString();
   };
 
-  const ana = await addUser({ name: 'Ana Ribeiro', email: 'ana@airos.com.br', password: 'airos123', role: 'member', job_title: 'Arquiteta', color: '#2a78d6' });
-  const bruno = await addUser({ name: 'Bruno Carvalho', email: 'bruno@airos.com.br', password: 'airos123', role: 'member', job_title: 'Designer de Interiores', color: '#1baf7a' });
-  const carla = await addUser({ name: 'Carla Menezes', email: 'carla@airos.com.br', password: 'airos123', role: 'member', job_title: 'Comercial', color: '#4a3aa7' });
+  const ana = await addUser({ name: 'Ana Ribeiro', email: 'ana@airos.com.br', password: 'airos123', role: 'member', job_title: 'Arquiteta', phone: '(41) 98811-2201',  color: '#2a78d6' });
+  const bruno = await addUser({ name: 'Bruno Carvalho', email: 'bruno@airos.com.br', password: 'airos123', role: 'member', job_title: 'Designer de Interiores', phone: '(41) 98811-2202',  color: '#1baf7a' });
+  const carla = await addUser({ name: 'Carla Menezes', email: 'carla@airos.com.br', password: 'airos123', role: 'member', job_title: 'Comercial', phone: '(41) 98811-2203',  color: '#4a3aa7' });
   const team = [admin, ana, bruno, carla];
 
   const stages = defaultStages();

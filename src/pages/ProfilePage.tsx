@@ -63,7 +63,7 @@ export default function ProfilePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nome" className="sm:col-span-2"><Input value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} /></Field>
               <Field label="Cargo / função"><Input value={v.job_title} onChange={(e) => setV({ ...v, job_title: e.target.value })} /></Field>
-              <Field label="Telefone"><Input value={v.phone} onChange={(e) => setV({ ...v, phone: maskPhone(e.target.value) })} /></Field>
+              <Field label="Telefone / WhatsApp" hint="Com ele você fala com o assistente pelo WhatsApp."><Input value={v.phone} onChange={(e) => setV({ ...v, phone: maskPhone(e.target.value) })} /></Field>
               <Field label="Cor" className="sm:col-span-2">
                 <div className="flex flex-wrap gap-1.5">
                   {SWATCHES.map((c) => (

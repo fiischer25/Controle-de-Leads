@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   Search,
+  Sparkles,
   Settings,
   Square,
   UserCircle,
@@ -25,6 +26,7 @@ import { useData } from '../../context/DataContext';
 import { cn, formatClock, formatRelative, today } from '../../lib/utils';
 import { Avatar, Badge, IconButton, MenuItem, Popover } from '../ui';
 import { TaskDrawer } from '../tasks/TaskDrawer';
+import { AssistantPanel } from './AssistantPanel';
 import { CommandPalette } from './CommandPalette';
 import { BrandMark } from './Logo';
 import { useBranding } from '../../context/BrandingContext';
@@ -47,6 +49,7 @@ export function AppLayout() {
   }, [settings.office_name, settings.logo_url, setBranding]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const openTaskId = params.get('tarefa');
@@ -171,6 +174,13 @@ export function AppLayout() {
             <Search className="h-5 w-5" />
           </IconButton>
           <RunningTimer />
+          <button
+            onClick={() => setAssistantOpen(true)}
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-line bg-white px-3.5 text-[13px] font-medium text-ink-900 transition-colors hover:border-stone-300"
+          >
+            <Sparkles className="h-4 w-4" strokeWidth={1.6} />
+            <span className="hidden sm:inline">Assistente</span>
+          </button>
           <NotificationsMenu />
           <UserMenu />
         </header>
@@ -179,6 +189,7 @@ export function AppLayout() {
         </main>
       </div>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
+      {assistantOpen && <AssistantPanel onClose={() => setAssistantOpen(false)} />}
       {openTaskId && <TaskDrawer key={openTaskId} taskId={openTaskId} onClose={closeTask} />}
       <span className="sr-only">{me.name}</span>
     </div>
