@@ -78,7 +78,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
 
   return (
     <Drawer onClose={onClose}>
-      <div className="flex items-start justify-between gap-3 border-b border-stone-100 px-6 py-4">
+      <div className="flex items-start justify-between gap-3 border-b border-line/70 px-6 py-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
             {project ? (
@@ -94,7 +94,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => title.trim() && title !== task.title && save({ title: title.trim() })}
-            className="mt-1 w-full rounded-md bg-transparent font-display text-xl font-bold text-stone-900 outline-none focus:bg-stone-50"
+            className="mt-1 w-full rounded-md bg-transparent font-display text-xl font-semibold text-ink-900 outline-none focus:bg-stone-50 tracking-tight"
             aria-label="Título da tarefa"
           />
           <div className="mt-2 flex flex-wrap gap-2">
@@ -168,11 +168,11 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
         </Field>
 
         {/* Tempo */}
-        <section className="rounded-2xl border border-stone-200">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-4 py-3">
+        <section className="rounded-2xl border border-line">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-brand-600" />
-              <span className="font-display text-sm font-bold">Tempo na tarefa</span>
+              <span className="font-display text-sm font-semibold">Tempo na tarefa</span>
             </div>
             <div className="flex gap-2">
               {isRunningHere ? (
@@ -189,14 +189,14 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
               </Button>
             </div>
           </div>
-          <div className="grid grid-cols-3 divide-x divide-stone-100 text-center">
+          <div className="grid grid-cols-3 divide-x divide-line/70 text-center">
             <div className="px-3 py-3">
               <div className="text-[11px] uppercase tracking-wide text-stone-500">Total</div>
-              <div className="font-display text-lg font-bold tabular">{formatMinutes(total)}</div>
+              <div className="font-display text-lg font-medium tracking-tight tabular">{formatMinutes(total)}</div>
             </div>
             <div className="px-3 py-3">
               <div className="text-[11px] uppercase tracking-wide text-stone-500">Meu tempo</div>
-              <div className="font-display text-lg font-bold tabular">{formatMinutes(mine)}</div>
+              <div className="font-display text-lg font-medium tracking-tight tabular">{formatMinutes(mine)}</div>
             </div>
             <div className="px-3 py-3">
               <div className="text-[11px] uppercase tracking-wide text-stone-500">Estimado</div>
@@ -206,7 +206,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
             </div>
           </div>
           {showManual && (
-            <div className="grid gap-2 border-t border-stone-100 bg-stone-50 p-4 sm:grid-cols-[1fr_70px_70px]">
+            <div className="grid gap-2 border-t border-line/70 bg-stone-50 p-4 sm:grid-cols-[1fr_70px_70px]">
               <Input type="date" value={manual.date} max={today()} onChange={(e) => setManual({ ...manual, date: e.target.value })} aria-label="Data" />
               <Input type="number" min={0} value={manual.hours} onChange={(e) => setManual({ ...manual, hours: e.target.value })} aria-label="Horas" placeholder="h" />
               <Input type="number" min={0} max={59} step={5} value={manual.minutes} onChange={(e) => setManual({ ...manual, minutes: e.target.value })} aria-label="Minutos" placeholder="min" />
@@ -218,7 +218,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
             </div>
           )}
           {entries.length > 0 && (
-            <ul className="max-h-56 divide-y divide-stone-100 overflow-y-auto border-t border-stone-100 scrollbar-thin">
+            <ul className="max-h-56 divide-y divide-line/70 overflow-y-auto border-t border-line/70 scrollbar-thin">
               {entries.map((e) => {
                 const user = maps.profiles[e.user_id];
                 return (
@@ -245,7 +245,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
         {/* Checklist */}
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 font-display text-sm font-bold"><CheckSquare className="h-4 w-4 text-stone-400" /> Checklist</h3>
+            <h3 className="flex items-center gap-2 font-display text-sm font-semibold"><CheckSquare className="h-4 w-4 text-stone-400" /> Checklist</h3>
             {checklist.length > 0 && <span className="text-xs text-stone-500 tabular">{doneItems}/{checklist.length}</span>}
           </div>
           <ul className="space-y-1">
@@ -284,7 +284,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
 
         {/* Comentários */}
         <section>
-          <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-bold"><MessageSquare className="h-4 w-4 text-stone-400" /> Comentários</h3>
+          <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold"><MessageSquare className="h-4 w-4 text-stone-400" /> Comentários</h3>
           <ul className="space-y-3">
             {comments.map((c) => {
               const user = maps.profiles[c.user_id];
@@ -327,7 +327,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
         </section>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-stone-100 px-6 py-3 text-xs text-stone-500">
+      <div className="flex items-center justify-between gap-3 border-t border-line/70 px-6 py-3 text-xs text-stone-500">
         <span>
           Criada por {creator?.name ?? '—'} em {formatDateTime(task.created_at)}
           {task.completed_at && <> · concluída em {formatDateTime(task.completed_at)}</>}

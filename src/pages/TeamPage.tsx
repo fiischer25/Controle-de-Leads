@@ -69,7 +69,7 @@ export default function TeamPage() {
                 <Avatar user={p} size="lg" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate font-display text-base font-bold">{p.name}</h3>
+                    <h3 className="truncate font-display text-base font-semibold">{p.name}</h3>
                     {p.id === me.id && <span className="text-xs text-stone-400">(você)</span>}
                   </div>
                   <div className="text-sm text-stone-500">{p.job_title || '—'}</div>
@@ -93,20 +93,20 @@ export default function TeamPage() {
                 <div className="flex items-center gap-2 truncate"><Mail className="h-3.5 w-3.5" />{p.email}</div>
                 {p.phone && <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" />{p.phone}</div>}
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-stone-100 pt-3 text-center">
+              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line/70 pt-3 text-center">
                 <div>
                   <div className="flex items-center justify-center gap-1 text-[11px] text-stone-500"><ListChecks className="h-3 w-3" />Tarefas</div>
-                  <div className="font-display text-lg font-bold tabular">{s?.open ?? 0}</div>
+                  <div className="font-display text-lg font-medium tracking-tight tabular">{s?.open ?? 0}</div>
                   {s?.overdue ? <div className="text-[11px] font-medium text-rose-600">{s.overdue} atrasadas</div> : <div className="text-[11px] text-stone-400">em dia</div>}
                 </div>
                 <div>
                   <div className="flex items-center justify-center gap-1 text-[11px] text-stone-500"><Briefcase className="h-3 w-3" />Projetos</div>
-                  <div className="font-display text-lg font-bold tabular">{s?.projects ?? 0}</div>
+                  <div className="font-display text-lg font-medium tracking-tight tabular">{s?.projects ?? 0}</div>
                   <div className="text-[11px] text-stone-400">ativos</div>
                 </div>
                 <div>
                   <div className="flex items-center justify-center gap-1 text-[11px] text-stone-500"><Clock className="h-3 w-3" />Semana</div>
-                  <div className="font-display text-lg font-bold tabular">{formatMinutes(s?.week ?? 0)}</div>
+                  <div className="font-display text-lg font-medium tracking-tight tabular">{formatMinutes(s?.week ?? 0)}</div>
                   <div className="text-[11px] text-stone-400">{formatMinutes(s?.month ?? 0)} no mês</div>
                 </div>
               </div>
@@ -117,15 +117,15 @@ export default function TeamPage() {
 
       {selected && (
         <Card className="mt-6 overflow-hidden">
-          <div className="flex items-center gap-3 border-b border-stone-100 px-5 py-3">
+          <div className="flex items-center gap-3 border-b border-line/70 px-5 py-3">
             <Avatar user={selected} size="sm" />
-            <h3 className="font-display text-sm font-bold">Tarefas abertas de {selected.name}</h3>
+            <h3 className="font-display text-sm font-semibold">Tarefas abertas de {selected.name}</h3>
             <span className="text-xs text-stone-500">{selectedTasks.length}</span>
           </div>
           {selectedTasks.length === 0 ? (
             <p className="px-5 py-6 text-sm text-stone-500">Nenhuma tarefa aberta.</p>
           ) : (
-            <div className="divide-y divide-stone-100">
+            <div className="divide-y divide-line/70">
               {selectedTasks.map((x) => <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />)}
             </div>
           )}

@@ -155,10 +155,10 @@ function KpiButton({ icon, label, value, tone, onClick, active }: { icon: ReactN
   return (
     <button onClick={onClick} className={cn('card px-4 py-3 text-left transition-all hover:border-stone-300', active && 'ring-2 ring-brand-400/50')}>
       <div className="flex items-center gap-2 text-xs text-stone-500">
-        <span className={cn(tone === 'bad' ? 'text-rose-600' : tone === 'warn' ? 'text-amber-600' : tone === 'good' ? 'text-emerald-600' : 'text-stone-400')}>{icon}</span>
+        <span className="text-stone-300">{icon}</span>
         {label}
       </div>
-      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' && value > 0 ? 'text-rose-700' : 'text-stone-900')}>{value}</div>
+      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' && value > 0 ? 'text-rose-700' : 'text-ink-900')}>{value}</div>
     </button>
   );
 }
@@ -179,7 +179,7 @@ function ProjectCard({ s, soonDays }: { s: ProjectSummary; soonDays: number }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] font-medium uppercase tracking-wider text-stone-400">{p.code}</div>
-          <h3 className="mt-0.5 truncate font-display text-lg font-bold text-stone-900 group-hover:text-brand-800">{p.name}</h3>
+          <h3 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-900 group-hover:text-stone-600 tracking-tight">{p.name}</h3>
           <div className="truncate text-sm text-stone-500">{s.client?.name ?? 'Cliente removido'}</div>
         </div>
         <Badge className={st.badge} dot={st.dot}>{st.label}</Badge>
@@ -191,12 +191,12 @@ function ProjectCard({ s, soonDays }: { s: ProjectSummary; soonDays: number }) {
       </div>
       <div className="mt-4">
         <div className="mb-1.5 flex items-baseline justify-between text-xs">
-          <span className="font-medium text-stone-700">Etapa: <span className="text-stone-900">{s.phase}</span></span>
-          <span className="font-semibold text-stone-900 tabular">{s.progress}%</span>
+          <span className="font-medium text-stone-700">Etapa: <span className="text-ink-900">{s.phase}</span></span>
+          <span className="font-semibold text-ink-900 tabular">{s.progress}%</span>
         </div>
         <ProgressBar value={s.progress} color={p.status === 'concluido' ? '#10b981' : undefined} />
       </div>
-      <div className="mt-4 flex items-center justify-between gap-2 border-t border-stone-100 pt-3">
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-line/70 pt-3">
         <div className="flex items-center gap-2">
           <DueBadge due={p.due_date} done={finished} soonDays={soonDays} />
           {s.overdueTasks > 0 && !finished && (
@@ -214,7 +214,7 @@ function ProjectTable({ items, soonDays }: { items: ProjectSummary[]; soonDays: 
   return (
     <div className="card overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
+        <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-stone-400">
           <tr>
             <th className="px-4 py-2.5 font-medium">Projeto</th>
             <th className="px-4 py-2.5 font-medium">Cliente</th>
@@ -225,7 +225,7 @@ function ProjectTable({ items, soonDays }: { items: ProjectSummary[]; soonDays: 
             <th className="px-4 py-2.5 font-medium">Equipe</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-stone-100">
+        <tbody className="divide-y divide-line/70">
           {items.map((s) => {
             const p = s.project;
             const st = PROJECT_STATUS[p.status];
@@ -235,7 +235,7 @@ function ProjectTable({ items, soonDays }: { items: ProjectSummary[]; soonDays: 
                   <div className="flex items-center gap-2">
                     <span className="h-8 w-1 rounded-full" style={{ backgroundColor: s.type?.color ?? '#d6d3d1' }} />
                     <div>
-                      <div className="font-semibold text-stone-900">{p.name}</div>
+                      <div className="font-semibold text-ink-900">{p.name}</div>
                       <div className="text-xs text-stone-500">{p.code} · {s.type?.name}</div>
                     </div>
                   </div>

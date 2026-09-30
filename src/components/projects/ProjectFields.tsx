@@ -42,7 +42,7 @@ export function MemberPicker({
               onClick={() => onChange(on ? value.filter((x) => x !== u.id) : [...value, u.id])}
               className={cn(
                 'flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors',
-                on ? 'border-brand-300 bg-brand-50 text-brand-900' : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300',
+                on ? 'border-brand-300 bg-brand-50 text-brand-900' : 'border-line bg-white text-stone-600 hover:border-stone-300',
               )}
               aria-pressed={on}
             >
@@ -149,7 +149,7 @@ export function ProjectFields({
         </Field>
       </div>
       {showTemplateInfo && value.project_type_id && (
-        <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+        <div className="rounded-xl border border-line bg-stone-50 p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-stone-800">
             <Layers className="h-4 w-4 text-brand-600" />
             {templates.length} tarefas serão criadas automaticamente

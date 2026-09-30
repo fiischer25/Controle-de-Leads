@@ -39,7 +39,7 @@ export default function ClientDetailPage() {
           <Card className="p-5">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h1 className="font-display text-2xl font-extrabold">{client.name}</h1>
+                <h1 className="font-display text-2xl font-semibold tracking-tight">{client.name}</h1>
                 <div className="text-sm text-stone-500">{client.document}{client.rg ? ` · RG ${client.rg}` : ''}</div>
               </div>
               <div className="flex">
@@ -64,7 +64,7 @@ export default function ClientDetailPage() {
           </Card>
           {lead && (
             <Card className="p-5">
-              <h3 className="font-display text-sm font-bold">Origem comercial</h3>
+              <h3 className="font-display text-sm font-semibold">Origem comercial</h3>
               <dl className="mt-3 space-y-1.5 text-sm">
                 <div className="flex justify-between"><dt className="text-stone-500">Origem</dt><dd>{lead.source_id ? maps.sources[lead.source_id]?.name : '—'}</dd></div>
                 {lead.referred_by && <div className="flex justify-between"><dt className="text-stone-500">Indicação</dt><dd>{lead.referred_by}</dd></div>}
@@ -73,7 +73,7 @@ export default function ClientDetailPage() {
               </dl>
               <Link to={`/oportunidades?lead=${lead.id}`} className="mt-3 inline-block text-xs font-medium text-brand-700 hover:underline">Ver oportunidade →</Link>
               {interactions.length > 0 && (
-                <ol className="mt-4 space-y-2 border-t border-stone-100 pt-3">
+                <ol className="mt-4 space-y-2 border-t border-line/70 pt-3">
                   {interactions.slice(0, 5).map((i) => (
                     <li key={i.id} className="text-xs"><Badge>{INTERACTION_TYPES[i.type]}</Badge> <span className="text-stone-400">{formatDate(i.happened_at.slice(0, 10))}</span><p className="mt-0.5 text-stone-600">{i.description}</p></li>
                   ))}
@@ -85,7 +85,7 @@ export default function ClientDetailPage() {
 
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold">Projetos</h2>
+            <h2 className="font-display text-lg font-semibold tracking-tight">Projetos</h2>
             <Button variant="primary" size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setNewProject(true)}>Novo projeto</Button>
           </div>
           {projects.length === 0 ? (
@@ -99,7 +99,7 @@ export default function ClientDetailPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <div className="text-[11px] uppercase tracking-wider text-stone-400">{s.project.code} · {s.type?.name}</div>
-                        <div className="font-display text-base font-bold">{s.project.name}</div>
+                        <div className="font-display text-base font-semibold">{s.project.name}</div>
                       </div>
                       <div className="flex items-center gap-2">
                         <DueBadge due={s.project.due_date} done={['concluido', 'cancelado'].includes(s.project.status)} soonDays={settings.due_soon_days} />

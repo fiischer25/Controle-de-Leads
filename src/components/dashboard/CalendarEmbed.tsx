@@ -41,7 +41,7 @@ export function CalendarEmbed({ height = 560 }: { height?: number }) {
         <iframe
           title="Google Agenda"
           src={url}
-          className="w-full flex-1 border-t border-stone-100"
+          className="w-full flex-1 border-t border-line/70"
           style={{ minHeight: height }}
           frameBorder={0}
           scrolling="no"

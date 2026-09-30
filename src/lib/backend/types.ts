@@ -17,6 +17,11 @@ export interface UpdateUserAuthInput {
   active?: boolean;
 }
 
+export interface Branding {
+  office_name: string;
+  logo_url: string | null;
+}
+
 /**
  * Contrato da camada de dados. Existem duas implementações:
  *  - SupabaseBackend: produção (Postgres + Auth + Realtime + Edge Function).
@@ -25,6 +30,9 @@ export interface UpdateUserAuthInput {
  */
 export interface Backend {
   readonly mode: 'local' | 'supabase';
+
+  /** Nome e logo do escritório — disponível antes do login (tela de entrada). */
+  getBranding(): Promise<Branding | null>;
 
   // Autenticação
   currentUserId(): Promise<string | null>;
@@ -46,6 +54,9 @@ export interface Backend {
   insert<T extends TableName>(table: T, rows: Tables[T][]): Promise<Tables[T][]>;
   update<T extends TableName>(table: T, id: string, patch: Partial<Tables[T]>): Promise<Tables[T]>;
   remove(table: TableName, ids: string[]): Promise<void>;
+
+  /** Chama uma Edge Function (somente Supabase). No modo local não faz nada. */
+  invokeFunction(name: string, body: Record<string, unknown>): Promise<unknown>;
 
   /** Notifica quando outra sessão/usuário altera uma tabela. */
   subscribe(cb: (table: TableName) => void): () => void;

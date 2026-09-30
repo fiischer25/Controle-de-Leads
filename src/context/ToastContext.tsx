@@ -54,7 +54,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 'pointer-events-auto flex items-start gap-3 rounded-xl border bg-white px-4 py-3 text-sm shadow-lg shadow-stone-900/5 animate-in',
                 t.kind === 'success' && 'border-emerald-200',
                 t.kind === 'error' && 'border-rose-200',
-                t.kind === 'info' && 'border-stone-200',
+                t.kind === 'info' && 'border-line',
               )}
             >
               <Icon

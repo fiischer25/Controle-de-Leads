@@ -1,25 +1,29 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Briefcase, CalendarDays, ChevronLeft, ChevronRight, FolderKanban, ListChecks, Rocket } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Briefcase, CalendarDays, ChevronLeft, ChevronRight, FolderKanban, ListChecks, Plus, Rocket, Users } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { isProjectActive } from '../lib/domain';
-import { addDays, cn, formatDate, MONTHS_FULL, parseDate, toDateKey, today, WEEKDAYS_SHORT } from '../lib/utils';
+import { addDays, cn, formatDate, isoToLocalTime, MONTHS_FULL, parseDate, toDateKey, today, WEEKDAYS_SHORT } from '../lib/utils';
+import { EventFormModal } from '../components/events/EventFormModal';
+import type { CalendarEvent } from '../lib/types';
 import { Button, Card, Checkbox, PageHeader, Segmented, Select } from '../components/ui';
 import { CalendarEmbed } from '../components/dashboard/CalendarEmbed';
 import { useOpenTask } from '../components/tasks/useOpenTask';
 
-type Kind = 'delivery' | 'start' | 'task' | 'lead';
+type Kind = 'meeting' | 'delivery' | 'start' | 'task' | 'lead';
 interface CalEvent {
   id: string;
   date: string;
   kind: Kind;
   title: string;
+  time?: string;
   color: string;
   done?: boolean;
   onClick: () => void;
 }
 
 const KIND_META: Record<Kind, { label: string; icon: typeof Briefcase }> = {
+  meeting: { label: 'Reuniões', icon: Users },
   delivery: { label: 'Entregas de projeto', icon: Briefcase },
   start: { label: 'Inícios de projeto', icon: Rocket },
   task: { label: 'Prazos de tarefas', icon: ListChecks },
@@ -36,11 +40,31 @@ export default function AgendaPage() {
     return { y: d.getFullYear(), m: d.getMonth() };
   });
   const [person, setPerson] = useState<string>('all');
-  const [kinds, setKinds] = useState<Record<Kind, boolean>>({ delivery: true, start: true, task: true, lead: true });
+  const [kinds, setKinds] = useState<Record<Kind, boolean>>({ meeting: true, delivery: true, start: true, task: true, lead: true });
+  const [params, setParams] = useSearchParams();
+  const [editing, setEditing] = useState<CalendarEvent | null>(null);
+  const [creatingOn, setCreatingOn] = useState<string | null>(null);
+  const eventParam = params.get('evento');
+  const paramEvent = eventParam ? db.events.find((e) => e.id === eventParam) ?? null : null;
+  const closeEditor = () => {
+    setEditing(null);
+    if (eventParam) {
+      const next = new URLSearchParams(params);
+      next.delete('evento');
+      setParams(next, { replace: true });
+    }
+  };
   const [selected, setSelected] = useState<string>(today());
 
   const events = useMemo(() => {
     const out: CalEvent[] = [];
+    db.events.forEach((ev) => {
+      if (person !== 'all' && !ev.participant_ids.includes(person) && ev.created_by !== person) return;
+      out.push({
+        id: `e${ev.id}`, date: toDateKey(new Date(ev.starts_at)), kind: 'meeting', title: ev.title,
+        time: ev.all_day ? 'Dia todo' : isoToLocalTime(ev.starts_at), color: '#121110', onClick: () => setEditing(ev),
+      });
+    });
     db.projects.forEach((p) => {
       const include = person === 'all' || p.manager_id === person || p.member_ids.includes(person);
       if (!include || p.status === 'cancelado') return;
@@ -63,7 +87,7 @@ export default function AgendaPage() {
       if (person !== 'all' && l.owner_id !== person) return;
       out.push({ id: `l${l.id}`, date: l.next_contact_date, kind: 'lead', title: `Retorno · ${l.name}`, color: '#4a3aa7', onClick: () => navigate(`/oportunidades?lead=${l.id}`) });
     });
-    return out.filter((e) => kinds[e.kind]);
+    return out.filter((e) => kinds[e.kind]).sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'));
   }, [db, maps, person, kinds, navigate, openTask]);
 
   const byDate = useMemo(() => {
@@ -89,6 +113,8 @@ export default function AgendaPage() {
         title="Agenda"
         description="Entregas, prazos de tarefas e retornos comerciais — e o Google Agenda do escritório."
         actions={
+          <>
+          <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setCreatingOn(selected)}>Nova reunião</Button>
           <Segmented
             value={tab}
             onChange={setTab}
@@ -97,6 +123,7 @@ export default function AgendaPage() {
               { id: 'google', label: 'Google Agenda' },
             ]}
           />
+          </>
         }
       />
 
@@ -105,10 +132,10 @@ export default function AgendaPage() {
       ) : (
         <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
           <Card className="overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="ghost" onClick={() => move(-1)} aria-label="Mês anterior"><ChevronLeft className="h-4 w-4" /></Button>
-                <h2 className="w-44 text-center font-display text-lg font-bold">{MONTHS_FULL[cursor.m]} {cursor.y}</h2>
+                <h2 className="w-44 text-center font-display text-lg font-semibold tracking-tight">{MONTHS_FULL[cursor.m]} {cursor.y}</h2>
                 <Button size="sm" variant="ghost" onClick={() => move(1)} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></Button>
                 <Button size="sm" onClick={() => { const d = new Date(); setCursor({ y: d.getFullYear(), m: d.getMonth() }); setSelected(t); }}>Hoje</Button>
               </div>
@@ -118,7 +145,7 @@ export default function AgendaPage() {
                 {db.profiles.filter((p) => p.id !== me.id).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </Select>
             </div>
-            <div className="grid grid-cols-7 border-b border-stone-100 bg-stone-50 text-center text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+            <div className="grid grid-cols-7 border-b border-line/70 bg-stone-50 text-center text-[11px] font-semibold uppercase tracking-wide text-stone-500">
               {WEEKDAYS_SHORT.map((d) => <div key={d} className="py-2">{d}</div>)}
             </div>
             <div className="grid grid-cols-7">
@@ -131,17 +158,28 @@ export default function AgendaPage() {
                   <button
                     key={key}
                     onClick={() => setSelected(key)}
+                    onDoubleClick={() => setCreatingOn(key)}
+                    title="Clique duas vezes para agendar uma reunião"
                     className={cn(
-                      'min-h-[92px] border-b border-r border-stone-100 p-1.5 text-left align-top transition-colors hover:bg-stone-50 sm:min-h-[110px]',
-                      !inMonth && 'bg-stone-50/60 text-stone-400',
-                      selected === key && 'bg-brand-50/60 ring-1 ring-inset ring-brand-300',
+                      'min-h-[92px] border-b border-r border-line/70 p-1.5 text-left align-top transition-colors hover:bg-canvas/60 sm:min-h-[116px]',
+                      !inMonth && 'bg-canvas/40 text-stone-300',
+                      selected === key && 'bg-canvas ring-1 ring-inset ring-ink-900/15',
                     )}
                   >
-                    <span className={cn('inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', isToday ? 'bg-brand-600 text-white' : '')}>{d.getDate()}</span>
+                    <span className={cn('inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', isToday ? 'bg-ink-900 text-white' : 'text-stone-600')}>{d.getDate()}</span>
                     <div className="mt-1 space-y-0.5">
                       {evs.slice(0, 3).map((e) => (
-                        <div key={e.id} className={cn('flex items-center gap-1 truncate rounded px-1 py-px text-[10px] sm:text-[11px]', e.done && 'line-through opacity-60')} style={{ backgroundColor: `${e.color}1a`, color: '#292524' }}>
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: e.color }} />
+                        <div
+                          key={e.id}
+                          className={cn(
+                            'flex items-center gap-1 truncate rounded px-1 py-px text-[10px] sm:text-[11px]',
+                            e.kind === 'meeting' ? 'bg-ink-900 text-white' : 'text-stone-700',
+                            e.done && 'line-through opacity-60',
+                          )}
+                          style={e.kind === 'meeting' ? undefined : { backgroundColor: `${e.color}14` }}
+                        >
+                          {e.kind !== 'meeting' && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: e.color }} />}
+                          {e.time && <span className="shrink-0 tabular opacity-70">{e.time}</span>}
                           <span className="truncate">{e.title}</span>
                         </div>
                       ))}
@@ -155,16 +193,22 @@ export default function AgendaPage() {
 
           <div className="space-y-5">
             <Card className="p-4">
-              <h3 className="font-display text-sm font-bold">{formatDate(selected)}</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-sm font-semibold">{formatDate(selected)}</h3>
+                <Button size="xs" variant="ghost" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setCreatingOn(selected)}>Reunião</Button>
+              </div>
               <ul className="mt-3 space-y-1">
                 {dayEvents.length === 0 && <li className="text-sm text-stone-500">Nada neste dia.</li>}
                 {dayEvents.map((e) => {
                   const Icon = KIND_META[e.kind].icon;
                   return (
                     <li key={e.id}>
-                      <button onClick={e.onClick} className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-stone-50">
-                        <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: e.color }} />
-                        <span className={cn('text-sm', e.done && 'text-stone-400 line-through')}>{e.title}</span>
+                      <button onClick={e.onClick} className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-canvas/70">
+                        <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: e.color }} strokeWidth={1.6} />
+                        <span className="min-w-0 flex-1">
+                          <span className={cn('block text-sm', e.done && 'text-stone-400 line-through')}>{e.title}</span>
+                          {e.time && <span className="block text-xs text-stone-400 tabular">{e.time}</span>}
+                        </span>
                       </button>
                     </li>
                   );
@@ -172,7 +216,7 @@ export default function AgendaPage() {
               </ul>
             </Card>
             <Card className="space-y-2 p-4">
-              <h3 className="mb-1 font-display text-sm font-bold">Mostrar</h3>
+              <h3 className="mb-1 font-display text-sm font-semibold">Mostrar</h3>
               {(Object.keys(KIND_META) as Kind[]).map((k) => (
                 <Checkbox key={k} checked={kinds[k]} onChange={(v) => setKinds((s) => ({ ...s, [k]: v }))} label={KIND_META[k].label} className="flex" />
               ))}
@@ -180,6 +224,8 @@ export default function AgendaPage() {
           </div>
         </div>
       )}
+      {(editing || paramEvent) && <EventFormModal event={(editing ?? paramEvent)!} onClose={closeEditor} />}
+      {creatingOn && <EventFormModal defaults={{ date: creatingOn }} onClose={() => setCreatingOn(null)} />}
     </div>
   );
 }

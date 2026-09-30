@@ -129,7 +129,7 @@ export default function ProjectDetailPage() {
               {type && <span className="rounded-md px-1.5 py-0.5 font-medium" style={{ backgroundColor: `${type.color}14`, color: type.color }}>{type.name}</span>}
               {project.site_city && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{project.site_city}</span>}
             </div>
-            <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-stone-900">{project.name}</h1>
+            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink-900">{project.name}</h1>
             <div className="mt-1 text-sm text-stone-500">
               Cliente: {client ? <Link to={`/clientes/${client.id}`} className="font-medium text-brand-700 hover:underline">{client.name}</Link> : '—'}
               {manager && <> · Responsável: <span className="font-medium text-stone-700">{manager.name}</span></>}
@@ -154,23 +154,23 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="grid border-t border-stone-100 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-stone-100">
+        <div className="grid border-t border-line/70 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-line/70">
           <Metric label="Progresso" icon={<Layers className="h-4 w-4" />}>
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-2xl font-bold tabular">{progress}%</span>
+              <span className="font-display text-2xl font-medium tracking-tight tabular">{progress}%</span>
               <span className="truncate text-xs text-stone-500">Etapa: {phase}</span>
             </div>
             <ProgressBar value={progress} className="mt-2" color={project.status === 'concluido' ? '#10b981' : undefined} />
           </Metric>
           <Metric label="Prazo de entrega" icon={<CalendarRange className="h-4 w-4" />}>
-            <div className="font-display text-lg font-bold">{formatDate(project.due_date)}</div>
+            <div className="font-display text-lg font-semibold tracking-tight">{formatDate(project.due_date)}</div>
             <div className="mt-1 flex items-center gap-2 text-xs text-stone-500">
               <DueBadge due={project.due_date} done={finished} soonDays={settings.due_soon_days} />
               {!finished && daysLeft !== null && daysLeft >= 0 && <span>início {formatDate(project.start_date)}</span>}
             </div>
           </Metric>
           <Metric label="Tarefas" icon={<ListChecks className="h-4 w-4" />}>
-            <div className="font-display text-2xl font-bold tabular">
+            <div className="font-display text-2xl font-medium tracking-tight tabular">
               {tasks.length - open.length}<span className="text-base font-medium text-stone-400">/{tasks.length}</span>
             </div>
             <div className={cn('mt-1 text-xs', overdue.length ? 'font-medium text-rose-600' : 'text-stone-500')}>
@@ -178,7 +178,7 @@ export default function ProjectDetailPage() {
             </div>
           </Metric>
           <Metric label="Horas registradas" icon={<Clock className="h-4 w-4" />}>
-            <div className="font-display text-2xl font-bold tabular">{formatMinutes(minutes)}</div>
+            <div className="font-display text-2xl font-medium tracking-tight tabular">{formatMinutes(minutes)}</div>
             <div className="mt-1 flex items-center justify-between text-xs text-stone-500">
               <span>{estimated ? `de ${formatNumber(estimated)}h estimadas` : 'sem estimativa'}</span>
               <AvatarStack users={people} max={5} size="xs" />
@@ -188,7 +188,7 @@ export default function ProjectDetailPage() {
 
         {/* Etapas */}
         {phases.length > 0 && (
-          <div className="scrollbar-thin flex gap-1 overflow-x-auto border-t border-stone-100 px-5 py-3">
+          <div className="scrollbar-thin flex gap-1 overflow-x-auto border-t border-line/70 px-5 py-3">
             {phases.map((p, i) => {
               const pt = tasks.filter((t) => (t.phase || 'Geral') === p);
               const done = pt.filter((t) => t.status === 'done').length;
@@ -199,7 +199,7 @@ export default function ProjectDetailPage() {
                   <div className={cn('h-1.5 rounded-full', complete ? 'bg-emerald-500' : current ? 'bg-brand-500' : 'bg-stone-200')}>
                     {!complete && done > 0 && <div className="h-full rounded-full bg-brand-300" style={{ width: `${(done / pt.length) * 100}%` }} />}
                   </div>
-                  <div className={cn('mt-1.5 flex items-center gap-1 text-[11px]', current ? 'font-semibold text-stone-900' : 'text-stone-500')}>
+                  <div className={cn('mt-1.5 flex items-center gap-1 text-[11px]', current ? 'font-semibold text-ink-900' : 'text-stone-500')}>
                     {complete ? <Check className="h-3 w-3 text-emerald-600" /> : <span className="text-stone-400">{i + 1}.</span>}
                     <span className="truncate">{p}</span>
                   </div>
@@ -248,17 +248,17 @@ export default function ProjectDetailPage() {
             const pMinutes = totalMinutes(db.time_entries.filter((e) => pt.some((t) => t.id === e.task_id)));
             return (
               <div key={p} className="card overflow-hidden">
-                <div className="flex flex-wrap items-center gap-3 border-b border-stone-100 bg-stone-50/60 px-4 py-2.5">
-                  <h3 className="font-display text-sm font-bold text-stone-900">{p}</h3>
+                <div className="flex flex-wrap items-center gap-3 border-b border-line/70 bg-stone-50/60 px-4 py-2.5">
+                  <h3 className="font-display text-sm font-semibold text-ink-900">{p}</h3>
                   <span className="text-xs text-stone-500 tabular">{done}/{pt.length}</span>
                   <ProgressBar value={(done / pt.length) * 100} className="w-24" color={done === pt.length ? '#10b981' : undefined} />
                   <span className="ml-auto text-xs text-stone-500">{pMinutes > 0 && formatMinutes(pMinutes)}</span>
                 </div>
-                <div className="divide-y divide-stone-100">
+                <div className="divide-y divide-line/70">
                   {visible.map((t) => <TaskRow key={t.id} task={t} onOpen={() => openTask(t.id)} />)}
                 </div>
                 <form
-                  className="flex items-center gap-2 border-t border-stone-100 px-4 py-2"
+                  className="flex items-center gap-2 border-t border-line/70 px-4 py-2"
                   onSubmit={(e) => { e.preventDefault(); addQuick(p); }}
                 >
                   <Plus className="h-4 w-4 text-stone-400" />
@@ -301,7 +301,7 @@ export default function ProjectDetailPage() {
                   <li key={a.id} className="flex items-start gap-3 text-sm">
                     <Avatar user={u} size="sm" />
                     <div>
-                      <span className="font-medium text-stone-900">{u?.name ?? 'Sistema'}</span>{' '}
+                      <span className="font-medium text-ink-900">{u?.name ?? 'Sistema'}</span>{' '}
                       <span className="text-stone-600">{a.description}</span>
                       <div className="text-xs text-stone-400" title={formatDateTime(a.created_at)}>{formatRelative(a.created_at)}</div>
                     </div>
@@ -340,7 +340,7 @@ export default function ProjectDetailPage() {
 
 function Metric({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <div className="border-stone-100 px-5 py-4 max-lg:border-t">
+    <div className="border-line/70 px-5 py-4 max-lg:border-t">
       <div className="mb-1 flex items-center gap-1.5 text-xs text-stone-500">
         <span className="text-stone-400">{icon}</span>
         {label}
@@ -379,7 +379,7 @@ function TeamTab({ project, tasks }: { project: Project; tasks: Task[] }) {
     <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
+          <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-stone-400">
             <tr>
               <th className="px-4 py-2.5 font-medium">Pessoa</th>
               <th className="px-4 py-2.5 text-right font-medium">Abertas</th>
@@ -388,7 +388,7 @@ function TeamTab({ project, tasks }: { project: Project; tasks: Task[] }) {
               <th className="w-1/3 px-4 py-2.5 font-medium">Horas</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100">
+          <tbody className="divide-y divide-line/70">
             {rows.map((r) => (
               <tr key={r.user.id}>
                 <td className="px-4 py-3">
@@ -445,7 +445,7 @@ function InfoTab({ project }: { project: Project }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <Card className="p-5">
-        <h3 className="mb-3 font-display text-sm font-bold">Cliente</h3>
+        <h3 className="mb-3 font-display text-sm font-semibold">Cliente</h3>
         {client ? (
           <div className="space-y-2 text-sm">
             <Link to={`/clientes/${client.id}`} className="font-semibold text-brand-700 hover:underline">{client.name}</Link>
@@ -460,7 +460,7 @@ function InfoTab({ project }: { project: Project }) {
         ) : <p className="text-sm text-stone-500">Cliente não encontrado.</p>}
       </Card>
       <Card className="p-5">
-        <h3 className="mb-3 font-display text-sm font-bold">Dados do projeto</h3>
+        <h3 className="mb-3 font-display text-sm font-semibold">Dados do projeto</h3>
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div><dt className="text-xs text-stone-500">Área</dt><dd className="font-medium">{project.area_m2 ? `${formatNumber(project.area_m2)} m²` : '—'}</dd></div>
           <div><dt className="text-xs text-stone-500">Início</dt><dd className="font-medium">{formatDate(project.start_date)}</dd></div>
@@ -470,7 +470,7 @@ function InfoTab({ project }: { project: Project }) {
         </dl>
       </Card>
       <Card className="p-5">
-        <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-bold"><Link2 className="h-4 w-4 text-stone-400" />Links e arquivos</h3>
+        <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold"><Link2 className="h-4 w-4 text-stone-400" />Links e arquivos</h3>
         <ul className="space-y-1.5">
           {(project.links ?? []).map((l) => (
             <li key={l.id} className="group flex items-center gap-2 text-sm">
@@ -492,7 +492,7 @@ function InfoTab({ project }: { project: Project }) {
         </div>
       </Card>
       <Card className="p-5 lg:col-span-3">
-        <h3 className="mb-3 font-display text-sm font-bold">Anotações do projeto</h3>
+        <h3 className="mb-3 font-display text-sm font-semibold">Anotações do projeto</h3>
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

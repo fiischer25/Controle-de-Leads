@@ -199,7 +199,7 @@ export default function LeadsPage() {
           </Button>
         </div>
         {showFilters && (
-          <div className="mt-3 grid gap-2 border-t border-stone-100 pt-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-3 grid gap-2 border-t border-line/70 pt-3 sm:grid-cols-2 lg:grid-cols-5">
             <Select value={owner} onChange={(e) => setOwner(e.target.value)}>
               <option value="">Todos os responsáveis</option>
               {db.profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -235,7 +235,7 @@ export default function LeadsPage() {
                 <section
                   key={stage.id}
                   className={cn(
-                    'flex w-[290px] shrink-0 flex-col rounded-2xl border bg-stone-100/70 transition-colors',
+                    'flex w-[290px] shrink-0 flex-col rounded-2xl border bg-stone-100/50 transition-colors',
                     isTarget ? 'border-brand-300 bg-brand-50/60' : 'border-transparent',
                   )}
                   onDragOver={(e) => {
@@ -326,10 +326,10 @@ function Stat({ icon, label, value, hint, tone }: { icon: React.ReactNode; label
   return (
     <div className="card px-4 py-3" title={hint}>
       <div className="flex items-center gap-2 text-xs text-stone-500">
-        <span className={cn(tone === 'good' ? 'text-emerald-600' : tone === 'warn' ? 'text-amber-600' : 'text-stone-400')}>{icon}</span>
+        <span className="text-stone-300">{icon}</span>
         <span className="truncate">{label}</span>
       </div>
-      <div className="mt-1 font-display text-xl font-bold text-stone-900">{value}</div>
+      <div className={cn('mt-1 font-display text-xl font-medium tracking-tight', tone === 'warn' ? 'text-amber-700' : 'text-ink-900')}>{value}</div>
     </div>
   );
 }
@@ -372,12 +372,12 @@ function LeadCard({
       onDragOver={onDragOverCard}
       onClick={onOpen}
       className={cn(
-        'group cursor-pointer rounded-xl border border-stone-200 bg-white p-3 shadow-card transition-all hover:border-stone-300 hover:shadow-md',
+        'group cursor-pointer rounded-xl border border-line bg-white p-3 shadow-card transition-all hover:border-stone-300 hover:shadow-md',
         dragging && 'rotate-1 opacity-40',
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <h4 className="text-sm font-semibold leading-snug text-stone-900">{lead.name}</h4>
+        <h4 className="text-sm font-semibold leading-snug text-ink-900">{lead.name}</h4>
         <Avatar user={owner} size="sm" />
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
@@ -392,7 +392,7 @@ function LeadCard({
         )}
         {src && <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] text-stone-600">{src.name}</span>}
       </div>
-      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-stone-100 pt-2">
+      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-line/70 pt-2">
         <span className="text-sm font-semibold text-stone-800 tabular">{lead.proposal_value ? formatCurrency(lead.proposal_value) : <span className="font-normal text-stone-400">Sem proposta</span>}</span>
         <span className={cn('text-[11px]', stale ? 'font-medium text-amber-700' : 'text-stone-400')} title="Dias nesta etapa">
           {daysInStage}d
@@ -437,7 +437,7 @@ function LeadList({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => vo
 
   return (
     <div className="card overflow-hidden">
-      <div className="flex items-center justify-end gap-2 border-b border-stone-100 px-4 py-2 text-xs text-stone-500">
+      <div className="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2 text-xs text-stone-500">
         Ordenar por
         <Select value={sortKey} onChange={(e) => setSortKey(e.target.value as typeof sortKey)} className="h-8 w-auto py-1 text-xs">
           <option value="created">Mais recentes</option>
@@ -447,7 +447,7 @@ function LeadList({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => vo
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
+          <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-stone-400">
             <tr>
               <th className="px-4 py-2.5 font-medium">Lead</th>
               <th className="px-4 py-2.5 font-medium">Etapa</th>
@@ -459,13 +459,13 @@ function LeadList({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => vo
               <th className="px-4 py-2.5 font-medium">Resp.</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100">
+          <tbody className="divide-y divide-line/70">
             {sorted.map((l) => {
               const stage = maps.stages[l.stage_id];
               return (
                 <tr key={l.id} className="cursor-pointer hover:bg-stone-50" onClick={() => onOpen(l.id)}>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-stone-900">{l.name}</div>
+                    <div className="font-medium text-ink-900">{l.name}</div>
                     <div className="text-xs text-stone-500">{l.city} · {l.phone}</div>
                   </td>
                   <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 whitespace-nowrap"><ColorDot color={stage?.color ?? '#999'} />{stage?.name}</span></td>

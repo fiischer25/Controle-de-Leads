@@ -201,6 +201,24 @@ export interface TaskComment {
   created_at: string;
 }
 
+/** Reunião / compromisso na agenda do escritório. */
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  starts_at: string; // ISO
+  ends_at: string | null; // ISO
+  all_day: boolean;
+  location: string | null;
+  participant_ids: string[];
+  project_id: string | null;
+  lead_id: string | null;
+  google_event_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Notification {
   id: string;
   user_id: string;
@@ -214,7 +232,7 @@ export interface Notification {
 export interface ActivityLog {
   id: string;
   user_id: string | null;
-  entity: 'lead' | 'client' | 'project' | 'task' | 'user' | 'settings';
+  entity: 'lead' | 'client' | 'project' | 'task' | 'event' | 'user' | 'settings';
   entity_id: string | null;
   action: string;
   description: string;
@@ -224,6 +242,8 @@ export interface ActivityLog {
 export interface AppSettings {
   id: string; // sempre 'office'
   office_name: string;
+  /** Logo do escritório (data URL de imagem). Substitui o nome na interface. */
+  logo_url: string | null;
   calendar_embed_url: string | null;
   due_soon_days: number;
   lead_stale_days: number;
@@ -245,6 +265,7 @@ export interface Tables {
   tasks: Task;
   time_entries: TimeEntry;
   task_comments: TaskComment;
+  events: CalendarEvent;
   notifications: Notification;
   activity_log: ActivityLog;
   app_settings: AppSettings;
@@ -265,6 +286,7 @@ export const TABLES: TableName[] = [
   'tasks',
   'time_entries',
   'task_comments',
+  'events',
   'notifications',
   'activity_log',
   'app_settings',

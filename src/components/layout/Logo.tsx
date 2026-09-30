@@ -1,12 +1,32 @@
+import { useBranding } from '../../context/BrandingContext';
 import { cn } from '../../lib/utils';
 
-/** Marca AIROS: um "A" em traço, como um corte arquitetônico. */
-export function Logo({ className, light }: { className?: string; light?: boolean }) {
+/**
+ * Marca do escritório: exibe o logo enviado em Configurações; sem logo,
+ * mostra o nome do escritório como um letreiro minimalista.
+ */
+export function BrandMark({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
+  const { logo_url, office_name } = useBranding();
+  if (logo_url) {
+    const dims = { sm: 'h-7 max-w-[140px]', md: 'h-9 max-w-[168px]', lg: 'h-14 max-w-[240px]' }[size];
+    return <img src={logo_url} alt={office_name} className={cn('w-auto object-contain object-left', dims, className)} />;
+  }
+  const [first, ...rest] = office_name.trim().split(/\s+/);
   return (
-    <svg viewBox="0 0 40 40" className={cn('h-9 w-9 shrink-0', className)} aria-hidden="true">
-      <rect width="40" height="40" rx="10" fill={light ? '#161412' : '#2a2622'} />
-      <path d="M11 29 20 10l9 19" fill="none" stroke="#d5a78f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M15 23h10" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
+    <div className={cn('leading-none', className)}>
+      <div
+        className={cn(
+          'font-display font-semibold uppercase text-ink-900',
+          size === 'lg' ? 'text-2xl tracking-[0.32em]' : size === 'sm' ? 'text-[13px] tracking-[0.28em]' : 'text-[15px] tracking-[0.3em]',
+        )}
+      >
+        {first}
+      </div>
+      {rest.length > 0 && (
+        <div className={cn('mt-1.5 uppercase text-stone-400', size === 'lg' ? 'text-[11px] tracking-[0.3em]' : 'text-[9.5px] tracking-[0.26em]')}>
+          {rest.join(' ')}
+        </div>
+      )}
+    </div>
   );
 }

@@ -20,10 +20,10 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'dark';
 type Size = 'xs' | 'sm' | 'md';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-900/10',
-  dark: 'bg-ink-900 text-white hover:bg-ink-700 shadow-sm',
-  secondary: 'bg-white text-stone-800 border border-stone-300 hover:bg-stone-50 hover:border-stone-400',
-  ghost: 'text-stone-600 hover:bg-stone-100 hover:text-stone-900',
+  primary: 'bg-ink-900 text-white hover:bg-ink-700',
+  dark: 'bg-ink-900 text-white hover:bg-ink-700',
+  secondary: 'bg-white text-ink-900 border border-line hover:border-stone-300 hover:bg-stone-50',
+  ghost: 'text-stone-500 hover:bg-stone-100/80 hover:text-ink-900',
   danger: 'bg-rose-600 text-white hover:bg-rose-700',
 };
 const sizes: Record<Size, string> = {
@@ -74,7 +74,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        'inline-flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:opacity-40',
+        'inline-flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 transition-colors hover:bg-stone-100 hover:text-ink-900 disabled:opacity-40',
         className,
       )}
       {...rest}
@@ -105,7 +105,7 @@ export function Field({
       {label && (
         <label className="label">
           {label}
-          {required && <span className="ml-0.5 text-brand-600">*</span>}
+          {required && <span className="ml-0.5 text-stone-400">*</span>}
         </label>
       )}
       {children}
@@ -190,7 +190,7 @@ export function Checkbox({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-stone-300 text-brand-600 accent-brand-600"
+        className="h-4 w-4 rounded border-stone-300 accent-ink-900"
       />
       {label}
     </label>
@@ -239,7 +239,7 @@ export function Modal({
   useBodyLock();
   const width = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-3xl', xl: 'max-w-5xl' }[size];
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/25 p-0 backdrop-blur-sm sm:items-center sm:p-4">
       <div className="absolute inset-0" onClick={onClose} />
       <div
         role="dialog"
@@ -249,17 +249,17 @@ export function Modal({
           width,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-stone-100 px-6 py-4">
+        <div className="flex items-start justify-between gap-4 px-7 pb-2 pt-6">
           <div className="min-w-0">
-            <h2 className="font-display text-lg font-bold text-stone-900">{title}</h2>
+            <h2 className="font-display text-xl font-semibold tracking-tight text-ink-900">{title}</h2>
             {subtitle && <p className="mt-0.5 text-sm text-stone-500">{subtitle}</p>}
           </div>
           <IconButton label="Fechar" onClick={onClose} className="-mr-2">
             <X className="h-5 w-5" />
           </IconButton>
         </div>
-        <div className="scrollbar-thin flex-1 overflow-y-auto px-6 py-5">{children}</div>
-        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-stone-100 bg-stone-50/60 px-6 py-3">{footer}</div>}
+        <div className="scrollbar-thin flex-1 overflow-y-auto px-7 py-5">{children}</div>
+        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-7 py-4">{footer}</div>}
       </div>
     </div>,
     document.body,
@@ -278,7 +278,7 @@ export function Drawer({
   useEscape(onClose);
   useBodyLock();
   return createPortal(
-    <div className="fixed inset-0 z-40 flex justify-end bg-stone-900/30 backdrop-blur-[1px]">
+    <div className="fixed inset-0 z-40 flex justify-end bg-ink-900/20 backdrop-blur-[2px]">
       <div className="absolute inset-0" onClick={onClose} />
       <aside
         role="dialog"
@@ -381,7 +381,7 @@ export function Popover({
       {open && (
         <div
           className={cn(
-            'absolute z-30 mt-2 min-w-[12rem] rounded-xl border border-stone-200 bg-white p-1 shadow-pop animate-fade-in',
+            'absolute z-30 mt-2 min-w-[12rem] rounded-xl border border-line bg-white p-1 shadow-pop animate-fade-in',
             align === 'right' ? 'right-0' : 'left-0',
             className,
           )}
@@ -410,7 +410,7 @@ export function MenuItem({
       onClick={onClick}
       className={cn(
         'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
-        danger ? 'text-rose-600 hover:bg-rose-50' : 'text-stone-700 hover:bg-stone-100',
+        danger ? 'text-rose-600 hover:bg-rose-50' : 'text-stone-700 hover:bg-canvas',
       )}
     >
       {icon}
@@ -480,8 +480,8 @@ export function Badge({ className, children, dot }: { className?: string; childr
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
-        className ?? 'bg-stone-100 text-stone-700 ring-stone-200',
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-medium',
+        className ?? 'bg-stone-100 text-stone-600',
       )}
     >
       {dot && <span className={cn('h-1.5 w-1.5 rounded-full', dot)} />}
@@ -534,9 +534,9 @@ export function DueBadge({
 
 export function ProgressBar({ value, className, color }: { value: number; className?: string; color?: string }) {
   return (
-    <div className={cn('h-1.5 w-full overflow-hidden rounded-full bg-stone-200/80', className)}>
+    <div className={cn('h-1 w-full overflow-hidden rounded-full bg-stone-100', className)}>
       <div
-        className="h-full rounded-full bg-brand-500 transition-[width] duration-500"
+        className="h-full rounded-full bg-ink-900 transition-[width] duration-500"
         style={{ width: `${Math.min(100, Math.max(0, value))}%`, backgroundColor: color }}
       />
     </div>
@@ -558,8 +558,8 @@ export function EmptyState({
 }) {
   return (
     <div className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
-      {icon && <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-stone-400">{icon}</div>}
-      <p className="font-display text-base font-semibold text-stone-800">{title}</p>
+      {icon && <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-canvas text-stone-400">{icon}</div>}
+      <p className="font-display text-base font-medium text-ink-900">{title}</p>
       {description && <p className="mt-1 max-w-sm text-sm text-stone-500">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -578,11 +578,11 @@ export function PageHeader({
   eyebrow?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        {eyebrow && <div className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-brand-600">{eyebrow}</div>}
-        <h1 className="font-display text-2xl font-bold tracking-tight text-stone-900 sm:text-[28px]">{title}</h1>
-        {description && <p className="mt-1 text-sm text-stone-500">{description}</p>}
+        {eyebrow && <div className="eyebrow mb-2">{eyebrow}</div>}
+        <h1 className="font-display text-[26px] font-semibold tracking-[-0.025em] text-ink-900 sm:text-[30px]">{title}</h1>
+        {description && <p className="mt-1.5 text-sm text-stone-500">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -605,11 +605,11 @@ export function CardHeader({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
+    <div className="flex items-start justify-between gap-3 px-6 pb-3 pt-5">
       <div className="flex min-w-0 items-center gap-2.5">
-        {icon && <span className="text-stone-400">{icon}</span>}
+        {icon && <span className="text-stone-300">{icon}</span>}
         <div className="min-w-0">
-          <h3 className="font-display text-[15px] font-bold text-stone-900">{title}</h3>
+          <h3 className="font-display text-[15px] font-semibold tracking-tight text-ink-900">{title}</h3>
           {subtitle && <p className="text-xs text-stone-500">{subtitle}</p>}
         </div>
       </div>
@@ -630,20 +630,20 @@ export function Tabs<T extends string>({
   className?: string;
 }) {
   return (
-    <div className={cn('scrollbar-thin flex gap-1 overflow-x-auto border-b border-stone-200', className)}>
+    <div className={cn('scrollbar-thin flex gap-5 overflow-x-auto border-b border-line', className)}>
       {tabs.map((t) => (
         <button
           key={t.id}
           type="button"
           onClick={() => onChange(t.id)}
           className={cn(
-            '-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
-            value === t.id ? 'border-brand-600 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-800',
+            '-mb-px flex items-center gap-2 whitespace-nowrap border-b px-0.5 py-3 text-sm transition-colors',
+            value === t.id ? 'border-ink-900 font-medium text-ink-900' : 'border-transparent text-stone-500 hover:text-ink-900',
           )}
         >
           {t.label}
           {t.count !== undefined && (
-            <span className={cn('rounded-full px-1.5 text-xs tabular', value === t.id ? 'bg-brand-100 text-brand-800' : 'bg-stone-100 text-stone-500')}>
+            <span className={cn('rounded-full px-1.5 text-xs tabular', value === t.id ? 'bg-ink-900 text-white' : 'bg-stone-100 text-stone-500')}>
               {t.count}
             </span>
           )}
@@ -663,7 +663,7 @@ export function Segmented<T extends string>({
   onChange: (id: T) => void;
 }) {
   return (
-    <div className="inline-flex rounded-lg border border-stone-200 bg-stone-100 p-0.5">
+    <div className="inline-flex rounded-lg border border-line bg-white p-0.5">
       {options.map((o) => (
         <button
           key={o.id}
@@ -671,7 +671,7 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.id)}
           className={cn(
             'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium transition-colors',
-            value === o.id ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800',
+            value === o.id ? 'bg-canvas text-ink-900' : 'text-stone-500 hover:text-ink-900',
           )}
         >
           {o.icon}
@@ -691,7 +691,7 @@ export function BarRow({
   label,
   value,
   max,
-  color = '#ad6b4d',
+  color = '#2e2b28',
   suffix,
   onClick,
   title,
@@ -714,13 +714,13 @@ export function BarRow({
       className={cn('group block w-full text-left', onClick && 'cursor-pointer')}
     >
       <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
-        <span className="truncate text-stone-700 group-hover:text-stone-900">{label}</span>
-        <span className="tabular shrink-0 font-semibold text-stone-900">
+        <span className="truncate text-stone-700 group-hover:text-ink-900">{label}</span>
+        <span className="tabular shrink-0 font-medium text-ink-900">
           {value}
           {suffix && <span className="ml-1 font-normal text-stone-500">{suffix}</span>}
         </span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-stone-100">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
         <div
           className="h-full rounded-full transition-[width] duration-500 group-hover:brightness-110"
           style={{ width: `${Math.max(pct, value > 0 ? 2 : 0)}%`, backgroundColor: color }}

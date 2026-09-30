@@ -124,7 +124,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
               >
                 {done ? <Check className="h-4 w-4" /> : n}
               </span>
-              <span className={cn('font-medium', step === n ? 'text-stone-900' : 'text-stone-500')}>{label}</span>
+              <span className={cn('font-medium', step === n ? 'text-ink-900' : 'text-stone-500')}>{label}</span>
             </li>
           );
         })}
@@ -133,7 +133,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
       {step === 1 ? (
         <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
           <ClientFields value={client} onChange={setClient} errors={clientErrors} />
-          <aside className="h-fit rounded-xl border border-stone-200 bg-stone-50 p-4 lg:sticky lg:top-0">
+          <aside className="h-fit rounded-xl border border-line bg-stone-50 p-4 lg:sticky lg:top-0">
             <div className="text-sm font-semibold text-stone-800">Cadastro completo</div>
             <div className="mt-1 text-xs text-stone-500">
               {filled} de {checklist.length} campos obrigatórios

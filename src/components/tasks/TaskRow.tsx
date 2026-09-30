@@ -48,7 +48,7 @@ export function TaskRow({
       </button>
 
       <button onClick={onOpen} className="min-w-0 flex-1 text-left">
-        <div className={cn('truncate text-sm font-medium', done ? 'text-stone-400 line-through' : 'text-stone-900')}>{task.title}</div>
+        <div className={cn('truncate text-sm font-medium', done ? 'text-stone-400 line-through' : 'text-ink-900')}>{task.title}</div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-stone-500">
           {showProject && <span className="font-medium text-stone-600">{project ? project.name : 'Avulsa'}</span>}
           {showProject && task.phase && <span>{task.phase}</span>}

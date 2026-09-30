@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Building2,
   CalendarClock,
+  CalendarPlus,
   FileText,
   Mail,
   MapPin,
@@ -49,6 +50,7 @@ import {
   Textarea,
 } from '../ui';
 import { ConvertLeadModal } from './ConvertLeadModal';
+import { EventFormModal } from '../events/EventFormModal';
 import { LeadFormModal } from './LeadFormModal';
 
 export function LostReasonModal({ onConfirm, onClose }: { onConfirm: (reason: string) => Promise<void>; onClose: () => void }) {
@@ -106,6 +108,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
   const [converting, setConverting] = useState(false);
   const [losing, setLosing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
   const [noteType, setNoteType] = useState<InteractionType>('nota');
   const [note, setNote] = useState('');
   const [noteDate, setNoteDate] = useState(today());
@@ -165,13 +168,13 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
 
   return (
     <Drawer onClose={onClose}>
-      <div className="flex items-start justify-between gap-3 border-b border-stone-100 px-6 py-4">
+      <div className="flex items-start justify-between gap-3 border-b border-line/70 px-6 py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs text-stone-500">
             <ColorDot color={stage?.color ?? '#999'} /> {stage?.name}
             <span>· há {diffDays(toDateKey(new Date(lead.stage_changed_at)), today())} dias nesta etapa</span>
           </div>
-          <h2 className="mt-1 truncate font-display text-xl font-bold">{lead.name}</h2>
+          <h2 className="mt-1 truncate font-display text-xl font-semibold tracking-tight">{lead.name}</h2>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {client && <Badge className="bg-emerald-50 text-emerald-800 ring-emerald-200"><UserCheck className="h-3 w-3" /> Cliente</Badge>}
             {followUpLate && <Badge className="bg-rose-50 text-rose-700 ring-rose-200">Retorno atrasado</Badge>}
@@ -213,7 +216,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white"><Trophy className="h-5 w-5" /></div>
                 <div className="flex-1">
-                  <div className="font-display font-bold text-emerald-900">Projeto fechado! 🎉</div>
+                  <div className="font-display font-semibold text-emerald-900">Projeto fechado! 🎉</div>
                   <p className="mt-0.5 text-sm text-emerald-800/80">
                     Complete os dados do cliente para convertê-lo e iniciar o projeto com as tarefas do modelo.
                   </p>
@@ -225,7 +228,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
             </div>
           )}
           {client && (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-stone-50 p-4">
               <div className="text-sm">
                 <div className="font-semibold text-stone-800">Convertido em cliente</div>
                 <div className="text-stone-500">{lead.converted_at ? formatDateTime(lead.converted_at) : ''}</div>
@@ -264,6 +267,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
           {lead.notes && <p className="whitespace-pre-wrap rounded-xl bg-stone-50 p-4 text-sm text-stone-700">{lead.notes}</p>}
 
           <div className="flex flex-wrap gap-2">
+            <Button size="sm" icon={<CalendarPlus className="h-4 w-4" />} onClick={() => setScheduling(true)}>Agendar reunião</Button>
             <a href={whatsapp} target="_blank" rel="noreferrer">
               <Button size="sm" icon={<MessageCircle className="h-4 w-4 text-emerald-600" />}>WhatsApp</Button>
             </a>
@@ -279,7 +283,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
                 type="date"
                 value={lead.next_contact_date ?? ''}
                 onChange={(e) => updateLead(lead.id, { next_contact_date: e.target.value || null }).catch(toast.error)}
-                className="h-full rounded-r-lg border-l border-stone-200 bg-stone-50 px-2 text-xs outline-none"
+                className="h-full rounded-r-lg border-l border-line bg-stone-50 px-2 text-xs outline-none"
                 aria-label="Data do próximo contato"
               />
             </label>
@@ -287,8 +291,8 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
 
           {/* Histórico */}
           <div>
-            <h3 className="mb-3 font-display text-sm font-bold">Histórico de contatos</h3>
-            <div className="rounded-xl border border-stone-200 p-3">
+            <h3 className="mb-3 font-display text-sm font-semibold">Histórico de contatos</h3>
+            <div className="rounded-xl border border-line p-3">
               <div className="mb-2 flex flex-wrap gap-2">
                 <Select value={noteType} onChange={(e) => setNoteType(e.target.value as InteractionType)} className="h-8 w-auto py-1 text-xs">
                   {Object.entries(INTERACTION_TYPES).map(([k, label]) => (
@@ -312,7 +316,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
                 </Button>
               </div>
             </div>
-            <ol className="relative mt-4 space-y-4 border-l border-stone-200 pl-5">
+            <ol className="relative mt-4 space-y-4 border-l border-line pl-5">
               {timeline.map((i) => {
                 const user = i.user_id ? maps.profiles[i.user_id] : null;
                 return (
@@ -338,6 +342,12 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
 
       {editing && <LeadFormModal lead={lead} onClose={() => setEditing(false)} />}
       {converting && <ConvertLeadModal lead={lead} onClose={() => setConverting(false)} />}
+      {scheduling && (
+        <EventFormModal
+          defaults={{ title: `Reunião com ${lead.name}`, lead_id: lead.id, participant_ids: lead.owner_id ? [lead.owner_id] : [] }}
+          onClose={() => setScheduling(false)}
+        />
+      )}
       {losing && lostStage && (
         <LostReasonModal
           onClose={() => setLosing(false)}

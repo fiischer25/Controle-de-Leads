@@ -2,53 +2,43 @@ import { useState, type FormEvent } from 'react';
 import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button, Checkbox, Field, Input } from '../components/ui';
-import { Logo } from '../components/layout/Logo';
+import { BrandMark } from '../components/layout/Logo';
 import { SWATCHES } from '../lib/constants';
 import { isValidEmail } from '../lib/utils';
 
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      <div className="relative hidden overflow-hidden bg-ink-900 lg:block">
-        {/* Grade de planta baixa estilizada */}
-        <svg className="absolute inset-0 h-full w-full opacity-[0.14]" aria-hidden="true">
-          <defs>
-            <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-              <path d="M32 0H0v32" fill="none" stroke="#d5a78f" strokeWidth="0.6" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-        <svg viewBox="0 0 600 600" className="absolute -bottom-40 -right-40 h-[65%] opacity-25" aria-hidden="true">
-          <g fill="none" stroke="#d5a78f" strokeWidth="2">
-            <rect x="80" y="120" width="420" height="360" />
-            <path d="M80 300h180M260 120v180M360 300v180M360 380h140M200 480v-60" />
-            <path d="M260 300a60 60 0 0 1 60 60" strokeDasharray="4 6" />
-            <circle cx="430" cy="200" r="36" />
+    <div className="grid min-h-screen bg-white lg:grid-cols-[1.15fr_1fr]">
+      <div className="relative hidden overflow-hidden bg-canvas lg:block">
+        {/* Desenho de planta em traço fino */}
+        <svg viewBox="0 0 800 800" className="absolute -bottom-24 -right-24 h-[88%] text-stone-300" aria-hidden="true">
+          <g fill="none" stroke="currentColor" strokeWidth="1">
+            <rect x="120" y="140" width="560" height="480" />
+            <path d="M120 380h240M360 140v240M480 380v240M480 480h200M280 620v-80M600 140v120" />
+            <path d="M360 380a80 80 0 0 1 80 80" strokeDasharray="3 6" />
+            <circle cx="570" cy="250" r="44" />
+            <path d="M160 180h160v160H160z" strokeDasharray="2 5" />
+            <path d="M60 140h40M60 620h40M80 140v480" />
+            <path d="M120 680v40M680 680v40M120 700h560" />
           </g>
         </svg>
-        <div className="relative flex h-full flex-col justify-between p-12 text-white">
-          <div className="flex items-center gap-3">
-            <Logo />
-            <div className="font-display text-lg font-extrabold tracking-[0.25em]">AIROS</div>
-          </div>
+        <div className="relative flex h-full flex-col justify-between p-14">
+          <BrandMark size="lg" />
           <div className="max-w-md">
-            <p className="text-xs uppercase tracking-[0.3em] text-brand-300">Gestão do escritório</p>
-            <h1 className="mt-4 font-display text-4xl font-bold leading-tight">
-              Do primeiro contato à entrega do projeto, tudo em um só lugar.
+            <h1 className="font-display text-[40px] font-medium leading-[1.1] tracking-[-0.03em] text-ink-900">
+              Do primeiro contato à entrega do projeto.
             </h1>
-            <p className="mt-4 text-stone-400">
-              Oportunidades, clientes, projetos, prazos e tarefas da equipe com visão 360° do escritório.
+            <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-stone-500">
+              Oportunidades, clientes, projetos, prazos e tarefas da equipe — em um só lugar.
             </p>
           </div>
-          <p className="text-xs text-stone-500">© {new Date().getFullYear()} AIROS Arquitetura</p>
+          <p className="text-xs text-stone-400">© {new Date().getFullYear()}</p>
         </div>
       </div>
-      <div className="flex items-center justify-center bg-white px-6 py-12">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <Logo light />
-            <div className="font-display text-lg font-extrabold tracking-[0.25em]">AIROS</div>
+      <div className="flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-[360px]">
+          <div className="mb-12 lg:hidden">
+            <BrandMark size="lg" />
           </div>
           {children}
         </div>
@@ -79,7 +69,7 @@ export function LoginPage() {
 
   return (
     <AuthShell>
-      <h2 className="font-display text-2xl font-bold">Entrar</h2>
+      <h2 className="font-display text-[28px] font-semibold tracking-[-0.02em]">Entrar</h2>
       <p className="mt-1 text-sm text-stone-500">Use o e-mail e a senha cadastrados pelo administrador.</p>
       <form onSubmit={submit} className="mt-8 space-y-4">
         <Field label="E-mail">
@@ -95,13 +85,13 @@ export function LoginPage() {
           </div>
         </Field>
         {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
-        <Button type="submit" variant="dark" loading={busy} className="w-full" icon={<ArrowRight className="h-4 w-4" />}>
+        <Button type="submit" variant="dark" loading={busy} className="h-11 w-full" icon={<ArrowRight className="h-4 w-4" />}>
           Entrar
         </Button>
         <p className="text-center text-xs text-stone-400">Esqueceu a senha? Peça ao administrador para redefini-la.</p>
       </form>
       {mode === 'local' && (
-        <p className="mt-10 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="mt-10 rounded-lg border border-dashed border-line px-3 py-2.5 text-xs text-stone-500">
           Modo demonstração: os dados ficam salvos somente neste navegador. Configure o Supabase para uso em equipe.
         </p>
       )}
@@ -138,8 +128,8 @@ export function SetupPage() {
 
   return (
     <AuthShell>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">Primeiro acesso</p>
-      <h2 className="mt-2 font-display text-2xl font-bold">Crie o administrador</h2>
+      <p className="eyebrow">Primeiro acesso</p>
+      <h2 className="mt-2 font-display text-[28px] font-semibold tracking-[-0.02em]">Crie o administrador</h2>
       <p className="mt-1 text-sm text-stone-500">
         Esta conta poderá cadastrar os demais membros da equipe e configurar o sistema.
       </p>
@@ -165,7 +155,7 @@ export function SetupPage() {
           <Checkbox checked={demo} onChange={setDemo} label="Carregar dados de exemplo para conhecer o sistema" />
         )}
         {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
-        <Button type="submit" variant="dark" loading={busy} className="w-full" icon={<ArrowRight className="h-4 w-4" />}>
+        <Button type="submit" variant="dark" loading={busy} className="h-11 w-full" icon={<ArrowRight className="h-4 w-4" />}>
           Criar conta e entrar
         </Button>
       </form>

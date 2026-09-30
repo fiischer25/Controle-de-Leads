@@ -4,7 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider, useData } from './context/DataContext';
 import { ToastProvider } from './context/ToastContext';
 import { AppLayout } from './components/layout/AppLayout';
-import { Logo } from './components/layout/Logo';
+import { BrandMark } from './components/layout/Logo';
+import { BrandingProvider } from './context/BrandingContext';
 import { Spinner } from './components/ui';
 import { LoginPage, SetupPage } from './pages/LoginPage';
 
@@ -23,9 +24,9 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 function FullScreenLoader() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <Logo light className="h-12 w-12" />
-      <Spinner />
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6">
+      <BrandMark size="lg" />
+      <Spinner className="h-4 w-4" />
     </div>
   );
 }
@@ -77,9 +78,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <AuthProvider>
-          <Gate />
-        </AuthProvider>
+        <BrandingProvider>
+          <AuthProvider>
+            <Gate />
+          </AuthProvider>
+        </BrandingProvider>
       </ToastProvider>
     </BrowserRouter>
   );

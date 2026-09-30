@@ -76,7 +76,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-start justify-center bg-stone-900/40 p-4 pt-[12vh] backdrop-blur-[2px]" onMouseDown={onClose}>
       <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-pop animate-fade-in" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 border-b border-stone-100 px-4">
+        <div className="flex items-center gap-3 border-b border-line/70 px-4">
           <Search className="h-5 w-5 text-stone-400" />
           <input
             ref={inputRef}
@@ -107,7 +107,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
                 >
                   <span className="text-stone-400">{r.icon}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-stone-900">{r.title}</span>
+                    <span className="block truncate text-sm font-medium text-ink-900">{r.title}</span>
                     {r.subtitle && <span className="block truncate text-xs text-stone-500">{r.subtitle}</span>}
                   </span>
                   {i === active && <CornerDownLeft className="h-4 w-4 text-stone-400" />}

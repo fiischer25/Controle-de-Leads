@@ -339,3 +339,44 @@ function buildCalendarEmbed(calendarId: string): string {
   });
   return `https://calendar.google.com/calendar/embed?${params.toString()}`;
 }
+
+// ---------------------------------------------------------------------------
+// Reuniões
+// ---------------------------------------------------------------------------
+
+/** 'YYYY-MM-DD' + 'HH:MM' no fuso local → ISO. */
+export function localDateTimeToIso(date: string, time: string): string {
+  return new Date(`${date}T${time || '00:00'}:00`).toISOString();
+}
+
+export function isoToLocalTime(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function gcalStamp(iso: string): string {
+  return new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+/** Link "adicionar ao Google Agenda" — funciona para qualquer pessoa, sem configuração. */
+export function googleCalendarLink(ev: {
+  title: string;
+  starts_at: string;
+  ends_at: string | null;
+  all_day: boolean;
+  location: string | null;
+  description: string | null;
+}): string {
+  let dates: string;
+  if (ev.all_day) {
+    const day = toDateKey(new Date(ev.starts_at));
+    dates = `${day.replace(/-/g, '')}/${addDays(day, 1).replace(/-/g, '')}`;
+  } else {
+    const end = ev.ends_at ?? new Date(new Date(ev.starts_at).getTime() + 3_600_000).toISOString();
+    dates = `${gcalStamp(ev.starts_at)}/${gcalStamp(end)}`;
+  }
+  const params = new URLSearchParams({ action: 'TEMPLATE', text: ev.title, dates });
+  if (ev.location) params.set('location', ev.location);
+  if (ev.description) params.set('details', ev.description);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}

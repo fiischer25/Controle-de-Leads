@@ -143,6 +143,7 @@ export function defaultSettings(): AppSettings {
   return {
     id: 'office',
     office_name: 'AIROS Arquitetura',
+    logo_url: null,
     calendar_embed_url: null,
     due_soon_days: 7,
     lead_stale_days: 7,

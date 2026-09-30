@@ -29,7 +29,7 @@ type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'dados';
 
 export default function SettingsPage() {
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('aba') as Tab) || 'tipos';
+  const tab = (params.get('aba') as Tab) || 'escritorio';
   return (
     <div>
       <PageHeader eyebrow="Administração" title="Configurações" description="Personalize o sistema para a rotina do escritório." />
@@ -38,11 +38,11 @@ export default function SettingsPage() {
         value={tab}
         onChange={(t) => setParams({ aba: t }, { replace: true })}
         tabs={[
+          { id: 'escritorio', label: <span className="inline-flex items-center gap-1.5"><Building className="h-4 w-4" />Escritório e logo</span> },
           { id: 'tipos', label: <span className="inline-flex items-center gap-1.5"><Layers className="h-4 w-4" />Tipos de projeto e tarefas</span> },
           { id: 'funil', label: <span className="inline-flex items-center gap-1.5"><FolderKanban className="h-4 w-4" />Etapas do funil</span> },
           { id: 'origens', label: <span className="inline-flex items-center gap-1.5"><Tag className="h-4 w-4" />Origens de leads</span> },
           { id: 'agenda', label: <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />Google Agenda</span> },
-          { id: 'escritorio', label: <span className="inline-flex items-center gap-1.5"><Building className="h-4 w-4" />Escritório</span> },
           { id: 'dados', label: <span className="inline-flex items-center gap-1.5"><Database className="h-4 w-4" />Backup</span> },
         ]}
       />
@@ -106,7 +106,7 @@ function ProjectTypesSettings() {
     <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
       <Card className="h-fit overflow-hidden">
         <CardHeader title="Tipos de projeto" subtitle="Ex.: Arquitetura, Interiores" action={<Button size="xs" variant="dark" icon={<Plus className="h-3.5 w-3.5" />} onClick={addType}>Novo</Button>} />
-        <ul className="divide-y divide-stone-100 border-t border-stone-100">
+        <ul className="divide-y divide-line/70 border-t border-line/70">
           {types.map((t, i) => {
             const count = db.task_templates.filter((x) => x.project_type_id === t.id).length;
             return (
@@ -146,7 +146,7 @@ function ProjectTypesSettings() {
                 <Textarea key={`d${selected.id}`} rows={2} defaultValue={selected.description ?? ''} onBlur={(e) => (e.target.value || null) !== selected.description && patch('project_types', selected.id, { description: e.target.value || null }).catch(toast.error)} />
               </Field>
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line/70 pt-4">
               <Checkbox checked={selected.active} onChange={(v) => patch('project_types', selected.id, { active: v }).catch(toast.error)} label="Disponível para novos projetos e leads" />
               <div className="flex gap-2">
                 <Button size="sm" icon={<Copy className="h-3.5 w-3.5" />} onClick={() => duplicate(selected)}>Duplicar</Button>
@@ -227,14 +227,14 @@ function TemplatesEditor({ type }: { type: ProjectType }) {
       <p className="-mt-1 px-5 pb-3 text-xs text-stone-500">
         Estas tarefas são criadas automaticamente em cada novo projeto deste tipo, encadeadas em sequência a partir da data de início.
       </p>
-      <div className="border-t border-stone-100">
+      <div className="border-t border-line/70">
         {phases.map((phase) => (
           <div key={phase}>
             <div className="flex items-center gap-2 bg-stone-50 px-5 py-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-stone-600">{phase}</span>
               <Badge>{templates.filter((t) => t.phase === phase).length}</Badge>
             </div>
-            <ul className="divide-y divide-stone-100">
+            <ul className="divide-y divide-line/70">
               {templates.filter((t) => t.phase === phase).map((t) => {
                 const i = templates.indexOf(t);
                 return (
@@ -282,7 +282,7 @@ function TemplatesEditor({ type }: { type: ProjectType }) {
       </div>
       <form
         onSubmit={(e) => { e.preventDefault(); add(); }}
-        className="grid gap-2 border-t border-stone-200 bg-stone-50/60 p-4 sm:grid-cols-[180px_1fr_90px_auto]"
+        className="grid gap-2 border-t border-line bg-stone-50/60 p-4 sm:grid-cols-[180px_1fr_90px_auto]"
       >
         <Input list="phase-list" value={draft.phase} onChange={(e) => setDraft({ ...draft, phase: e.target.value })} placeholder="Etapa" aria-label="Etapa" />
         <Input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Nova tarefa (ex.: Projeto luminotécnico)" aria-label="Tarefa" />
@@ -314,7 +314,7 @@ function StagesSettings() {
   return (
     <Card className="max-w-3xl overflow-hidden">
       <CardHeader title="Etapas do funil de oportunidades" subtitle="Colunas do kanban. Tenha pelo menos uma etapa “Fechado (ganho)” e uma “Perdido”." />
-      <ul className="divide-y divide-stone-100 border-t border-stone-100">
+      <ul className="divide-y divide-line/70 border-t border-line/70">
         {stages.map((s, i) => {
           const count = db.leads.filter((l) => l.stage_id === s.id).length;
           return (
@@ -343,7 +343,7 @@ function StagesSettings() {
           );
         })}
       </ul>
-      <form onSubmit={(e) => { e.preventDefault(); add(); }} className="flex gap-2 border-t border-stone-200 bg-stone-50/60 p-4">
+      <form onSubmit={(e) => { e.preventDefault(); add(); }} className="flex gap-2 border-t border-line bg-stone-50/60 p-4">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nova etapa (ex.: Visita técnica)" />
         <Button type="submit" variant="dark" icon={<Plus className="h-4 w-4" />} disabled={!name.trim()}>Adicionar</Button>
       </form>
@@ -367,7 +367,7 @@ function SourcesSettings() {
   return (
     <Card className="max-w-3xl overflow-hidden">
       <CardHeader title="Origens dos leads" subtitle="Como o cliente chegou até o escritório (tráfego pago, indicação, Instagram…)" />
-      <ul className="divide-y divide-stone-100 border-t border-stone-100">
+      <ul className="divide-y divide-line/70 border-t border-line/70">
         {sources.map((s, i) => {
           const count = db.leads.filter((l) => l.source_id === s.id).length;
           return (
@@ -382,7 +382,7 @@ function SourcesSettings() {
           );
         })}
       </ul>
-      <form onSubmit={(e) => { e.preventDefault(); add(); }} className="flex gap-2 border-t border-stone-200 bg-stone-50/60 p-4">
+      <form onSubmit={(e) => { e.preventDefault(); add(); }} className="flex gap-2 border-t border-line bg-stone-50/60 p-4">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nova origem (ex.: Feira de decoração)" />
         <Button type="submit" variant="dark" icon={<Plus className="h-4 w-4" />} disabled={!name.trim()}>Adicionar</Button>
       </form>
@@ -410,7 +410,7 @@ function CalendarSettings() {
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_1.2fr]">
       <Card className="p-5">
-        <h3 className="font-display text-base font-bold">Espelhar o Google Agenda do escritório</h3>
+        <h3 className="font-display text-base font-semibold">Espelhar o Google Agenda do escritório</h3>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-stone-600">
           <li>Abra o <a className="font-medium text-brand-700 hover:underline" href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer">Google Agenda → Configurações</a>.</li>
           <li>Em <b>Configurações das minhas agendas</b>, clique na agenda do escritório.</li>
@@ -432,7 +432,7 @@ function CalendarSettings() {
       <Card className="overflow-hidden">
         <CardHeader title="Pré-visualização" />
         {preview ? (
-          <iframe title="Pré-visualização" src={preview} className="h-[480px] w-full border-t border-stone-100" frameBorder={0} />
+          <iframe title="Pré-visualização" src={preview} className="h-[480px] w-full border-t border-line/70" frameBorder={0} />
         ) : (
           <EmptyState icon={<CalendarDays className="h-6 w-6" />} title="Nenhuma agenda configurada" />
         )}
@@ -442,41 +442,133 @@ function CalendarSettings() {
 }
 
 // ----------------------------------------------------------------------------- Escritório
+/** Reduz a imagem para no máx. 720×240 px (mantendo proporção) e devolve um data URL leve. */
+async function prepareLogo(file: File): Promise<string> {
+  const MAX_BYTES = 2 * 1024 * 1024;
+  if (!/^image\/(png|jpe?g|webp|svg\+xml)$/.test(file.type)) throw new Error('Envie uma imagem PNG, JPG, WEBP ou SVG.');
+  if (file.size > MAX_BYTES) throw new Error('A imagem deve ter no máximo 2 MB.');
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+    reader.readAsDataURL(file);
+  });
+  if (file.type === 'image/svg+xml') {
+    if (dataUrl.length > 300_000) throw new Error('O SVG é muito grande. Use um arquivo de até 200 KB.');
+    return dataUrl;
+  }
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('Imagem inválida.'));
+    el.src = dataUrl;
+  });
+  const scale = Math.min(1, 720 / img.width, 240 / img.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/png');
+}
+
 function OfficeSettings() {
   const { settings, patch, insertRows, db } = useData();
   const toast = useToast();
   const [v, setV] = useState(settings);
-  const save = async () => {
-    const changes = {
-      office_name: v.office_name.trim() || 'AIROS Arquitetura',
-      due_soon_days: Math.max(1, Number(v.due_soon_days) || 7),
-      lead_stale_days: Math.max(1, Number(v.lead_stale_days) || 7),
-      project_code_prefix: (v.project_code_prefix || 'AIR').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || 'AIR',
-    };
+  const [dragging, setDragging] = useState(false);
+
+  const persist = async (changes: Partial<typeof settings>, message: string) => {
     try {
       if (db.app_settings.length) await patch('app_settings', 'office', changes);
       else await insertRows('app_settings', [{ ...settings, ...changes, updated_at: nowIso() }]);
-      toast.success('Configurações salvas.');
+      toast.success(message);
     } catch (e) {
       toast.error(e);
     }
   };
+
+  const save = () =>
+    persist(
+      {
+        office_name: v.office_name.trim() || 'AIROS Arquitetura',
+        due_soon_days: Math.max(1, Number(v.due_soon_days) || 7),
+        lead_stale_days: Math.max(1, Number(v.lead_stale_days) || 7),
+        project_code_prefix: (v.project_code_prefix || 'AIR').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || 'AIR',
+      },
+      'Configurações salvas.',
+    );
+
+  const onLogo = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const logo = await prepareLogo(file);
+      setV((prev) => ({ ...prev, logo_url: logo }));
+      await persist({ logo_url: logo }, 'Logo atualizado.');
+    } catch (e) {
+      toast.error(e);
+    }
+  };
+
+  const removeLogo = async () => {
+    setV((prev) => ({ ...prev, logo_url: null }));
+    await persist({ logo_url: null }, 'Logo removido. O nome do escritório volta a aparecer.');
+  };
+
   return (
-    <Card className="max-w-2xl p-5">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nome do escritório" className="sm:col-span-2"><Input value={v.office_name} onChange={(e) => setV({ ...v, office_name: e.target.value })} /></Field>
-        <Field label="Alerta “a vencer” (dias antes do prazo)" hint="Projetos e tarefas entram em alerta com esta antecedência.">
-          <Input type="number" min={1} value={v.due_soon_days} onChange={(e) => setV({ ...v, due_soon_days: Number(e.target.value) })} />
-        </Field>
-        <Field label="Lead parado (dias na mesma etapa)" hint="Destaca oportunidades sem avanço no kanban.">
-          <Input type="number" min={1} value={v.lead_stale_days} onChange={(e) => setV({ ...v, lead_stale_days: Number(e.target.value) })} />
-        </Field>
-        <Field label="Prefixo do código dos projetos" hint={`Ex.: ${(v.project_code_prefix || 'AIR').toUpperCase()}-${new Date().getFullYear()}-001`}>
-          <Input value={v.project_code_prefix} onChange={(e) => setV({ ...v, project_code_prefix: e.target.value })} maxLength={6} />
-        </Field>
-      </div>
-      <div className="mt-5 flex justify-end"><Button variant="primary" onClick={save}>Salvar</Button></div>
-    </Card>
+    <div className="grid max-w-5xl gap-5 lg:grid-cols-[1.1fr_1fr]">
+      <Card className="p-6">
+        <h3 className="font-display text-[15px] font-semibold tracking-tight">Logo do escritório</h3>
+        <p className="mt-1 text-sm text-stone-500">Aparece no menu, na tela de login e na aba do navegador, no lugar do nome.</p>
+        <label
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); onLogo(e.dataTransfer.files?.[0]); }}
+          className={cn(
+            'mt-5 flex min-h-[168px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-8 text-center transition-colors',
+            dragging ? 'border-ink-900/40 bg-canvas' : 'border-line hover:border-stone-300 hover:bg-canvas/50',
+          )}
+        >
+          {v.logo_url ? (
+            <img src={v.logo_url} alt="Logo atual" className="max-h-20 max-w-[260px] object-contain" />
+          ) : (
+            <Upload className="h-6 w-6 text-stone-300" strokeWidth={1.5} />
+          )}
+          <span className="text-sm text-stone-500">
+            {v.logo_url ? 'Clique ou arraste outra imagem para trocar' : 'Clique ou arraste o logo aqui'}
+          </span>
+          <span className="text-xs text-stone-400">PNG com fundo transparente ou SVG · até 2 MB</span>
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => onLogo(e.target.files?.[0])} />
+        </label>
+        {v.logo_url && (
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3">
+              <span className="text-[11px] uppercase tracking-[0.08em] text-stone-400">Prévia no menu</span>
+              <img src={v.logo_url} alt="" className="h-9 max-w-[168px] object-contain" />
+            </div>
+            <Button variant="ghost" size="sm" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={removeLogo}>
+              Remover
+            </Button>
+          </div>
+        )}
+      </Card>
+      <Card className="p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nome do escritório" className="sm:col-span-2" hint="Usado quando não há logo e nas mensagens do sistema.">
+            <Input value={v.office_name} onChange={(e) => setV({ ...v, office_name: e.target.value })} />
+          </Field>
+          <Field label="Alerta “a vencer” (dias)" hint="Antecedência do alerta de prazo.">
+            <Input type="number" min={1} value={v.due_soon_days} onChange={(e) => setV({ ...v, due_soon_days: Number(e.target.value) })} />
+          </Field>
+          <Field label="Lead parado (dias)" hint="Sem avanço na mesma etapa.">
+            <Input type="number" min={1} value={v.lead_stale_days} onChange={(e) => setV({ ...v, lead_stale_days: Number(e.target.value) })} />
+          </Field>
+          <Field label="Prefixo do código dos projetos" className="sm:col-span-2" hint={`Ex.: ${(v.project_code_prefix || 'AIR').toUpperCase()}-${new Date().getFullYear()}-001`}>
+            <Input value={v.project_code_prefix} onChange={(e) => setV({ ...v, project_code_prefix: e.target.value })} maxLength={6} />
+          </Field>
+        </div>
+        <div className="mt-6 flex justify-end"><Button variant="primary" onClick={save}>Salvar</Button></div>
+      </Card>
+    </div>
   );
 }
 
@@ -505,7 +597,7 @@ function DataSettings() {
   return (
     <div className="grid max-w-4xl gap-5 md:grid-cols-2">
       <Card className="p-5">
-        <h3 className="font-display text-base font-bold">Exportar backup</h3>
+        <h3 className="font-display text-base font-semibold">Exportar backup</h3>
         <p className="mt-1 text-sm text-stone-600">Baixa um arquivo JSON com todos os dados do sistema (leads, clientes, projetos, tarefas, horas e configurações).</p>
         <ul className="mt-3 grid grid-cols-2 gap-1 text-xs text-stone-500">
           <li>{db.leads.length} oportunidades</li>
@@ -518,7 +610,7 @@ function DataSettings() {
         <Button className="mt-4" variant="dark" icon={<Download className="h-4 w-4" />} onClick={exportAll}>Baixar backup</Button>
       </Card>
       <Card className="p-5">
-        <h3 className="font-display text-base font-bold">Restaurar backup</h3>
+        <h3 className="font-display text-base font-semibold">Restaurar backup</h3>
         {mode === 'local' ? (
           <>
             <p className="mt-1 text-sm text-stone-600">Substitui os dados deste navegador pelos do arquivo. Usuários e senhas não são alterados.</p>

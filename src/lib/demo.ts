@@ -1,5 +1,6 @@
 import type {
   ActivityLog,
+  CalendarEvent,
   Client,
   Lead,
   LeadInteraction,
@@ -198,7 +199,25 @@ export async function buildDemoData(
     });
   });
 
+  const at = (dayOffset: number, hh: number, mm = 0) => {
+    const d = new Date(`${addDays(t, dayOffset)}T00:00:00`);
+    d.setHours(hh, mm, 0, 0);
+    return d.toISOString();
+  };
+  const meeting = (title: string, day: number, hh: number, dur: number, people: Profile[], extra: Partial<CalendarEvent> = {}): CalendarEvent => ({
+    id: uid(), title, description: null, starts_at: at(day, hh), ends_at: at(day, hh + dur), all_day: false,
+    location: 'Escritório AIROS', participant_ids: people.map((p) => p.id), project_id: null, lead_id: null,
+    google_event_id: null, created_by: admin.id, created_at: now, updated_at: now, ...extra,
+  });
+  const events: CalendarEvent[] = [
+    meeting('Reunião semanal da equipe', 0, 9, 1, team),
+    meeting('Apresentação do anteprojeto — CASA L.M.', 1, 14, 2, [admin, ana, bruno], { project_id: projects[2]?.id ?? null, location: 'Google Meet' }),
+    meeting('Visita técnica com Rodrigo Tavares', 2, 10, 1, [carla, ana], { lead_id: leads.find((l) => l.name === 'Rodrigo Tavares')?.id ?? null, location: 'Obra — Curitiba' }),
+    meeting('Aprovação de marcenaria — APTO B.F.', 4, 16, 1, [bruno], { project_id: projects[1]?.id ?? null }),
+  ];
+
   return {
+    events,
     lead_stages: stages,
     lead_sources: sources,
     project_types: types,

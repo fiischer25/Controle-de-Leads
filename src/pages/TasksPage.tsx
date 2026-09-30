@@ -161,7 +161,7 @@ export default function TasksPage() {
                   <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Concluídas recentemente ({groups.done.length})</span>
                   <ChevronDown className={cn('h-4 w-4 transition-transform', showDone && 'rotate-180')} />
                 </button>
-                {showDone && <div className="divide-y divide-stone-100 border-t border-stone-100">{groups.done.map((x) => <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />)}</div>}
+                {showDone && <div className="divide-y divide-line/70 border-t border-line/70">{groups.done.map((x) => <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />)}</div>}
               </div>
             )}
           </div>
@@ -185,10 +185,10 @@ function Kpi({ icon, label, value, tone }: { icon: ReactNode; label: string; val
   return (
     <div className="card px-4 py-3">
       <div className="flex items-center gap-2 text-xs text-stone-500">
-        <span className={cn(tone === 'bad' ? 'text-rose-600' : tone === 'warn' ? 'text-amber-600' : 'text-stone-400')}>{icon}</span>
+        <span className="text-stone-300">{icon}</span>
         {label}
       </div>
-      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' ? 'text-rose-700' : 'text-stone-900')}>{value}</div>
+      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' ? 'text-rose-700' : 'text-ink-900')}>{value}</div>
     </div>
   );
 }
@@ -197,12 +197,12 @@ function Group({ title, tasks, tone, onOpen }: { title: string; tasks: Task[]; t
   if (tasks.length === 0) return null;
   return (
     <div className="card overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-stone-100 px-4 py-2.5">
+      <div className="flex items-center gap-2 border-b border-line/70 px-4 py-2.5">
         <span className={cn('h-2 w-2 rounded-full', tone === 'bad' ? 'bg-rose-500' : tone === 'warn' ? 'bg-amber-500' : 'bg-stone-300')} />
         <h3 className="text-sm font-semibold text-stone-800">{title}</h3>
         <span className="text-xs text-stone-500 tabular">{tasks.length}</span>
       </div>
-      <div className="divide-y divide-stone-100">
+      <div className="divide-y divide-line/70">
         {tasks.map((x) => (
           <TaskRow key={x.id} task={x} onOpen={() => onOpen(x.id)} showProject />
         ))}
@@ -235,7 +235,7 @@ function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string) => v
                 const id = e.dataTransfer.getData('text/plain');
                 if (id) updateTask(id, { status }).catch(toast.error);
               }}
-              className={cn('flex w-[280px] shrink-0 flex-col rounded-2xl border bg-stone-100/70', over === status ? 'border-brand-300 bg-brand-50/60' : 'border-transparent')}
+              className={cn('flex w-[280px] shrink-0 flex-col rounded-2xl border bg-stone-100/50', over === status ? 'border-brand-300 bg-brand-50/60' : 'border-transparent')}
             >
               <header className="flex items-center gap-2 px-3 pb-2 pt-3">
                 <span className={cn('h-2 w-2 rounded-full', TASK_STATUS[status].dot)} />
@@ -251,10 +251,10 @@ function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string) => v
                       draggable
                       onDragStart={(e) => e.dataTransfer.setData('text/plain', x.id)}
                       onClick={() => onOpen(x.id)}
-                      className="cursor-pointer rounded-xl border border-stone-200 bg-white p-3 shadow-card hover:border-stone-300"
+                      className="cursor-pointer rounded-xl border border-line bg-white p-3 shadow-card hover:border-stone-300"
                     >
                       <div className="text-[11px] font-medium text-stone-500">{project ? project.name : 'Avulsa'}{x.phase ? ` · ${x.phase}` : ''}</div>
-                      <div className="mt-0.5 text-sm font-medium text-stone-900">{x.title}</div>
+                      <div className="mt-0.5 text-sm font-medium text-ink-900">{x.title}</div>
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <DueBadge due={x.due_date} done={x.status === 'done'} soonDays={settings.due_soon_days} compact />
                         <Avatar user={x.assignee_id ? maps.profiles[x.assignee_id] : null} size="sm" />

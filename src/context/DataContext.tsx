@@ -15,6 +15,7 @@ import {
   TABLES,
   type ActivityLog,
   type AppSettings,
+  type CalendarEvent,
   type Client,
   type InteractionType,
   type Lead,
@@ -31,7 +32,7 @@ import { useToast } from './ToastContext';
 export type Db = { [K in TableName]: Tables[K][] };
 
 /** Tabelas com coluna updated_at. */
-const STAMPED = new Set<TableName>(['leads', 'clients', 'projects', 'tasks', 'app_settings']);
+const STAMPED = new Set<TableName>(['leads', 'clients', 'projects', 'tasks', 'events', 'app_settings']);
 
 const emptyDb = (): Db => Object.fromEntries(TABLES.map((t) => [t, []])) as unknown as Db;
 
@@ -62,6 +63,8 @@ export interface ProjectInput {
 }
 
 export type TaskInput = Pick<Task, 'title'> & Partial<Omit<Task, 'id' | 'created_at' | 'updated_at' | 'created_by'>>;
+
+export type EventInput = Omit<CalendarEvent, 'id' | 'google_event_id' | 'created_by' | 'created_at' | 'updated_at'>;
 
 export type LeadInput = Omit<
   Lead,
@@ -121,6 +124,11 @@ interface DataApi {
   addTimeEntry(taskId: string, date: string, minutes: number, note: string | null): Promise<void>;
   deleteTimeEntry(id: string): Promise<void>;
   runningEntry: TimeEntry | null;
+
+  // Reuniões
+  createEvent(input: EventInput): Promise<CalendarEvent>;
+  updateEvent(id: string, patch: Partial<CalendarEvent>): Promise<void>;
+  deleteEvent(id: string): Promise<void>;
 
   // Notificações
   markNotificationsRead(ids: string[]): Promise<void>;
@@ -632,6 +640,59 @@ export function DataProvider({ userId, children }: { userId: string; children: R
 
   const deleteTimeEntry = useCallback((id: string) => removeRows('time_entries', [id]), [removeRows]);
 
+  // ------------------------------------------------------------------ reuniões
+  const syncCalendar = useCallback((action: 'upsert' | 'delete', ev: CalendarEvent) => {
+    // Sincroniza com o Google Agenda do escritório quando a integração estiver configurada no servidor.
+    if (backend.mode !== 'supabase') return;
+    backend.invokeFunction('calendar-sync', { action, event_id: ev.id, google_event_id: ev.google_event_id }).catch(() => undefined);
+  }, []);
+
+  const createEvent = useCallback(
+    async (input: EventInput) => {
+      const now = nowIso();
+      const [saved] = await insertRows('events', [
+        { ...input, id: uid(), google_event_id: null, created_by: userId, created_at: now, updated_at: now },
+      ]);
+      await log('event', saved.id, 'created', `agendou "${saved.title}"`);
+      const when = new Date(saved.starts_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: saved.all_day ? undefined : 'short' });
+      for (const p of saved.participant_ids) {
+        await notify(p, 'Nova reunião na sua agenda', `${me.name} agendou "${saved.title}" · ${when}`, `/agenda?evento=${saved.id}`);
+      }
+      syncCalendar('upsert', saved);
+      return saved;
+    },
+    [insertRows, log, notify, syncCalendar, userId, me.name],
+  );
+
+  const updateEvent = useCallback(
+    async (id: string, changes: Partial<CalendarEvent>) => {
+      const before = dbRef.current.events.find((e) => e.id === id);
+      await patch('events', id, changes);
+      if (!before) return;
+      const added = (changes.participant_ids ?? []).filter((p) => !before.participant_ids.includes(p));
+      for (const p of added) {
+        await notify(p, 'Nova reunião na sua agenda', `${me.name} incluiu você em "${changes.title ?? before.title}".`, `/agenda?evento=${id}`);
+      }
+      syncCalendar('upsert', { ...before, ...changes });
+    },
+    [patch, notify, syncCalendar, me.name],
+  );
+
+  const deleteEvent = useCallback(
+    async (id: string) => {
+      const ev = dbRef.current.events.find((e) => e.id === id);
+      await removeRows('events', [id]);
+      if (ev) {
+        await log('event', id, 'deleted', `cancelou "${ev.title}"`);
+        for (const p of ev.participant_ids) {
+          await notify(p, 'Reunião cancelada', `${me.name} cancelou "${ev.title}".`, '/agenda');
+        }
+        syncCalendar('delete', ev);
+      }
+    },
+    [removeRows, log, notify, syncCalendar, me.name],
+  );
+
   const markNotificationsRead = useCallback(
     async (ids: string[]) => {
       for (const id of ids) await patch('notifications', id, { read: true });
@@ -677,6 +738,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
     createClient: (input) => createClient(input), updateClient, deleteClient,
     createProject, updateProject, deleteProject, applyTemplates,
     createTask, updateTask, deleteTask, addComment, startTimer, stopTimer, addTimeEntry, deleteTimeEntry, runningEntry,
+    createEvent, updateEvent, deleteEvent,
     markNotificationsRead, createUser, updateUser,
   };
 

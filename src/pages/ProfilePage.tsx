@@ -52,7 +52,7 @@ export default function ProfilePage() {
       <div className="grid max-w-5xl gap-5 lg:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader title="Dados pessoais" />
-          <div className="border-t border-stone-100 p-5">
+          <div className="border-t border-line/70 p-5">
             <div className="mb-5 flex items-center gap-4">
               <Avatar user={{ name: v.name || me.name, color: v.color }} size="lg" />
               <div>
@@ -80,7 +80,7 @@ export default function ProfilePage() {
         </Card>
         <Card className="h-fit">
           <CardHeader icon={<KeyRound className="h-4 w-4" />} title="Alterar senha" />
-          <div className="space-y-3 border-t border-stone-100 p-5">
+          <div className="space-y-3 border-t border-line/70 p-5">
             <Field label="Senha atual"><Input type="password" value={pwd.current} onChange={(e) => setPwd({ ...pwd, current: e.target.value })} autoComplete="current-password" /></Field>
             <Field label="Nova senha"><Input type="password" value={pwd.next} onChange={(e) => setPwd({ ...pwd, next: e.target.value })} autoComplete="new-password" /></Field>
             <Field label="Confirmar nova senha"><Input type="password" value={pwd.confirm} onChange={(e) => setPwd({ ...pwd, confirm: e.target.value })} autoComplete="new-password" /></Field>

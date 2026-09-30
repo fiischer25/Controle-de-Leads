@@ -1,7 +1,7 @@
 import type { Profile, TableName, Tables } from '../types';
 import { TABLES } from '../types';
 import { nowIso, uid } from '../utils';
-import type { Backend, NewUserInput, UpdateUserAuthInput } from './types';
+import type { Backend, Branding, NewUserInput, UpdateUserAuthInput } from './types';
 
 /**
  * Backend de demonstração: todos os dados ficam no localStorage deste navegador.
@@ -68,6 +68,11 @@ export class LocalBackend implements Backend {
 
   private emitAuth(id: string | null) {
     this.authListeners.forEach((cb) => cb(id));
+  }
+
+  async getBranding(): Promise<Branding | null> {
+    const s = this.rows('app_settings')[0];
+    return s ? { office_name: s.office_name, logo_url: s.logo_url ?? null } : null;
   }
 
   async currentUserId() {
@@ -222,6 +227,10 @@ export class LocalBackend implements Backend {
       table,
       this.rows(table).filter((r) => !set.has((r as { id: string }).id)),
     );
+  }
+
+  async invokeFunction(): Promise<unknown> {
+    return null;
   }
 
   subscribe(cb: (table: TableName) => void) {

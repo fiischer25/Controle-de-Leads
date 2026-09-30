@@ -165,7 +165,7 @@ export default function ReportsPage() {
             <Legend color="#eb6834" label="Fechados" />
             <Legend color="#1baf7a" label="Projetos entregues" />
           </div>
-          <div className="flex h-56 items-end gap-2 border-b border-stone-200">
+          <div className="flex h-56 items-end gap-2 border-b border-line">
             {r.months.map((m) => (
               <div key={m.key} className="flex h-full flex-1 flex-col justify-end" title={`${m.label}: ${m.leads} leads, ${m.won} fechados, ${m.delivered} entregues`}>
                 <div className="flex h-full items-end justify-center gap-[2px]">
@@ -187,7 +187,7 @@ export default function ReportsPage() {
           <CardHeader title="Conversão por origem" subtitle="Leads que entraram no período" />
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
+              <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-stone-400">
                 <tr>
                   <th className="px-5 py-2 font-medium">Origem</th>
                   <th className="px-3 py-2 text-right font-medium">Leads</th>
@@ -196,7 +196,7 @@ export default function ReportsPage() {
                   <th className="px-5 py-2 text-right font-medium">Conversão</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 tabular">
+              <tbody className="divide-y divide-line/70 tabular">
                 {r.sources.map((s) => {
                   const c = s.won + s.lost ? Math.round((s.won / (s.won + s.lost)) * 100) : null;
                   return (
@@ -271,7 +271,7 @@ export default function ReportsPage() {
             ))}
           </div>
           {r.perSqm.length > 0 && (
-            <div className="border-t border-stone-100 px-5 py-3 text-xs text-stone-600">
+            <div className="border-t border-line/70 px-5 py-3 text-xs text-stone-600">
               Média em projetos concluídos: <b>{formatNumber(r.perSqm.reduce((a, x) => a + x.hoursPerSqm, 0) / r.perSqm.length, 2)} h/m²</b> — útil para estimar prazos de novas propostas.
             </div>
           )}
@@ -285,7 +285,7 @@ function Tile({ icon, label, value, sub }: { icon: ReactNode; label: string; val
   return (
     <div className="card px-4 py-3.5">
       <div className="flex items-center gap-1.5 text-xs text-stone-500"><span className="text-stone-400">{icon}</span>{label}</div>
-      <div className="mt-1.5 font-display text-2xl font-bold leading-none">{value}</div>
+      <div className="mt-1.5 font-display text-2xl font-medium tracking-tight leading-none">{value}</div>
       {sub && <div className={cn('mt-1 text-[11px] text-stone-500')}>{sub}</div>}
     </div>
   );

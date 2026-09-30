@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Profile, TableName, Tables } from '../types';
-import type { Backend, NewUserInput, UpdateUserAuthInput } from './types';
+import type { Backend, Branding, NewUserInput, UpdateUserAuthInput } from './types';
 
 const PAGE = 1000;
 /** Tabelas que crescem sem limite: carregamos só os registros mais recentes. */
@@ -27,6 +27,12 @@ export class SupabaseBackend implements Backend {
     this.client = createClient(url, anonKey, {
       auth: { persistSession: true, autoRefreshToken: true },
     });
+  }
+
+  async getBranding(): Promise<Branding | null> {
+    const { data, error } = await this.client.rpc('office_branding');
+    if (error || !data) return null;
+    return data as Branding;
   }
 
   async currentUserId() {
@@ -164,6 +170,12 @@ export class SupabaseBackend implements Backend {
     if (ids.length === 0) return;
     const { error } = await this.client.from(table).delete().in('id', ids);
     fail(error);
+  }
+
+  async invokeFunction(name: string, body: Record<string, unknown>) {
+    const { data, error } = await this.client.functions.invoke(name, { body });
+    if (error) throw new Error(translateError(error.message));
+    return data;
   }
 
   subscribe(cb: (table: TableName) => void) {
