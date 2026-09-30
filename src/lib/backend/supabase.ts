@@ -12,6 +12,12 @@ function translateError(message: string): string {
   if (/banned/i.test(message)) return 'Este usuário está desativado. Fale com o administrador.';
   if (/row-level security/i.test(message)) return 'Você não tem permissão para esta ação.';
   if (/already (been )?registered|already exists/i.test(message)) return 'Já existe um usuário com este e-mail.';
+  if (/failed to send a request to the edge function|requested function was not found/i.test(message)) {
+    return 'Não foi possível falar com a função do servidor. Confira no Supabase, em Edge Functions, se ela foi publicada com o nome exato indicado no guia.';
+  }
+  if (/invalid path specified in request url/i.test(message)) {
+    return 'Endereço do Supabase inválido. Em VITE_SUPABASE_URL use só https://SEU-PROJETO.supabase.co, sem nada depois.';
+  }
   return message;
 }
 
