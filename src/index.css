@@ -1,3 +1,54 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-canvas text-ink-900;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    letter-spacing: -0.003em;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-ink-900/15 ring-offset-1;
+  }
+  ::selection {
+    @apply bg-brand-200/70;
+  }
+}
+
+@layer components {
+  .input {
+    @apply block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-stone-400 transition-colors hover:border-stone-300 focus:border-ink-900/40 focus:outline-none focus:ring-4 focus:ring-ink-900/5 disabled:bg-stone-50 disabled:text-stone-500;
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-white;
+  }
+  .label {
+    @apply mb-1.5 block text-[12px] font-medium text-stone-500;
+  }
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.16em] text-stone-400;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .animate-in {
+    animation: fade-in 180ms ease-out;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #dcd8d2 transparent;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
