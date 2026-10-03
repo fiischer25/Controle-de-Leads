@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Profile, TableName, Tables } from '../types';
+import { OPTIONAL_TABLES, type Profile, type TableName, type Tables } from '../types';
 import type { Backend, Branding, NewUserInput, UpdateUserAuthInput } from './types';
 
 const PAGE = 1000;
@@ -151,6 +151,8 @@ export class SupabaseBackend implements Backend {
         .select('*')
         .order('id')
         .range(from, from + PAGE - 1);
+      // Tabela de um recurso cuja migração ainda não foi executada: segue sem ela.
+      if (error && OPTIONAL_TABLES.includes(table) && /schema cache|does not exist|PGRST205|42P01/i.test(`${error.message} ${error.code ?? ''}`)) return [];
       fail(error);
       all.push(...((data ?? []) as Tables[T][]));
       if (!data || data.length < PAGE) break;

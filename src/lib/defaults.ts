@@ -1,4 +1,4 @@
-import type { AppSettings, LeadSource, LeadStage, ProjectType, TaskTemplate } from './types';
+import type { AppSettings, FinanceAccount, FinanceCategory, LeadSource, LeadStage, ProjectType, TaskTemplate } from './types';
 import { nowIso, uid } from './utils';
 
 /**
@@ -156,4 +156,33 @@ export function defaultSettings(): AppSettings {
     wa_alerts_weekends: false,
     updated_at: nowIso(),
   };
+}
+
+/** Categorias iniciais do Financeiro (mesmas da migração 20261006000000_finance.sql). */
+export function defaultFinanceCategories(): FinanceCategory[] {
+  const rows: Array<[string, FinanceCategory['kind'], string]> = [
+    ['Honorários de projeto', 'receita', '#3f7d5a'],
+    ['Reserva técnica (RT)', 'receita', '#5b8f6f'],
+    ['Acompanhamento de obra', 'receita', '#7aa386'],
+    ['Outras receitas', 'receita', '#9bb8a3'],
+    ['Salários e pró-labore', 'despesa', '#8a4b3c'],
+    ['Aluguel e condomínio', 'despesa', '#9c5a48'],
+    ['Impostos', 'despesa', '#a86b56'],
+    ['Contabilidade', 'despesa', '#b37c65'],
+    ['Softwares e assinaturas', 'despesa', '#7c6f64'],
+    ['Energia, internet e telefone', 'despesa', '#8c7f73'],
+    ['Marketing', 'despesa', '#9c8f83'],
+    ['Deslocamentos e visitas', 'despesa', '#a89c90'],
+    ['Impressões e plotagens', 'despesa', '#b4a99e'],
+    ['Material de escritório', 'despesa', '#c0b6ac'],
+    ['Tarifas bancárias', 'despesa', '#ccc3ba'],
+    ['Outras despesas', 'despesa', '#d6cec6'],
+  ];
+  const now = nowIso();
+  const pos: Record<string, number> = { receita: 0, despesa: 0 };
+  return rows.map(([name, kind, color]) => ({ id: uid(), name, kind, color, active: true, position: pos[kind]++, created_at: now }));
+}
+
+export function defaultFinanceAccount(): FinanceAccount {
+  return { id: uid(), name: 'Conta principal', kind: 'banco', opening_balance: 0, color: '#57534e', active: true, position: 0, created_at: nowIso() };
 }

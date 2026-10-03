@@ -2,6 +2,9 @@ import type {
   ActivityLog,
   CalendarEvent,
   Client,
+  FinanceAccount,
+  FinanceEntry,
+  FinanceMemberCost,
   Lead,
   LeadInteraction,
   Profile,
@@ -12,7 +15,8 @@ import type {
   TimeEntry,
 } from './types';
 import type { NewUserInput } from './backend/types';
-import { defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from './defaults';
+import { defaultFinanceAccount, defaultFinanceCategories, defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from './defaults';
+import { addMonthsKey, buildSeries, feePlan, splitByPercent, type EntryDraft } from './finance';
 import { buildProjectTasks, templatesEndDate } from './domain';
 import { addDays, nowIso, today, uid } from './utils';
 
@@ -75,6 +79,7 @@ export async function buildDemoData(
   const tasks: Task[] = [];
   const timeEntries: TimeEntry[] = [];
   const activity: ActivityLog[] = [];
+  const feeSpecs: Array<{ projectId: string; clientId: string; name: string; start: string; done: number; total: number }> = [];
 
   leadRows.forEach((row, i) => {
     const created = iso(-30 + i * 2);
@@ -178,6 +183,7 @@ export async function buildDemoData(
       description: null, notes: null, links: [], lead_id: lead.id,
       completed_at: spec.done === 1 ? iso(-5) : null, created_by: admin.id, created_at: lead.converted_at!, updated_at: now,
     });
+    feeSpecs.push({ projectId, clientId: client.id, name: spec.project, start, done: spec.done, total: lead.proposal_value ?? 0 });
     activity.push({
       id: uid(), user_id: carla.id, entity: 'project', entity_id: projectId, action: 'created',
       description: `converteu ${spec.name} em cliente e criou o projeto ${spec.project}`, created_at: lead.converted_at!,
@@ -216,7 +222,68 @@ export async function buildDemoData(
     meeting('Aprovação de marcenaria — APTO B.F.', 4, 16, 1, [bruno], { project_id: projects[1]?.id ?? null }),
   ];
 
+  // Financeiro: contas, despesas fixas, honorários em 30/40/30 e custo/hora da equipe
+  const finCategories = defaultFinanceCategories();
+  const cat = (name: string) => finCategories.find((c) => c.name === name)!.id;
+  const bank: FinanceAccount = { ...defaultFinanceAccount(), name: 'Itaú PJ', opening_balance: 42000 };
+  const cash: FinanceAccount = { ...defaultFinanceAccount(), name: 'Caixa do escritório', kind: 'caixa', opening_balance: 800, color: '#8a7a5c', position: 1 };
+  const card: FinanceAccount = { ...defaultFinanceAccount(), name: 'Cartão Nubank PJ', kind: 'cartao', opening_balance: 0, color: '#6b4fa0', position: 2 };
+  const finEntries: FinanceEntry[] = [];
+  const draft = (o: Partial<EntryDraft>): EntryDraft => ({
+    kind: 'despesa', description: '', amount: 0, due_date: t, paid_at: null, account_id: bank.id, to_account_id: null,
+    category_id: null, client_id: null, project_id: null, document: null, notes: null, created_by: admin.id, ...o,
+  });
+  const monthStart = addMonthsKey(`${t.slice(0, 7)}-01`, -6);
+  const fixed: Array<[string, string, number, number, FinanceAccount]> = [
+    ['Aluguel da sala', 'Aluguel e condomínio', 3800, 5, bank],
+    ['Folha de pagamento', 'Salários e pró-labore', 18500, 5, bank],
+    ['Honorários do contador', 'Contabilidade', 650, 10, bank],
+    ['Energia e internet', 'Energia, internet e telefone', 480, 12, bank],
+    ['Softwares (Revit, SketchUp, Adobe)', 'Softwares e assinaturas', 1290, 15, card],
+    ['Simples Nacional', 'Impostos', 2400, 20, bank],
+  ];
+  fixed.forEach(([description, category, amount, day, account]) => {
+    const rows = buildSeries(draft({ description, amount, category_id: cat(category), account_id: account.id, due_date: `${monthStart.slice(0, 8)}${String(day).padStart(2, '0')}` }), 'mensal', 12, now);
+    // O que venceu está pago, menos a energia do mês passado (aparece como vencida)
+    const lastMonth = addMonthsKey(`${t.slice(0, 7)}-01`, -1).slice(0, 7);
+    rows.forEach((r) => {
+      if (r.due_date < t && !(category.startsWith('Energia') && r.due_date.startsWith(lastMonth))) r.paid_at = r.due_date;
+    });
+    finEntries.push(...rows);
+  });
+  feeSpecs.forEach((f) => {
+    if (!f.total) return;
+    const plan = feePlan('30-40-30', f.start);
+    const amounts = splitByPercent(f.total, plan.map((r) => r.percent));
+    // Recebidas conforme o andamento; a 2ª parcela do APTO B.F. ficou em aberto (vencida)
+    const paidCount = f.done >= 1 ? 3 : f.done >= 0.6 ? 2 : 1;
+    plan.forEach((row, i) => {
+      const paid = i < paidCount && !(f.name === 'APTO B.F.' && i === 1) && row.due_date <= t;
+      finEntries.push({
+        ...draft({ kind: 'receita', description: `Honorários ${f.name} · ${row.label}`, amount: amounts[i], due_date: row.due_date,
+          paid_at: paid ? row.due_date : null, category_id: cat('Honorários de projeto'), client_id: f.clientId, project_id: f.projectId }),
+        id: uid(), series_id: null, installment: i + 1, installments: plan.length, created_at: now, updated_at: now,
+      });
+    });
+  });
+  const one = (o: Partial<EntryDraft>) => buildSeries(draft(o), 'unica', 1, now)[0];
+  const fee = (name: string) => feeSpecs.find((f) => f.name === name);
+  finEntries.push(
+    one({ description: 'Plotagens do anteprojeto', amount: 380, due_date: addDays(t, -20), paid_at: addDays(t, -20), category_id: cat('Impressões e plotagens'), account_id: cash.id, project_id: fee('CASA J.D.')?.projectId ?? null, client_id: fee('CASA J.D.')?.clientId ?? null }),
+    one({ description: 'Visita técnica — combustível e pedágio', amount: 220, due_date: addDays(t, -8), paid_at: addDays(t, -8), category_id: cat('Deslocamentos e visitas'), account_id: card.id, project_id: fee('CASA L.M.')?.projectId ?? null, client_id: fee('CASA L.M.')?.clientId ?? null }),
+    one({ kind: 'receita', description: 'RT — marcenaria Café Aroma', amount: 2100, due_date: addDays(t, -25), paid_at: addDays(t, -25), category_id: cat('Reserva técnica (RT)'), project_id: fee('CAFÉ AROMA')?.projectId ?? null, client_id: fee('CAFÉ AROMA')?.clientId ?? null }),
+    one({ description: 'Impulsionamento Instagram', amount: 600, due_date: addDays(t, 6), category_id: cat('Marketing'), account_id: card.id }),
+    one({ kind: 'transferencia', description: 'Reforço do caixa', amount: 500, due_date: addDays(t, -12), paid_at: addDays(t, -12), account_id: bank.id, to_account_id: cash.id }),
+  );
+  const memberCosts: FinanceMemberCost[] = [[admin, 120], [ana, 85], [bruno, 70], [carla, 60]].map(([p, cost]) => ({
+    id: uid(), user_id: (p as Profile).id, hourly_cost: cost as number, updated_at: now,
+  }));
+
   return {
+    finance_accounts: [bank, cash, card],
+    finance_categories: finCategories,
+    finance_entries: finEntries,
+    finance_member_costs: memberCosts,
     events,
     lead_stages: stages,
     lead_sources: sources,

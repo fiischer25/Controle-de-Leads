@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const color = String(body.color ?? '#57534e');
     const job_title = body.job_title ? String(body.job_title) : null;
     const phone = body.phone ? String(body.phone) : null;
-    const MODULES = ['projetos', 'comercial', 'relatorios', 'equipe', 'configuracoes'];
+    const MODULES = ['projetos', 'comercial', 'relatorios', 'equipe', 'configuracoes', 'financeiro'];
     const permissions = Array.isArray(body.permissions)
       ? [...new Set(body.permissions.map(String).filter((m) => MODULES.includes(m)))]
       : ['projetos', 'comercial', 'relatorios', 'equipe'];

@@ -1656,6 +1656,7 @@ export function BarRow({
   suffix,
   onClick,
   title,
+  display,
 }: {
   label: ReactNode;
   value: number;
@@ -1664,6 +1665,8 @@ export function BarRow({
   suffix?: ReactNode;
   onClick?: () => void;
   title?: string;
+  /** Texto do valor (padrão: o número). */
+  display?: ReactNode;
 }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   const Tag = onClick ? 'button' : 'div';
@@ -1677,7 +1680,7 @@ export function BarRow({
       <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
         <span className="truncate text-stone-700 group-hover:text-ink">{label}</span>
         <span className="tabular shrink-0 font-medium text-ink">
-          {value}
+          {display ?? value}
           {suffix && <span className="ml-1 font-normal text-muted">{suffix}</span>}
         </span>
       </div>

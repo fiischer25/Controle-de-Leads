@@ -12,7 +12,7 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   desativa quem sai do escritório. Cada membro pode editar o próprio perfil e trocar a senha.
 - **Acessos por módulo:** no cadastro do membro, o administrador marca o que ele pode ver e usar:
   *Projetos e tarefas* (lista e detalhe dos projetos, tarefas da equipe), *Oportunidades e clientes*,
-  *Relatórios*, *Equipe* e *Configurações*. O **Meu painel** (com a agenda) e as tarefas da
+  *Relatórios*, *Equipe*, *Configurações* e *Financeiro* (este desmarcado por padrão). O **Meu painel** (com a agenda) e as tarefas da
   própria pessoa ficam sempre disponíveis. Administradores têm acesso a tudo; exclusões críticas e
   o backup continuam exclusivos deles. O banco aplica as mesmas regras (RLS), e o assistente também.
 
@@ -56,6 +56,21 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   ação nesta semana, com ação direta em cada linha.
 - No celular: navegação inferior com botão **+** (tarefa, reunião, projeto, oportunidade, lançar
   horas) e arrastar a linha para a esquerda para **Adiar** ou **Concluir**.
+
+**Financeiro** (administradores e quem tiver o módulo *Financeiro*)
+- **Visão geral:** saldo em contas e previsto para o fim do mês, recebido e pago no mês, resultado,
+  vencidos a receber e a pagar, próximos vencimentos com "Receber/Pagar" na linha, entradas e saídas
+  dos últimos 12 meses e despesas do mês por categoria.
+- **Lançamentos:** contas a receber e a pagar e transferências, por mês, com filtros (situação, conta,
+  categoria, projeto), busca e exportação CSV. Despesas fixas que se repetem todo mês e compras
+  parceladas; editar ou excluir também as próximas parcelas.
+- **Contas:** banco, caixa, cartão e investimento, com saldo inicial e saldo atual de cada uma.
+- **Honorários por projeto:** aba *Financeiro* no projeto com o plano de parcelas (30% · 40% · 30%,
+  50/50, à vista ou mensal; percentuais e datas editáveis), despesas do projeto e resultado.
+- **Rentabilidade:** honorários − despesas do projeto − custo das horas da equipe (custo/hora de cada
+  pessoa, visível só no Financeiro), com margem por projeto.
+- **Categorias** de receitas e despesas editáveis. Os números principais aparecem também no dashboard
+  do escritório.
 
 **Resumo diário no WhatsApp**
 - No horário escolhido (Configurações → **Resumo diário**), cada pessoa com telefone recebe uma
@@ -114,9 +129,10 @@ Para uso real pela equipe, configure o Supabase.
 1. **Crie um projeto** gratuito em [supabase.com](https://supabase.com).
 2. **Banco de dados:** abra *SQL Editor* e execute, nesta ordem, o conteúdo de
    `supabase/migrations/20260929000000_airos_schema.sql`,
-   `supabase/migrations/20260930000000_meetings_logo_agent.sql` e
-   `supabase/migrations/20261004000000_module_permissions.sql` e
-   `supabase/migrations/20261005000000_whatsapp_alerts.sql`
+   `supabase/migrations/20260930000000_meetings_logo_agent.sql`,
+   `supabase/migrations/20261004000000_module_permissions.sql`,
+   `supabase/migrations/20261005000000_whatsapp_alerts.sql` e
+   `supabase/migrations/20261006000000_finance.sql`
    (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
    (podem rodar mais de uma vez sem problema).
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):
@@ -178,7 +194,7 @@ agenda em **Meu perfil**.
 
 ### Segurança
 - Todas as tabelas usam *Row Level Security*: só membros ativos acessam dados; oportunidades,
-  clientes, edição de projetos e configurações seguem os módulos de cada pessoa; somente
+  clientes, edição de projetos, configurações e todo o Financeiro seguem os módulos de cada pessoa; somente
   administradores excluem leads/clientes/projetos e gerenciam a equipe e os acessos.
 - A chave de serviço do Supabase fica apenas na Edge Function, nunca no navegador.
 

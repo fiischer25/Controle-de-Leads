@@ -15,6 +15,7 @@ export const MODULES: ModuleInfo[] = [
   { key: 'relatorios', short: 'Relatórios', label: 'Relatórios', description: 'Indicadores comerciais e de produção, horas e exportações.' },
   { key: 'equipe', short: 'Equipe', label: 'Equipe', description: 'Lista da equipe com a carga de trabalho de cada pessoa.' },
   { key: 'configuracoes', short: 'Configurações', label: 'Configurações', description: 'Escritório, tipos de projeto e tarefas-modelo, funil, origens e agenda.' },
+  { key: 'financeiro', short: 'Financeiro', label: 'Financeiro', description: 'Contas a receber e a pagar, fluxo de caixa, contas bancárias, honorários e rentabilidade dos projetos.' },
 ];
 
 /** Acessos de quem ainda não teve os módulos definidos (igual ao comportamento anterior). */

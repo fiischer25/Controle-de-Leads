@@ -13,6 +13,8 @@ import { AgendaView } from '../components/agenda/AgendaView';
 import { MonthBars } from '../components/charts/MonthBars';
 import { useHomeData } from '../components/dashboard/useHomeData';
 import { FunnelSection, ProjectsSection, TeamSection, TodayColumn } from '../components/dashboard/HomeSections';
+import { useFinance } from '../components/finance/useFinance';
+import { monthKey, monthTotals, sum } from '../lib/finance';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
 
 type Tab = 'geral' | 'agenda';
@@ -109,6 +111,22 @@ export default function OfficeDashboardPage() {
       staleDays,
     };
   }, [db.leads, maps.stages, settings.lead_stale_days]);
+
+  // Financeiro (só para quem tem o módulo)
+  const fin = useFinance();
+  const money = useMemo(() => {
+    const t = today();
+    const in30 = addDays(t, 30);
+    const open = fin.entries.filter((e) => !e.paid_at && e.kind !== 'transferencia');
+    const m = monthTotals(fin.entries, monthKey(t));
+    return {
+      receive30: sum(open.filter((e) => e.kind === 'receita' && e.due_date >= t && e.due_date <= in30).map((e) => e.amount)),
+      pay30: sum(open.filter((e) => e.kind === 'despesa' && e.due_date >= t && e.due_date <= in30).map((e) => e.amount)),
+      overdueIn: sum(open.filter((e) => e.kind === 'receita' && e.due_date < t).map((e) => e.amount)),
+      overdueOut: sum(open.filter((e) => e.kind === 'despesa' && e.due_date < t).map((e) => e.amount)),
+      result: Math.round((m.inPaid - m.outPaid) * 100) / 100,
+    };
+  }, [fin.entries]);
 
   const calendarConnected = !!(settings.calendar_embed_url || me.calendar_embed_url);
   const attention = home.items.length;
@@ -316,6 +334,20 @@ export default function OfficeDashboardPage() {
                 )}
               </section>
             </div>
+
+            {can('financeiro') && (
+              <MetricRow
+                label="Financeiro"
+                items={[
+                  { label: 'Saldo em contas', value: formatCurrency(fin.totalBalance), to: '/financeiro' },
+                  { label: 'A receber em 30 dias', value: formatCurrency(money.receive30), to: '/financeiro?aba=lancamentos' },
+                  { label: 'A pagar em 30 dias', value: formatCurrency(money.pay30), to: '/financeiro?aba=lancamentos' },
+                  { label: 'A receber vencido', value: formatCurrency(money.overdueIn), tone: money.overdueIn ? 'text-danger-fg' : undefined },
+                  { label: 'A pagar vencido', value: formatCurrency(money.overdueOut), tone: money.overdueOut ? 'text-danger-fg' : undefined },
+                  { label: 'Resultado do mês', value: formatCurrency(money.result), tone: money.result < 0 ? 'text-danger-fg' : undefined, sub: 'recebido − pago' },
+                ]}
+              />
+            )}
 
             <TeamSection team={home.team} />
           </div>
