@@ -133,7 +133,7 @@ npx supabase functions deploy calendar-sync`}</pre>
                 <Link className="text-ink underline underline-offset-2" to="/equipe">
                   Equipe
                 </Link>
-                . Números não cadastrados recebem uma orientação e não acessam nada.
+                . Mensagens de números fora da equipe (clientes) são ignoradas: o assistente não responde nem marca como lidas, e a equipe atende pelo aplicativo normalmente.
               </p>
             </Step>
             <Step n={6} title="Google Agenda automático (opcional)">

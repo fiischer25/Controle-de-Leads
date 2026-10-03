@@ -75,8 +75,9 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   sexta”, “concluí o levantamento métrico”, “lança 1h30 na modelagem 3D”, “o que tenho essa semana?”.
 - Ele cria e designa tarefas, conclui, remarca, troca responsável, comenta, lança horas, consulta a agenda,
   agenda/remarca/cancela reuniões, busca clientes e projetos e cadastra oportunidades.
-- Reconhece cada pessoa pelo telefone do cadastro e age com as permissões dela; números desconhecidos não
-  acessam nada. Usa o modelo Claude (Anthropic).
+- Reconhece cada pessoa pelo telefone do cadastro e age com as permissões dela. Mensagens de quem não é da
+  equipe (clientes) são ignoradas, sem resposta nem confirmação de leitura, então dá para usar o número do
+  escritório junto com o WhatsApp Business app. Usa o modelo Claude (Anthropic).
 
 **Reuniões e identidade visual**
 - Reuniões na Agenda com participantes (notificados), local/link, vínculo com projeto ou oportunidade,
