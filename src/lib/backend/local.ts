@@ -111,6 +111,22 @@ export class LocalBackend implements Backend {
     write(CREDENTIALS_KEY, creds);
   }
 
+  async requestPasswordReset() {
+    throw new Error(
+      'No modo demonstração não há envio de e-mail. Peça ao administrador para redefinir sua senha em Equipe.',
+    );
+  }
+
+  passwordRecovery() {
+    return null;
+  }
+
+  async completePasswordReset() {
+    throw new Error('Nenhum link de redefinição de senha aberto.');
+  }
+
+  async dismissPasswordRecovery() {}
+
   onAuthChange(cb: (userId: string | null) => void) {
     this.authListeners.add(cb);
     const onStorage = (e: StorageEvent) => {

@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Profile, TableName, Tables } from '../types';
-import type { Backend, Branding, NewUserInput, UpdateUserAuthInput } from './types';
+import type { Backend, Branding, NewUserInput, PasswordRecovery, UpdateUserAuthInput } from './types';
 
 const PAGE = 1000;
 /** Tabelas que crescem sem limite: carregamos só os registros mais recentes. */
@@ -12,6 +12,10 @@ function translateError(message: string): string {
   if (/banned/i.test(message)) return 'Este usuário está desativado. Fale com o administrador.';
   if (/row-level security/i.test(message)) return 'Você não tem permissão para esta ação.';
   if (/already (been )?registered|already exists/i.test(message)) return 'Já existe um usuário com este e-mail.';
+  if (/rate limit|only request this after/i.test(message)) return 'Muitos pedidos seguidos. Aguarde alguns minutos e tente de novo.';
+  if (/should be different from the old password/i.test(message)) return 'A nova senha precisa ser diferente da anterior.';
+  if (/password should be at least/i.test(message)) return 'A senha deve ter pelo menos 6 caracteres.';
+  if (/auth session missing/i.test(message)) return 'O link de redefinição expirou. Peça um novo na tela de entrada.';
   if (/failed to send a request to the edge function|requested function was not found/i.test(message)) {
     return 'Não foi possível falar com a função do servidor. Confira no Supabase, em Edge Functions, se ela foi publicada com o nome exato indicado no guia.';
   }
@@ -21,6 +25,39 @@ function translateError(message: string): string {
   return message;
 }
 
+/** Para onde o link do e-mail de "esqueci minha senha" leva. */
+const RESET_PATH = '/redefinir-senha';
+const RECOVERY_KEY = 'airos:password-recovery';
+
+/** Lê o retorno do link de redefinição antes de o cliente do Supabase limpar o endereço. */
+function recoveryFromUrl(): PasswordRecovery {
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  if (hash.get('type') === 'recovery' && hash.get('access_token')) return 'active';
+  const query = new URLSearchParams(window.location.search);
+  const failed = hash.get('error') || hash.get('error_code') || query.get('error') || query.get('error_code');
+  if (window.location.pathname === RESET_PATH && failed) return 'expired';
+  return null;
+}
+
+// Guardado na aba para sobreviver a um recarregar da página no meio da redefinição.
+function storedRecovery(): PasswordRecovery {
+  try {
+    const v = sessionStorage.getItem(RECOVERY_KEY);
+    return v === 'active' || v === 'expired' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeRecovery(v: PasswordRecovery) {
+  try {
+    if (v) sessionStorage.setItem(RECOVERY_KEY, v);
+    else sessionStorage.removeItem(RECOVERY_KEY);
+  } catch {
+    // sem sessionStorage: vale só enquanto a página estiver aberta
+  }
+}
+
 function fail(error: { message: string } | null): asserts error is null {
   if (error) throw new Error(translateError(error.message));
 }
@@ -28,8 +65,12 @@ function fail(error: { message: string } | null): asserts error is null {
 export class SupabaseBackend implements Backend {
   readonly mode = 'supabase' as const;
   readonly client: SupabaseClient;
+  private recovery: PasswordRecovery;
 
   constructor(url: string, anonKey: string) {
+    const fromUrl = recoveryFromUrl();
+    if (fromUrl) storeRecovery(fromUrl);
+    this.recovery = fromUrl ?? storedRecovery();
     this.client = createClient(url, anonKey, {
       auth: { persistSession: true, autoRefreshToken: true },
     });
@@ -71,9 +112,44 @@ export class SupabaseBackend implements Backend {
     fail(error);
   }
 
+  private setRecovery(v: PasswordRecovery) {
+    this.recovery = v;
+    storeRecovery(v);
+  }
+
+  async requestPasswordReset(email: string) {
+    const { error } = await this.client.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}${RESET_PATH}`,
+    });
+    fail(error);
+  }
+
+  passwordRecovery() {
+    return this.recovery;
+  }
+
+  async completePasswordReset(newPassword: string) {
+    const { data, error } = await this.client.auth.updateUser({ password: newPassword });
+    fail(error);
+    this.setRecovery(null);
+    const { data: profile } = await this.client.from('profiles').select('active').eq('id', data.user.id).single();
+    if (!profile?.active) {
+      await this.client.auth.signOut();
+      throw new Error('Senha alterada, mas este usuário está desativado ou ainda não foi liberado pelo administrador.');
+    }
+  }
+
+  async dismissPasswordRecovery() {
+    const wasActive = this.recovery === 'active';
+    this.setRecovery(null);
+    if (wasActive) await this.client.auth.signOut();
+  }
+
   onAuthChange(cb: (userId: string | null) => void) {
     const { data } = this.client.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+      if (event === 'PASSWORD_RECOVERY') this.setRecovery('active');
+      if (event === 'SIGNED_OUT' && this.recovery === 'active') this.setRecovery(null);
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') {
         cb(session?.user.id ?? null);
       }
     });

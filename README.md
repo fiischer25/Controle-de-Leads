@@ -10,6 +10,8 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Login com e-mail e senha. No primeiro acesso, cria-se a conta de **administrador**.
 - O administrador cadastra os membros (nome, cargo, cor, nível de acesso), redefine senhas e
   desativa quem sai do escritório. Cada membro pode editar o próprio perfil e trocar a senha.
+- **Esqueci minha senha** na tela de entrada: o sistema envia por e-mail um link para criar uma
+  nova senha (somente com Supabase; no modo demonstração o administrador redefine em Equipe).
 - Membros veem tudo do escritório; configurações e exclusões críticas são exclusivas do admin.
 
 **Oportunidades (funil comercial)**
@@ -107,6 +109,32 @@ Para uso real pela equipe, configure o Supabase.
    `public/_redirects` já tratam as rotas.
 7. Abra o sistema: a primeira conta criada vira **administrador**. Em seguida, cadastre a equipe em
    **Equipe → Novo membro** e revise **Configurações → Tipos de projeto e tarefas**.
+
+### Esqueci minha senha
+O link “Esqueci minha senha” da tela de entrada envia um e-mail pelo Supabase. Para funcionar:
+
+1. Em *Authentication → URL Configuration*, preencha **Site URL** com o endereço do sistema
+   (ex.: `https://seu-sistema.vercel.app`) e adicione `https://seu-sistema.vercel.app/**` em
+   **Redirect URLs**. Sem isso o link do e-mail abre o endereço errado.
+2. O envio de e-mail padrão do Supabase é limitado (poucos e-mails por hora e, em projetos novos, só
+   para os e-mails da equipe da organização no Supabase). Para a equipe toda receber, configure um
+   SMTP próprio em *Authentication → Emails → SMTP Settings* (Resend, Brevo, Gmail etc.).
+3. Opcional: traduza o modelo **Reset Password** em *Authentication → Emails → Templates*.
+
+O link vale por tempo limitado e só pode ser usado uma vez; se vencer, o sistema avisa e permite
+pedir outro. Membros também podem pedir ao administrador para redefinir a senha em **Equipe**.
+
+**O administrador esqueceu a senha e o e-mail não chega?** Senhas são guardadas criptografadas e não
+podem ser vistas por ninguém, mas podem ser trocadas. No Supabase, abra o *SQL Editor* e rode
+(trocando a senha e o e-mail):
+
+```sql
+update auth.users
+set encrypted_password = extensions.crypt('NovaSenha123', extensions.gen_salt('bf'))
+where email = 'admin@seu-escritorio.com.br';
+```
+
+Depois entre com a nova senha e troque-a em **Meu perfil**.
 
 ### Assistente no WhatsApp
 O passo a passo completo está no próprio sistema, em **Configurações → WhatsApp e assistente**. Resumo:

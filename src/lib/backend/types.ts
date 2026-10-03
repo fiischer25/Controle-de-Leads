@@ -17,6 +17,8 @@ export interface UpdateUserAuthInput {
   active?: boolean;
 }
 
+export type PasswordRecovery = 'active' | 'expired' | null;
+
 export interface Branding {
   office_name: string;
   logo_url: string | null;
@@ -40,6 +42,19 @@ export interface Backend {
   signOut(): Promise<void>;
   changeOwnPassword(currentPassword: string, newPassword: string): Promise<void>;
   onAuthChange(cb: (userId: string | null) => void): () => void;
+
+  // Esqueci minha senha
+  /** Envia por e-mail um link para criar uma nova senha. */
+  requestPasswordReset(email: string): Promise<void>;
+  /**
+   * Situação do link de redefinição aberto neste navegador: 'active' = sessão temporária
+   * aguardando a nova senha; 'expired' = link vencido ou já usado; null = nenhum link.
+   */
+  passwordRecovery(): PasswordRecovery;
+  /** Grava a nova senha da sessão aberta pelo link e encerra o modo de redefinição. */
+  completePasswordReset(newPassword: string): Promise<void>;
+  /** Descarta o link de redefinição (cancelar ou já avisado do link vencido). */
+  dismissPasswordRecovery(): Promise<void>;
 
   /** Modo local: nenhum usuário cadastrado ainda → mostra tela de configuração inicial. */
   needsSetup(): Promise<boolean>;

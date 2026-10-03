@@ -7,7 +7,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { BrandMark } from './components/layout/Logo';
 import { BrandingProvider } from './context/BrandingContext';
 import { Spinner } from './components/ui';
-import { LoginPage, SetupPage } from './pages/LoginPage';
+import { LoginPage, ResetPasswordPage, SetupPage } from './pages/LoginPage';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const LeadsPage = lazy(() => import('./pages/LeadsPage'));
@@ -66,6 +66,7 @@ function Gate() {
   const { status, userId } = useAuth();
   if (status === 'loading') return <FullScreenLoader />;
   if (status === 'setup') return <SetupPage />;
+  if (status === 'recovery') return <ResetPasswordPage />;
   if (status === 'signed_out' || !userId) return <LoginPage />;
   return (
     <DataProvider key={userId} userId={userId}>

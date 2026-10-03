@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowRight, Lock, Mail, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Lock, Mail, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Button, Checkbox, Field, Input } from '../components/ui';
 import { BrandMark } from '../components/layout/Logo';
 import { SWATCHES } from '../lib/constants';
@@ -48,7 +50,8 @@ function AuthShell({ children }: { children: React.ReactNode }) {
 }
 
 export function LoginPage() {
-  const { signIn, mode } = useAuth();
+  const { signIn, mode, recoveryLinkExpired, dismissPasswordRecovery } = useAuth();
+  const [view, setView] = useState<'login' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -67,10 +70,28 @@ export function LoginPage() {
     }
   };
 
+  const openForgot = () => {
+    if (recoveryLinkExpired) void dismissPasswordRecovery();
+    setError(null);
+    setView('forgot');
+  };
+
+  if (view === 'forgot') {
+    return <ForgotPasswordForm initialEmail={email} onBack={() => setView('login')} />;
+  }
+
   return (
     <AuthShell>
       <h2 className="font-display text-[28px] font-semibold tracking-[-0.02em]">Entrar</h2>
       <p className="mt-1 text-sm text-stone-500">Use o e-mail e a senha cadastrados pelo administrador.</p>
+      {recoveryLinkExpired && (
+        <div className="mt-6 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+          O link para redefinir a senha venceu ou já foi usado.{' '}
+          <button type="button" onClick={openForgot} className="font-medium underline underline-offset-2">
+            Pedir um novo link
+          </button>
+        </div>
+      )}
       <form onSubmit={submit} className="mt-8 space-y-4">
         <Field label="E-mail">
           <div className="relative">
@@ -88,13 +109,143 @@ export function LoginPage() {
         <Button type="submit" variant="dark" loading={busy} className="h-11 w-full" icon={<ArrowRight className="h-4 w-4" />}>
           Entrar
         </Button>
-        <p className="text-center text-xs text-stone-400">Esqueceu a senha? Peça ao administrador para redefini-la.</p>
+        {mode === 'supabase' ? (
+          <p className="text-center text-xs">
+            <button type="button" onClick={openForgot} className="text-stone-500 underline-offset-2 hover:text-ink-900 hover:underline">
+              Esqueci minha senha
+            </button>
+          </p>
+        ) : (
+          <p className="text-center text-xs text-stone-400">Esqueceu a senha? Peça ao administrador para redefini-la.</p>
+        )}
       </form>
       {mode === 'local' && (
         <p className="mt-10 rounded-lg border border-dashed border-line px-3 py-2.5 text-xs text-stone-500">
           Modo demonstração: os dados ficam salvos somente neste navegador. Configure o Supabase para uso em equipe.
         </p>
       )}
+    </AuthShell>
+  );
+}
+
+function ForgotPasswordForm({ initialEmail, onBack }: { initialEmail: string; onBack: () => void }) {
+  const { requestPasswordReset } = useAuth();
+  const [email, setEmail] = useState(initialEmail);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!isValidEmail(email)) return setError('Informe um e-mail válido.');
+    setBusy(true);
+    try {
+      await requestPasswordReset(email);
+      setSentTo(email.trim());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível enviar o link.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AuthShell>
+      <button type="button" onClick={onBack} className="mb-8 inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-ink-900">
+        <ArrowLeft className="h-4 w-4" /> Voltar para entrar
+      </button>
+      <h2 className="font-display text-[28px] font-semibold tracking-[-0.02em]">Redefinir senha</h2>
+      {sentTo ? (
+        <>
+          <p className="mt-3 text-sm leading-relaxed text-stone-600">
+            Se houver uma conta com <strong className="font-medium text-ink-900">{sentTo}</strong>, você vai receber em
+            instantes um e-mail com o link para criar uma nova senha. Confira também a caixa de spam.
+          </p>
+          <p className="mt-4 text-sm text-stone-500">Não chegou? Peça ao administrador para redefinir sua senha em Equipe.</p>
+          <Button variant="secondary" className="mt-8 h-11 w-full" onClick={() => setSentTo(null)}>
+            Enviar de novo
+          </Button>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-stone-500">Informe seu e-mail e enviaremos um link para você criar uma nova senha.</p>
+          <form onSubmit={submit} className="mt-8 space-y-4">
+            <Field label="E-mail">
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9" placeholder="voce@airos.com.br" required autoFocus />
+              </div>
+            </Field>
+            {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+            <Button type="submit" variant="dark" loading={busy} className="h-11 w-full" icon={<ArrowRight className="h-4 w-4" />}>
+              Enviar link
+            </Button>
+          </form>
+        </>
+      )}
+    </AuthShell>
+  );
+}
+
+/** Aberta pelo link do e-mail: cria a nova senha e entra no sistema. */
+export function ResetPasswordPage() {
+  const { completePasswordReset, dismissPasswordRecovery } = useAuth();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (password.length < 6) return setError('A senha deve ter pelo menos 6 caracteres.');
+    if (password !== confirm) return setError('As senhas não conferem.');
+    setBusy(true);
+    try {
+      await completePasswordReset(password);
+      navigate('/', { replace: true });
+      toast.success('Senha alterada. Bem-vindo(a) de volta!');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível alterar a senha.');
+      setBusy(false);
+    }
+  };
+
+  const cancel = async () => {
+    navigate('/', { replace: true });
+    await dismissPasswordRecovery();
+  };
+
+  return (
+    <AuthShell>
+      <h2 className="font-display text-[28px] font-semibold tracking-[-0.02em]">Crie uma nova senha</h2>
+      <p className="mt-1 text-sm text-stone-500">Escolha uma senha com pelo menos 6 caracteres.</p>
+      <form onSubmit={submit} className="mt-8 space-y-4">
+        <Field label="Nova senha">
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9" required autoFocus />
+          </div>
+        </Field>
+        <Field label="Confirmar nova senha">
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <Input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="pl-9" required />
+          </div>
+        </Field>
+        {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+        <Button type="submit" variant="dark" loading={busy} className="h-11 w-full" icon={<ArrowRight className="h-4 w-4" />}>
+          Salvar e entrar
+        </Button>
+        <p className="text-center text-xs">
+          <button type="button" onClick={cancel} className="text-stone-500 underline-offset-2 hover:text-ink-900 hover:underline">
+            Cancelar
+          </button>
+        </p>
+      </form>
     </AuthShell>
   );
 }
