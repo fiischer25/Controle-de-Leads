@@ -71,6 +71,13 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   pessoa, visível só no Financeiro), com margem por projeto.
 - **Categorias** de receitas e despesas editáveis. Os números principais aparecem também no dashboard
   do escritório.
+- **Importar extrato** (OFX ou CSV do internet banking): dá baixa nos lançamentos em aberto com o
+  mesmo valor e vencimento próximo, lança o restante já pago com a categoria sugerida pelo histórico e
+  ignora o que já foi importado na conta.
+- **Comprovantes e notas** (PDF, imagem ou XML da NF-e, até 10 MB) anexados a cada lançamento, guardados
+  em armazenamento privado do Supabase.
+- **Relatório mensal em PDF** (botão *Relatório*): resumo de caixa, saldos por conta, receitas e
+  despesas por categoria, recebido por projeto, a receber e a pagar em aberto e lançamentos do mês.
 
 **Resumo diário no WhatsApp**
 - No horário escolhido (Configurações → **Resumo diário**), cada pessoa com telefone recebe uma
@@ -131,8 +138,9 @@ Para uso real pela equipe, configure o Supabase.
    `supabase/migrations/20260929000000_airos_schema.sql`,
    `supabase/migrations/20260930000000_meetings_logo_agent.sql`,
    `supabase/migrations/20261004000000_module_permissions.sql`,
-   `supabase/migrations/20261005000000_whatsapp_alerts.sql` e
-   `supabase/migrations/20261006000000_finance.sql`
+   `supabase/migrations/20261005000000_whatsapp_alerts.sql`,
+   `supabase/migrations/20261006000000_finance.sql` e
+   `supabase/migrations/20261007000000_finance_import_files.sql`
    (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
    (podem rodar mais de uma vez sem problema).
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):

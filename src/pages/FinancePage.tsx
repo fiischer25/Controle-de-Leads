@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Plus } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, FileText, Plus, Upload } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { addMonthsKey, entryDate, monthKey, monthsBack, monthTotals, sum } from '../lib/finance';
 import type { FinanceEntry, FinanceKind } from '../lib/types';
@@ -13,6 +13,7 @@ import { ACCOUNT_KIND_LABEL, useFinance } from '../components/finance/useFinance
 import { FinanceAccounts } from '../components/finance/FinanceAccounts';
 import { FinanceProfitability } from '../components/finance/FinanceProfitability';
 import { FinanceCategories } from '../components/finance/FinanceCategories';
+import { ImportStatementModal } from '../components/finance/ImportStatementModal';
 
 type Tab = 'geral' | 'lancamentos' | 'contas' | 'rentabilidade' | 'categorias';
 type Editing = { entry?: FinanceEntry; kind?: FinanceKind } | null;
@@ -29,6 +30,8 @@ export default function FinancePage() {
   const setTab = (t: Tab) => setParams(t === 'geral' ? {} : { aba: t }, { replace: true });
   const fin = useFinance();
   const [editing, setEditing] = useState<Editing>(null);
+  const [importing, setImporting] = useState<{ account?: string } | null>(null);
+  const navigate = useNavigate();
 
   const overdueIn = sum(fin.entries.filter((e) => e.kind === 'receita' && fin.status(e) === 'vencido').map((e) => e.amount));
   const overdueOut = sum(fin.entries.filter((e) => e.kind === 'despesa' && fin.status(e) === 'vencido').map((e) => e.amount));
@@ -56,6 +59,9 @@ export default function FinancePage() {
         }
         actions={
           <div className="flex items-center gap-2">
+            <Button variant="ghost" icon={<FileText className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate('/financeiro/relatorio')} className="max-md:hidden">
+              Relatório
+            </Button>
             <Button variant="ghost" icon={<ArrowLeftRight className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setEditing({ kind: 'transferencia' })} className="max-md:hidden">
               Transferência
             </Button>
@@ -86,12 +92,13 @@ export default function FinancePage() {
 
       <div className={tab === 'geral' ? 'mt-4' : 'mt-8'}>
         {tab === 'geral' && <Overview onOpen={(entry) => setEditing({ entry })} onTab={setTab} />}
-        {tab === 'lancamentos' && <Entries onOpen={(entry) => setEditing({ entry })} />}
-        {tab === 'contas' && <FinanceAccounts />}
+        {tab === 'lancamentos' && <Entries onOpen={(entry) => setEditing({ entry })} onImport={() => setImporting({})} />}
+        {tab === 'contas' && <FinanceAccounts onImport={(account) => setImporting({ account })} />}
         {tab === 'rentabilidade' && <FinanceProfitability />}
         {tab === 'categorias' && <FinanceCategories />}
       </div>
 
+      {importing && <ImportStatementModal defaultAccount={importing.account} onClose={() => setImporting(null)} />}
       {editing && (
         <EntryFormModal
           key={editing.entry?.id ?? editing.kind}
@@ -223,7 +230,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
 // ---------------------------------------------------------------- Lançamentos
 type KindFilter = 'todos' | FinanceKind;
 
-function Entries({ onOpen }: { onOpen: (e: FinanceEntry) => void }) {
+function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onImport: () => void }) {
   const { db, maps } = useData();
   const fin = useFinance();
   const t = today();
@@ -345,9 +352,14 @@ function Entries({ onOpen }: { onOpen: (e: FinanceEntry) => void }) {
           </>
         }
         aside={
-          <Button variant="ghost" size="sm" icon={<Download className="h-3.5 w-3.5" />} onClick={exportCsv} disabled={rows.length === 0}>
-            CSV
-          </Button>
+          <>
+            <Button variant="ghost" size="sm" icon={<Upload className="h-3.5 w-3.5" />} onClick={onImport}>
+              Importar extrato
+            </Button>
+            <Button variant="ghost" size="sm" icon={<Download className="h-3.5 w-3.5" />} onClick={exportCsv} disabled={rows.length === 0}>
+              CSV
+            </Button>
+          </>
         }
       />
 

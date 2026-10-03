@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { FileText, Paperclip, Trash2, X } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { splitEqual, type EntryDraft, type RepeatMode } from '../../lib/finance';
 import type { FinanceEntry, FinanceKind } from '../../lib/types';
 import { formatMoney, today } from '../../lib/utils';
-import { Button, Checkbox, ConfirmDialog, Field, Input, Modal, Segmented, Select, Textarea } from '../ui';
+import { Button, Checkbox, ConfirmDialog, Field, IconButton, Input, Modal, Segmented, Select, Spinner, Textarea } from '../ui';
 import { MoneyInput } from './MoneyInput';
-import { useFinance } from './useFinance';
+import { ATTACHMENT_ACCEPT, formatBytes, MAX_ATTACHMENT_BYTES, useFinance } from './useFinance';
 
 const KIND_LABEL: Record<FinanceKind, string> = { receita: 'Receita', despesa: 'Despesa', transferencia: 'Transferência' };
 
@@ -46,6 +46,26 @@ export function EntryFormModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleting, setDeleting] = useState(false);
   const [deleteNext, setDeleteNext] = useState(false);
+  // Comprovantes: na edição sobem na hora; no cadastro, depois de salvar
+  const [pending, setPending] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const live = entry ? (fin.entries.find((x) => x.id === entry.id) ?? entry) : null;
+  const attachments = live?.attachments ?? [];
+
+  const addFiles = async (files: File[]) => {
+    const big = files.find((f) => f.size > MAX_ATTACHMENT_BYTES);
+    if (big) return toast.error(`"${big.name}" tem mais de 10 MB.`);
+    if (!live) return setPending((p) => [...p, ...files]);
+    setUploading(true);
+    try {
+      await fin.attachFiles(live, files);
+      toast.success(files.length === 1 ? 'Arquivo anexado.' : `${files.length} arquivos anexados.`);
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const set = <K extends keyof typeof v>(k: K, value: (typeof v)[K]) => setV((prev) => ({ ...prev, [k]: value }));
   const isTransfer = v.kind === 'transferencia';
@@ -97,6 +117,13 @@ export function EntryFormModal({
       } else {
         const rows = await fin.createEntries(payload, isTransfer ? 'unica' : mode, count);
         toast.success(rows.length > 1 ? `${rows.length} lançamentos criados.` : `${KIND_LABEL[v.kind]} lançada.`);
+        if (pending.length) {
+          try {
+            await fin.attachFiles(rows[0], pending);
+          } catch (e) {
+            toast.error(e);
+          }
+        }
       }
       onClose();
     } catch (e) {
@@ -294,6 +321,62 @@ export function EntryFormModal({
         <Field label="Observações" className="sm:col-span-2">
           <Textarea value={v.notes ?? ''} onChange={(e) => set('notes', e.target.value)} rows={2} />
         </Field>
+
+        <div className="sm:col-span-2">
+          <div className="label">Comprovantes e notas</div>
+          {(attachments.length > 0 || pending.length > 0) && (
+            <ul className="mb-2 divide-y divide-hairline rounded-[10px] border border-hairline">
+              {attachments.map((a) => (
+                <li key={a.id} className="flex items-center gap-2 px-3 py-2 text-[13px]">
+                  <FileText className="h-4 w-4 shrink-0 text-faint" />
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 truncate text-left text-ink hover:underline hover:decoration-stone-300 hover:underline-offset-4"
+                    onClick={() => fin.openAttachment(a).catch(toast.error)}
+                  >
+                    {a.name}
+                  </button>
+                  <span className="shrink-0 text-[12px] text-faint">{formatBytes(a.size)}</span>
+                  <IconButton
+                    label={`Remover ${a.name}`}
+                    size="xs"
+                    onClick={() => live && fin.removeAttachment(live, a).then(() => toast.success('Arquivo removido.')).catch(toast.error)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </IconButton>
+                </li>
+              ))}
+              {pending.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="flex items-center gap-2 px-3 py-2 text-[13px]">
+                  <FileText className="h-4 w-4 shrink-0 text-faint" />
+                  <span className="min-w-0 flex-1 truncate text-ink">{f.name}</span>
+                  <span className="shrink-0 text-[12px] text-faint">{formatBytes(f.size)} · enviado ao salvar</span>
+                  <IconButton label={`Remover ${f.name}`} size="xs" onClick={() => setPending((p) => p.filter((_, j) => j !== i))}>
+                    <X className="h-3.5 w-3.5" />
+                  </IconButton>
+                </li>
+              ))}
+            </ul>
+          )}
+          <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-accent-fg transition-colors hover:bg-ink/5">
+            {uploading ? <Spinner className="h-3.5 w-3.5" /> : <Paperclip className="h-3.5 w-3.5" />}
+            Anexar comprovante, boleto ou nota
+            <input
+              type="file"
+              multiple
+              accept={ATTACHMENT_ACCEPT}
+              className="sr-only"
+              aria-label="Anexar arquivo"
+              disabled={uploading}
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                e.target.value = '';
+                if (files.length) addFiles(files);
+              }}
+            />
+          </label>
+          <span className="ml-2 text-[12px] text-faint">PDF, imagem ou XML da NF-e, até 10 MB</span>
+        </div>
 
         {entry?.series_id && nextCount > 1 && (
           <Checkbox
