@@ -20,6 +20,7 @@ const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const FinancePage = lazy(() => import('./pages/FinancePage'));
+const FinanceReportPage = lazy(() => import('./pages/FinanceReportPage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -59,6 +60,8 @@ function AuthenticatedApp() {
   return (
     <Suspense fallback={<div className="flex justify-center py-24"><Spinner /></div>}>
       <Routes>
+        {/* Relatório para impressão: fora do layout (sem menu) */}
+        <Route path="financeiro/relatorio" element={<RequireModule module="financeiro"><FinanceReportPage /></RequireModule>} />
         <Route element={<AppLayout />}>
           <Route index element={<Home />} />
           <Route path="meu-painel" element={<HomePage />} />

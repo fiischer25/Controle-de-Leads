@@ -2,7 +2,8 @@ import { useCallback, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import { accountBalances, buildSeries, entryStatus, type EntryDraft, type EntryStatus, type RepeatMode } from '../../lib/finance';
 import type { Tone } from '../../lib/status';
-import type { FinanceAccount, FinanceAccountKind, FinanceCategory, FinanceEntry } from '../../lib/types';
+import { backend } from '../../lib/backend';
+import type { FinanceAccount, FinanceAccountKind, FinanceAttachment, FinanceCategory, FinanceEntry } from '../../lib/types';
 import { byPosition, nowIso, today, uid } from '../../lib/utils';
 
 export const ACCOUNT_KIND_LABEL: Record<FinanceAccountKind, string> = {
@@ -18,6 +19,27 @@ export const STATUS_STYLE: Record<EntryStatus, { label: string; tone: Tone }> = 
   pendente: { label: 'Pendente', tone: 'neutral' },
   vencido: { label: 'Vencido', tone: 'danger' },
 };
+
+/** Bucket privado dos comprovantes (migração 20261007). */
+export const DOCS_BUCKET = 'finance-docs';
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+export const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.heic,.xml,application/pdf,image/*,text/xml,application/xml';
+
+function safeName(name: string) {
+  const clean = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(-80);
+  return clean || 'arquivo';
+}
+
+export function formatBytes(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
 
 /** Campos que "aplicar às próximas parcelas" copia para o restante da série. */
 const SERIES_FIELDS = ['description', 'amount', 'category_id', 'account_id', 'to_account_id', 'client_id', 'project_id', 'document', 'notes'] as const;
@@ -72,11 +94,55 @@ export function useFinance() {
 
   const deleteEntry = useCallback(
     async (entry: FinanceEntry, withNext = false) => {
-      const ids = withNext ? nextInSeries(entry).map((x) => x.id) : [entry.id];
-      await removeRows('finance_entries', ids);
+      const targets = withNext ? nextInSeries(entry) : [entry];
+      await removeRows('finance_entries', targets.map((x) => x.id));
+      // Comprovantes vão junto (falha aqui não desfaz a exclusão)
+      const paths = targets.flatMap((x) => (x.attachments ?? []).map((a) => a.path));
+      if (paths.length) await backend.removeFiles(DOCS_BUCKET, paths).catch(() => undefined);
     },
     [removeRows, nextInSeries],
   );
+
+  /** Envia arquivos e os anexa ao lançamento. */
+  const attachFiles = useCallback(
+    async (entry: FinanceEntry, files: File[]) => {
+      const tooBig = files.find((f) => f.size > MAX_ATTACHMENT_BYTES);
+      if (tooBig) throw new Error(`"${tooBig.name}" tem mais de 10 MB.`);
+      const added: FinanceAttachment[] = [];
+      for (const f of files) {
+        const path = `${entry.id}/${uid()}-${safeName(f.name)}`;
+        await backend.uploadFile(DOCS_BUCKET, path, f);
+        added.push({ id: uid(), name: f.name, path, size: f.size, type: f.type, uploaded_at: nowIso() });
+      }
+      const current = db.finance_entries.find((x) => x.id === entry.id)?.attachments ?? entry.attachments ?? [];
+      await patch('finance_entries', entry.id, { attachments: [...current, ...added], updated_at: nowIso() });
+      return added;
+    },
+    [db.finance_entries, patch],
+  );
+
+  const removeAttachment = useCallback(
+    async (entry: FinanceEntry, att: FinanceAttachment) => {
+      const current = db.finance_entries.find((x) => x.id === entry.id)?.attachments ?? entry.attachments ?? [];
+      await patch('finance_entries', entry.id, { attachments: current.filter((a) => a.id !== att.id), updated_at: nowIso() });
+      await backend.removeFiles(DOCS_BUCKET, [att.path]).catch(() => undefined);
+    },
+    [db.finance_entries, patch],
+  );
+
+  /** Abre o comprovante em nova aba (link temporário). */
+  const openAttachment = useCallback(async (att: FinanceAttachment) => {
+    // A aba abre já no clique para o navegador não bloquear como pop-up
+    const tab = window.open('', '_blank');
+    try {
+      const url = await backend.fileUrl(DOCS_BUCKET, att.path);
+      if (tab) tab.location.href = url;
+      else window.location.href = url;
+    } catch (e) {
+      tab?.close();
+      throw e;
+    }
+  }, []);
 
   const setPaid = useCallback(
     async (entry: FinanceEntry, paidAt: string | null, accountId?: string | null) => {
@@ -130,6 +196,9 @@ export function useFinance() {
     insertEntries: (rows: FinanceEntry[]) => insertRows('finance_entries', rows),
     updateEntry,
     deleteEntry,
+    attachFiles,
+    removeAttachment,
+    openAttachment,
     nextInSeries,
     setPaid,
     saveAccount,

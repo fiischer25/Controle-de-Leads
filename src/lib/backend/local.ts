@@ -235,6 +235,34 @@ export class LocalBackend implements Backend {
     return null;
   }
 
+  // Arquivos no modo demonstração: guardados no próprio navegador (limite pequeno).
+  async uploadFile(bucket: string, path: string, file: File) {
+    if (file.size > 1_500_000) throw new Error('No modo demonstração, anexe arquivos de até 1,5 MB.');
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+      reader.readAsDataURL(file);
+    });
+    try {
+      localStorage.setItem(`${PREFIX}file:${bucket}/${path}`, dataUrl);
+    } catch {
+      throw new Error('Sem espaço no navegador para guardar este arquivo (modo demonstração).');
+    }
+  }
+
+  async fileUrl(bucket: string, path: string) {
+    const dataUrl = localStorage.getItem(`${PREFIX}file:${bucket}/${path}`);
+    if (!dataUrl) throw new Error('Arquivo não encontrado.');
+    // Navegadores bloqueiam abrir "data:" em nova aba; um blob funciona.
+    const blob = await (await fetch(dataUrl)).blob();
+    return URL.createObjectURL(blob);
+  }
+
+  async removeFiles(bucket: string, paths: string[]) {
+    for (const p of paths) localStorage.removeItem(`${PREFIX}file:${bucket}/${p}`);
+  }
+
   subscribe(cb: (table: TableName) => void) {
     const onMessage = (e: MessageEvent) => cb(e.data.table as TableName);
     this.channel?.addEventListener('message', onMessage);

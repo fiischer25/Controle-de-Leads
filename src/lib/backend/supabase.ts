@@ -15,6 +15,9 @@ function translateError(message: string): string {
   if (/failed to send a request to the edge function|requested function was not found/i.test(message)) {
     return 'Não foi possível falar com a função do servidor. Confira no Supabase, em Edge Functions, se ela foi publicada com o nome exato indicado no guia.';
   }
+  if (/bank_ref|attachments/i.test(message) && /column|schema cache/i.test(message)) {
+    return 'O banco ainda não tem a importação de extrato e os comprovantes. No Supabase, abra o SQL Editor e execute a migração 20261007000000_finance_import_files.sql.';
+  }
   if (/wa_alerts/i.test(message) && /column|schema cache/i.test(message)) {
     return 'O banco ainda não tem o resumo diário do WhatsApp. No Supabase, abra o SQL Editor e execute a migração 20261005000000_whatsapp_alerts.sql.';
   }
@@ -200,6 +203,28 @@ export class SupabaseBackend implements Backend {
       throw new Error(translateError(message));
     }
     return data;
+  }
+
+  async uploadFile(bucket: string, path: string, file: File) {
+    const { error } = await this.client.storage.from(bucket).upload(path, file, { contentType: file.type || undefined, upsert: false });
+    if (error) {
+      if (/bucket not found/i.test(error.message)) {
+        throw new Error('O armazenamento de comprovantes ainda não foi criado. No Supabase, execute a migração 20261007000000_finance_import_files.sql.');
+      }
+      fail(error);
+    }
+  }
+
+  async fileUrl(bucket: string, path: string) {
+    const { data, error } = await this.client.storage.from(bucket).createSignedUrl(path, 300);
+    fail(error);
+    return data!.signedUrl;
+  }
+
+  async removeFiles(bucket: string, paths: string[]) {
+    if (paths.length === 0) return;
+    const { error } = await this.client.storage.from(bucket).remove(paths);
+    fail(error);
   }
 
   subscribe(cb: (table: TableName) => void) {

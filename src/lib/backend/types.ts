@@ -60,6 +60,12 @@ export interface Backend {
   /** Chama uma Edge Function (somente Supabase). No modo local não faz nada. */
   invokeFunction(name: string, body: Record<string, unknown>): Promise<unknown>;
 
+  // Arquivos (comprovantes do Financeiro). Supabase: bucket privado; local: no navegador.
+  uploadFile(bucket: string, path: string, file: File): Promise<void>;
+  /** Link temporário para abrir/baixar o arquivo. */
+  fileUrl(bucket: string, path: string): Promise<string>;
+  removeFiles(bucket: string, paths: string[]): Promise<void>;
+
   /** Notifica quando outra sessão/usuário altera uma tabela. */
   subscribe(cb: (table: TableName) => void): () => void;
 }

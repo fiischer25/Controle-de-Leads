@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Upload } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { SWATCHES } from '../../lib/constants';
@@ -10,7 +10,7 @@ import { MoneyInput } from './MoneyInput';
 import { ACCOUNT_KIND_LABEL, useFinance } from './useFinance';
 
 /** Contas do escritório (banco, caixa, cartão…) com o saldo de cada uma. */
-export function FinanceAccounts() {
+export function FinanceAccounts({ onImport }: { onImport: (accountId?: string) => void }) {
   const fin = useFinance();
   const { db } = useData();
   const [editing, setEditing] = useState<FinanceAccount | 'new' | null>(null);
@@ -22,9 +22,14 @@ export function FinanceAccounts() {
         <p className="text-[13px] text-muted">
           Saldo = saldo inicial + recebimentos − pagamentos ± transferências. No cartão de crédito, o saldo negativo é a fatura em aberto.
         </p>
-        <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setEditing('new')} className="shrink-0">
-          Conta
-        </Button>
+        <span className="flex shrink-0 items-center gap-2">
+          <Button variant="ghost" icon={<Upload className="h-4 w-4" strokeWidth={1.6} />} onClick={() => onImport()}>
+            Importar extrato
+          </Button>
+          <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setEditing('new')}>
+            Conta
+          </Button>
+        </span>
       </div>
       <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {fin.accounts.map((a) => {

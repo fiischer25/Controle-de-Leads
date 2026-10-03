@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Check } from 'lucide-react';
+import { ArrowLeftRight, Check, Paperclip } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import type { FinanceEntry } from '../../lib/types';
@@ -70,6 +70,9 @@ export function EntryList({
                 <span className="flex min-w-0 items-center gap-1.5 text-[13.5px] text-ink">
                   {transfer && <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-faint" />}
                   <span className="truncate group-hover:underline group-hover:decoration-stone-300 group-hover:underline-offset-4">{e.description}</span>
+                  {(e.attachments?.length ?? 0) > 0 && (
+                    <Paperclip className="h-3.5 w-3.5 shrink-0 text-faint" aria-label={`${e.attachments!.length} anexo(s)`} />
+                  )}
                 </span>
                 <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-faint">
                   {category && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} aria-hidden />}

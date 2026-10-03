@@ -293,6 +293,17 @@ export interface FinanceCategory {
   created_at: string;
 }
 
+/** Comprovante, boleto ou nota anexados a um lançamento (arquivo no Storage). */
+export interface FinanceAttachment {
+  id: string;
+  name: string;
+  /** Caminho no bucket finance-docs. */
+  path: string;
+  size: number;
+  type: string;
+  uploaded_at: string;
+}
+
 /** Lançamento: conta a receber, conta a pagar ou transferência entre contas. */
 export interface FinanceEntry {
   id: string;
@@ -314,6 +325,10 @@ export interface FinanceEntry {
   installments: number | null;
   document: string | null;
   notes: string | null;
+  /** Identificador da transação no extrato importado (evita importar duas vezes). Migração 20261007. */
+  bank_ref?: string | null;
+  /** Comprovantes e notas. Migração 20261007. */
+  attachments?: FinanceAttachment[];
   created_by: string | null;
   created_at: string;
   updated_at: string;
