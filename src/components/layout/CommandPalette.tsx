@@ -15,7 +15,7 @@ interface Result {
 }
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
-  const { db, maps, me, can } = useData();
+  const { db, maps, me, can, isAdmin } = useData();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
@@ -27,7 +27,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     const q = query.trim();
     if (!q) {
       const go: Array<Result | false> = [
-        { id: 'go-home', group: 'Ir para', icon: <LayoutGrid className="h-4 w-4" />, title: 'Painel de projetos', to: '/' },
+        isAdmin && { id: 'go-office', group: 'Ir para', icon: <LayoutGrid className="h-4 w-4" />, title: 'Dashboard do escritório', to: '/' },
+        { id: 'go-home', group: 'Ir para', icon: <LayoutGrid className="h-4 w-4" />, title: 'Meu painel', to: isAdmin ? '/meu-painel' : '/' },
         can('projetos') && { id: 'go-projects', group: 'Ir para', icon: <Briefcase className="h-4 w-4" />, title: 'Projetos', to: '/projetos' },
         { id: 'go-tasks', group: 'Ir para', icon: <ListChecks className="h-4 w-4" />, title: 'Minhas tarefas', to: '/tarefas' },
         { id: 'go-agenda', group: 'Ir para', icon: <CalendarDays className="h-4 w-4" />, title: 'Agenda', to: '/?aba=agenda' },
@@ -69,7 +70,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         }),
       );
     return out;
-  }, [query, db, maps, me.id, can]);
+  }, [query, db, maps, me.id, can, isAdmin]);
 
   useEffect(() => setActive(0), [query]);
 

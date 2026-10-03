@@ -10,7 +10,8 @@ import { Spinner } from './components/ui';
 import { LoginPage, SetupPage } from './pages/LoginPage';
 import type { ModuleKey } from './lib/types';
 
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const OfficeDashboardPage = lazy(() => import('./pages/OfficeDashboardPage'));
 const LeadsPage = lazy(() => import('./pages/LeadsPage'));
 const ClientsPage = lazy(() => import('./pages/ClientsPage'));
 const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'));
@@ -37,7 +38,13 @@ function RequireModule({ module, children }: { module: ModuleKey; children: JSX.
   return can(module) ? children : <Navigate to="/" replace />;
 }
 
-/** A agenda agora fica no Painel de Projetos; links antigos continuam funcionando. */
+/** Tela inicial: o administrador abre o dashboard do escritório; os demais, o próprio painel. */
+function Home() {
+  const { isAdmin } = useData();
+  return isAdmin ? <OfficeDashboardPage /> : <HomePage />;
+}
+
+/** A agenda fica na tela inicial; links antigos continuam funcionando. */
 function AgendaRedirect() {
   const { search } = useLocation();
   const params = new URLSearchParams(search);
@@ -52,7 +59,8 @@ function AuthenticatedApp() {
     <Suspense fallback={<div className="flex justify-center py-24"><Spinner /></div>}>
       <Routes>
         <Route element={<AppLayout />}>
-          <Route index element={<DashboardPage />} />
+          <Route index element={<Home />} />
+          <Route path="meu-painel" element={<HomePage />} />
           <Route path="projetos" element={<RequireModule module="projetos"><ProjectsPage /></RequireModule>} />
           <Route path="projetos/:id" element={<RequireModule module="projetos"><ProjectDetailPage /></RequireModule>} />
           <Route path="tarefas" element={<TasksPage />} />

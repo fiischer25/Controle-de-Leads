@@ -5,10 +5,10 @@ import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { backend } from '../lib/backend';
 import { maskPhone, toCalendarEmbedUrl } from '../lib/utils';
-import { Avatar, Button, Card, CardHeader, Field, Input, PageHeader, Segmented, Textarea } from '../components/ui';
+import { Avatar, Button, Card, CardHeader, Checkbox, Field, Input, PageHeader, Segmented, Textarea } from '../components/ui';
 
 export default function ProfilePage() {
-  const { me, patch } = useData();
+  const { me, patch, settings } = useData();
   const toast = useToast();
   const [v, setV] = useState({
     name: me.name,
@@ -16,6 +16,7 @@ export default function ProfilePage() {
     job_title: me.job_title ?? '',
     color: me.color,
     calendar: me.calendar_embed_url ?? '',
+    waAlerts: me.wa_alerts !== false,
   });
   const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' });
   const [busy, setBusy] = useState(false);
@@ -33,6 +34,8 @@ export default function ProfilePage() {
         job_title: v.job_title || null,
         color: v.color,
         calendar_embed_url: v.calendar.trim() || null,
+        // Só envia se mudou: funciona mesmo antes da migração do resumo diário.
+        ...(v.waAlerts !== (me.wa_alerts !== false) ? { wa_alerts: v.waAlerts } : {}),
       });
       toast.success('Perfil atualizado.');
     } catch (e) {
@@ -88,6 +91,14 @@ export default function ProfilePage() {
               <Field label="Telefone / WhatsApp" hint="Com ele você fala com o assistente pelo WhatsApp.">
                 <Input value={v.phone} onChange={(e) => setV({ ...v, phone: maskPhone(e.target.value) })} />
               </Field>
+              {settings.wa_alerts_enabled && (
+                <Checkbox
+                  className="sm:col-span-2"
+                  checked={v.waAlerts}
+                  onChange={(on) => setV({ ...v, waAlerts: on })}
+                  label={`Receber o resumo diário no WhatsApp (às ${String(settings.wa_alerts_hour ?? 8).padStart(2, '0')}h, só quando houver algo a avisar)`}
+                />
+              )}
               <Field
                 label="Minha agenda do Google (opcional)"
                 className="sm:col-span-2"

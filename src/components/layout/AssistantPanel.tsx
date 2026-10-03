@@ -111,7 +111,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
         {!available && (
           <div className="rounded-xl border border-dashed border-line p-5 text-sm leading-relaxed text-stone-500">
             O assistente roda no servidor e fica disponível quando o sistema estiver conectado ao Supabase, com a chave da
-            Anthropic configurada. Veja <b>Configurações → WhatsApp e assistente</b>.
+            Anthropic configurada. Veja <b>Configurações → Assistente</b>.
           </div>
         )}
         {available && messages.length === 0 && (

@@ -148,6 +148,12 @@ export function defaultSettings(): AppSettings {
     due_soon_days: 7,
     lead_stale_days: 7,
     project_code_prefix: 'AIR',
+    wa_alerts_enabled: false,
+    wa_alerts_hour: 8,
+    wa_alerts_tasks: true,
+    wa_alerts_projects: true,
+    wa_alerts_leads: true,
+    wa_alerts_weekends: false,
     updated_at: nowIso(),
   };
 }

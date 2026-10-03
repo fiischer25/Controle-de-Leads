@@ -31,8 +31,9 @@ const KIND_META: Record<Kind, { label: string; one: string }> = {
   lead: { label: 'Retornos de leads', one: 'Retorno de lead' },
 };
 
-/** Agenda do escritório (calendário do sistema + Google Agenda). Fica dentro do Painel de Projetos. */
-export function AgendaView() {
+/** Agenda do escritório (calendário do sistema + Google Agenda). Fica nas telas iniciais (Meu painel e dashboard do escritório). */
+/** `mine`: começa mostrando só a agenda de quem está usando (painel pessoal). */
+export function AgendaView({ mine = false }: { mine?: boolean } = {}) {
   const { db, maps, me, can } = useData();
   const navigate = useNavigate();
   const canProjects = can('projetos');
@@ -43,7 +44,7 @@ export function AgendaView() {
     const d = new Date();
     return { y: d.getFullYear(), m: d.getMonth() };
   });
-  const [person, setPerson] = useState<string>('all');
+  const [person, setPerson] = useState<string>(mine ? me.id : 'all');
   const [kinds, setKinds] = useState<Record<Kind, boolean>>({ meeting: true, delivery: true, start: true, task: true, lead: true });
   const [params, setParams] = useSearchParams();
   const [editing, setEditing] = useState<CalendarEvent | null>(null);

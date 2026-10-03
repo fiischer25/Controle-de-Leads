@@ -18,7 +18,7 @@ const EXAMPLES = [
   'remarca a reunião com o Rodrigo para quinta às 10h',
 ];
 
-function CopyField({ label, value }: { label: string; value: string }) {
+export function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div>
@@ -43,7 +43,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+export function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
     <li className="flex gap-4">
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-[11px] font-medium text-stone-500">{n}</span>

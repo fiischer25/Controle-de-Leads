@@ -12,7 +12,7 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   desativa quem sai do escritório. Cada membro pode editar o próprio perfil e trocar a senha.
 - **Acessos por módulo:** no cadastro do membro, o administrador marca o que ele pode ver e usar:
   *Projetos e tarefas* (lista e detalhe dos projetos, tarefas da equipe), *Oportunidades e clientes*,
-  *Relatórios*, *Equipe* e *Configurações*. O **Painel de projetos** (com a agenda) e as tarefas da
+  *Relatórios*, *Equipe* e *Configurações*. O **Meu painel** (com a agenda) e as tarefas da
   própria pessoa ficam sempre disponíveis. Administradores têm acesso a tudo; exclusões críticas e
   o backup continuam exclusivos deles. O banco aplica as mesmas regras (RLS), e o assistente também.
 
@@ -44,16 +44,30 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   aparece em “Minhas tarefas” da pessoa e gera notificação.
 - “Minhas tarefas” agrupa atrasadas, hoje, próximos 7 dias…; também em quadro kanban.
 
-**Painel de projetos (primeira tela, para toda a equipe)**
-- Andamento de todos os projetos: em andamento, prazos vencidos e a vencer, tarefas atrasadas,
-  percentual de tarefas concluídas e horas da semana; projetos com o trilho de etapas.
-- Gráficos: projetos por etapa, tarefas dos projetos por status e entregas previstas por mês.
-- Hoje e próximos dias, carga da equipe na semana e a aba **Agenda** (calendário do escritório).
+**Telas iniciais**
+- **Meu painel** (tela inicial de cada pessoa): minhas tarefas atrasadas, de hoje e dos próximos 7 dias,
+  meus projetos com prazos (vencidos e a vencer), retornos de leads, minhas horas na semana e a
+  minha agenda (hoje, próximos dias e o calendário filtrado em mim).
+- **Dashboard do escritório** (só administradores, tela inicial deles): andamento de todos os
+  projetos, gráficos por etapa, tarefas por status e entregas previstas, comercial (funil com valores,
+  retornos pendentes da equipe, novos leads, conversão, leads parados), carga da equipe e a agenda
+  do escritório. O administrador também tem o próprio **Meu painel** no menu.
 - **Pede sua atenção** (em *Minhas tarefas*): fila única com o que está atrasado, vence hoje ou pede
-  ação nesta semana (tarefas, retornos de leads, prazos de projeto, leads parados e oportunidades
-  fechadas aguardando cadastro), com ação direta em cada linha.
+  ação nesta semana, com ação direta em cada linha.
 - No celular: navegação inferior com botão **+** (tarefa, reunião, projeto, oportunidade, lançar
   horas) e arrastar a linha para a esquerda para **Adiar** ou **Concluir**.
+
+**Resumo diário no WhatsApp**
+- No horário escolhido (Configurações → **Resumo diário**), cada pessoa com telefone recebe uma
+  mensagem só quando há algo a avisar: tarefas atrasadas, que vencem hoje e amanhã, prazos dos
+  projetos em que está e retornos de leads do dia. Administradores recebem também os números do
+  escritório. Cada pessoa pode desligar em **Meu perfil**.
+- Quem falou com o número nas últimas 24 horas recebe a lista completa; os demais recebem o modelo
+  aprovado pela Meta com o resumo em uma linha (regra do WhatsApp Business) e podem responder pedindo
+  os detalhes ao assistente.
+- Publicação: migração `20261005000000_whatsapp_alerts.sql`, modelo `resumo_diario` na Meta, segredo
+  `ALERTS_CRON_SECRET`, função `whatsapp-alerts` (arquivo único) e um agendamento de hora em hora em
+  *Integrations → Cron*. O passo a passo está na própria tela de configurações.
 
 **Assistente no WhatsApp (e dentro do sistema)**
 - A equipe conversa com o número do escritório no WhatsApp — ou pelo botão **Assistente** no topo — em
@@ -70,7 +84,7 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Logo do escritório em **Configurações → Escritório e logo**: substitui o nome no menu, no login e na aba.
 
 **Mais**
-- Agenda mensal (no Painel) com reuniões, entregas, inícios, prazos de tarefas e retornos de leads
+- Agenda mensal (na tela inicial) com reuniões, entregas, inícios, prazos de tarefas e retornos de leads
   + Google Agenda.
 - Relatórios: conversão por origem, motivos de perda, tempo médio de fechamento, entregas no
   prazo, horas por pessoa/projeto/tipo, horas por m² e exportação de horas (timesheet).
@@ -100,9 +114,10 @@ Para uso real pela equipe, configure o Supabase.
 2. **Banco de dados:** abra *SQL Editor* e execute, nesta ordem, o conteúdo de
    `supabase/migrations/20260929000000_airos_schema.sql`,
    `supabase/migrations/20260930000000_meetings_logo_agent.sql` e
-   `supabase/migrations/20261004000000_module_permissions.sql`
-   (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só o arquivo novo
-   (pode rodar mais de uma vez sem problema) e depois publica de novo a função `admin-users`.
+   `supabase/migrations/20261004000000_module_permissions.sql` e
+   `supabase/migrations/20261005000000_whatsapp_alerts.sql`
+   (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
+   (podem rodar mais de uma vez sem problema).
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):
    ```bash
    npx supabase login
@@ -122,7 +137,7 @@ Para uso real pela equipe, configure o Supabase.
    **Equipe → Novo membro** e revise **Configurações → Tipos de projeto e tarefas**.
 
 ### Assistente no WhatsApp
-O passo a passo completo está no próprio sistema, em **Configurações → WhatsApp e assistente**. Resumo:
+O passo a passo completo está no próprio sistema, em **Configurações → Assistente**. Resumo:
 
 1. Crie uma chave em [console.anthropic.com](https://console.anthropic.com/settings/keys).
 2. No [Meta for Developers](https://developers.facebook.com/apps), crie um app *Business* com o produto

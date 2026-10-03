@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { WhatsAppSettings } from './settings/WhatsAppSettings';
+import { DailyAlertsSettings } from './settings/DailyAlertsSettings';
 import { useData } from '../context/DataContext';
 import { stageColor } from '../lib/status';
 import { useToast } from '../context/ToastContext';
@@ -21,7 +22,7 @@ import { TABLES } from '../lib/types';
 import { byPosition, cn, downloadFile, nowIso, toCalendarEmbedUrl, today, uid } from '../lib/utils';
 import { Badge, Button, Card, CardHeader, Checkbox, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, Select, Tabs, Textarea } from '../components/ui';
 
-type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'whatsapp' | 'dados';
+type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'whatsapp' | 'avisos' | 'dados';
 
 export default function SettingsPage() {
   const [params, setParams] = useSearchParams();
@@ -42,7 +43,8 @@ export default function SettingsPage() {
           { id: 'funil', label: 'Etapas do funil' },
           { id: 'origens', label: 'Origens de leads' },
           { id: 'agenda', label: 'Google Agenda' },
-          { id: 'whatsapp', label: 'WhatsApp e assistente' },
+          { id: 'whatsapp', label: 'Assistente' },
+          { id: 'avisos', label: 'Resumo diário' },
           ...(isAdmin ? [{ id: 'dados' as const, label: 'Backup' }] : []),
         ]}
       />
@@ -52,6 +54,7 @@ export default function SettingsPage() {
       {tab === 'agenda' && <CalendarSettings />}
       {tab === 'escritorio' && <OfficeSettings />}
       {tab === 'whatsapp' && <WhatsAppSettings />}
+      {tab === 'avisos' && <DailyAlertsSettings />}
       {tab === 'dados' && <DataSettings />}
     </div>
   );
