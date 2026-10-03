@@ -19,6 +19,7 @@ import {
   type Client,
   type InteractionType,
   type Lead,
+  type ModuleKey,
   type Profile,
   type Project,
   type TableName,
@@ -27,6 +28,7 @@ import {
   type TimeEntry,
 } from '../lib/types';
 import { byPosition, nowIso, uid } from '../lib/utils';
+import { canAccess } from '../lib/permissions';
 import { useToast } from './ToastContext';
 
 export type Db = { [K in TableName]: Tables[K][] };
@@ -135,6 +137,8 @@ interface DataApi {
 
   // Equipe
   createUser(input: NewUserInput): Promise<void>;
+  /** O usuário atual pode ver/usar este módulo? (administradores: sempre) */
+  can(module: ModuleKey): boolean;
   updateUser(id: string, patch: Partial<Profile>, auth?: { email?: string; password?: string }): Promise<void>;
 }
 
@@ -214,25 +218,43 @@ export function DataProvider({ userId, children }: { userId: string; children: R
     () =>
       db.profiles.find((p) => p.id === userId) ?? {
         id: userId, name: 'Usuário', email: '', role: 'member', job_title: null, phone: null,
-        color: '#57534e', active: true, calendar_embed_url: null, created_at: nowIso(),
+        color: '#57534e', active: true, calendar_embed_url: null, permissions: null, created_at: nowIso(),
       },
     [db.profiles, userId],
   );
   const isAdmin = me.role === 'admin';
+  const can = useCallback((module: ModuleKey) => canAccess(me, module), [me]);
   const settings = db.app_settings[0] ?? defaultSettings();
+
+  // O que a tela mostra segue os módulos da pessoa (no Supabase o banco já filtra pelo RLS;
+  // no modo demonstração o filtro é só este).
+  const canCommercial = can('comercial');
+  const canClients = canCommercial || can('projetos');
+  const visibleDb = useMemo<Db>(
+    () =>
+      canCommercial && canClients
+        ? db
+        : {
+            ...db,
+            leads: canCommercial ? db.leads : [],
+            lead_interactions: canCommercial ? db.lead_interactions : [],
+            clients: canClients ? db.clients : [],
+          },
+    [db, canCommercial, canClients],
+  );
 
   const maps = useMemo(
     () => ({
-      profiles: index(db.profiles),
-      stages: index(db.lead_stages),
-      sources: index(db.lead_sources),
-      types: index(db.project_types),
-      clients: index(db.clients),
-      projects: index(db.projects),
-      leads: index(db.leads),
-      tasks: index(db.tasks),
+      profiles: index(visibleDb.profiles),
+      stages: index(visibleDb.lead_stages),
+      sources: index(visibleDb.lead_sources),
+      types: index(visibleDb.project_types),
+      clients: index(visibleDb.clients),
+      projects: index(visibleDb.projects),
+      leads: index(visibleDb.leads),
+      tasks: index(visibleDb.tasks),
     }),
-    [db.profiles, db.lead_stages, db.lead_sources, db.project_types, db.clients, db.projects, db.leads, db.tasks],
+    [visibleDb],
   );
 
   const runningEntry = useMemo(
@@ -703,7 +725,9 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   // ------------------------------------------------------------------ equipe
   const createUser = useCallback(
     async (input: NewUserInput) => {
-      await backend.createUser(input);
+      const profile = await backend.createUser(input);
+      // A Edge Function pode ser de uma versão anterior aos acessos por módulo: garante aqui.
+      if (input.role !== 'admin' && input.permissions) await backend.update('profiles', profile.id, { permissions: input.permissions });
       await loadTable('profiles');
       await log('user', null, 'created', `cadastrou o membro ${input.name}`);
     },
@@ -732,14 +756,14 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   );
 
   const api: DataApi = {
-    db, loading, me, isAdmin, settings, maps, refresh,
+    db: visibleDb, loading, me, isAdmin, settings, maps, refresh,
     insertRows, patch, removeRows, log, notify,
     createLead, updateLead, moveLead, deleteLead, addInteraction, convertLead,
     createClient: (input) => createClient(input), updateClient, deleteClient,
     createProject, updateProject, deleteProject, applyTemplates,
     createTask, updateTask, deleteTask, addComment, startTimer, stopTimer, addTimeEntry, deleteTimeEntry, runningEntry,
     createEvent, updateEvent, deleteEvent,
-    markNotificationsRead, createUser, updateUser,
+    markNotificationsRead, createUser, updateUser, can,
   };
 
   return <DataContext.Provider value={api}>{children}</DataContext.Provider>;

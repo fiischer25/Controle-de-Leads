@@ -4,7 +4,7 @@
 import type Anthropic from 'npm:@anthropic-ai/sdk@0.129.0';
 import type { Store } from './store.ts';
 import { addDaysKey, formatBr, todayIn, weekdayName, isoToZoned } from './time.ts';
-import { executeTool, TOOLS, type Profile, type ToolContext } from './tools.ts';
+import { executeTool, hasModule, toolsFor, type Profile, type ToolContext } from './tools.ts';
 
 export const MODEL = 'claude-opus-5-5';
 
@@ -42,7 +42,7 @@ export async function buildContext(store: Store, me: Profile, tz: string, now: D
   const [team, projects, clients] = await Promise.all([
     store.list<Profile>('profiles'),
     store.list<{ id: string; code: string; name: string; client_id: string; status: string }>('projects'),
-    store.list<{ id: string; name: string }>('clients'),
+    hasModule(me, 'comercial') || hasModule(me, 'projetos') ? store.list<{ id: string; name: string }>('clients') : Promise.resolve([]),
   ]);
   const active = projects.filter((p) => ['nao_iniciado', 'em_andamento', 'pausado'].includes(p.status));
   const time = isoToZoned(now.toISOString(), tz).time;
@@ -50,6 +50,8 @@ export async function buildContext(store: Store, me: Profile, tz: string, now: D
     '<contexto>',
     `Hoje: ${weekdayName(today)}, ${formatBr(today)} (${today}), ${time} — fuso ${tz}. Amanhã: ${addDaysKey(today, 1)}.`,
     `Quem está falando: ${me.name} (id ${me.id}${me.role === 'admin' ? ', administrador' : ''}${me.job_title ? `, ${me.job_title}` : ''}).`,
+    ...(hasModule(me, 'projetos') ? [] : ['Esta pessoa vê e altera apenas as próprias tarefas (sem acesso às tarefas da equipe).']),
+    ...(hasModule(me, 'comercial') ? [] : ['Esta pessoa não tem acesso a oportunidades e clientes: não ofereça cadastrar ou consultar leads.']),
     'Equipe (id · nome · cargo):',
     ...team.filter((p) => p.active).map((p) => `- ${p.id} · ${p.name}${p.job_title ? ` · ${p.job_title}` : ''}`),
     'Projetos ativos (id · código · nome · cliente):',
@@ -116,7 +118,7 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
       fallbacks: 'default',
       output_config: { effort: opts.effort ?? 'low' },
       system: [{ type: 'text', text: systemPrompt(opts.officeName), cache_control: { type: 'ephemeral' } }],
-      tools: TOOLS,
+      tools: toolsFor(ctx.me),
       messages,
     });
 

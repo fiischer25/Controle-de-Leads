@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, ChevronDown, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
@@ -11,16 +12,62 @@ import { ActionLink, Avatar, Button, DueBadge, EmptyState, FilterPick, PageHeade
 import { TaskRow } from '../components/tasks/TaskRow';
 import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { useOpenTask } from '../components/tasks/useOpenTask';
+import { AttentionPanel } from '../components/dashboard/AttentionPanel';
+import { useHomeData } from '../components/dashboard/useHomeData';
 
 type Scope = 'assigned' | 'delegated';
 type View = 'list' | 'board';
+type PageTab = 'tarefas' | 'atencao';
 
+/** Minhas tarefas, com a aba "Pede sua atenção" (fila que antes ficava no Início). */
 export default function TasksPage() {
-  const { db, me, maps } = useData();
+  const [params, setParams] = useSearchParams();
+  const { items } = useHomeData();
+  const tab: PageTab = params.get('aba') === 'atencao' ? 'atencao' : 'tarefas';
+  const tabs = (
+    <Tabs<PageTab>
+      tabs={[
+        { id: 'tarefas', label: 'Tarefas' },
+        { id: 'atencao', label: 'Pede sua atenção', count: items.length },
+      ]}
+      value={tab}
+      onChange={(t) =>
+        setParams(
+          (p) => {
+            const next = new URLSearchParams(p);
+            if (t === 'atencao') next.set('aba', 'atencao');
+            else next.delete('aba');
+            return next;
+          },
+          { replace: true },
+        )
+      }
+      underline={1}
+      className="mb-6 border-hairline md:mb-8"
+    />
+  );
+  if (tab === 'tarefas') return <TaskList tabs={tabs} />;
+  return (
+    <div>
+      <PageHeader
+        title="Pede sua atenção"
+        description={items.length ? `${items.length} ${items.length === 1 ? 'item atrasado, para hoje ou desta semana' : 'itens atrasados, para hoje ou desta semana'}` : 'Tudo em dia.'}
+      />
+      {tabs}
+      <AttentionPanel items={items} />
+    </div>
+  );
+}
+
+function TaskList({ tabs }: { tabs: ReactNode }) {
+  const { db, me, maps, can } = useData();
+  // Sem o módulo Projetos, a pessoa vê apenas as próprias tarefas.
+  const teamView = can('projetos');
   const openTask = useOpenTask();
   const [scope, setScope] = useState<Scope>('assigned');
   const [view, setView] = useState<View>('list');
-  const [person, setPerson] = useState<string>(me.id);
+  const [personPick, setPerson] = useState<string>(me.id);
+  const person = teamView ? personPick : me.id;
   const [query, setQuery] = useState('');
   const [project, setProject] = useState('');
   const [creating, setCreating] = useState(false);
@@ -124,11 +171,13 @@ export default function TasksPage() {
         }
       />
 
+      {tabs}
+
       <Toolbar
         search={<SearchField value={query} onChange={setQuery} placeholder="Buscar tarefa ou projeto…" label="Buscar tarefas" />}
         filters={
           <>
-            {scope === 'assigned' && (
+            {scope === 'assigned' && teamView && (
               <FilterPick
                 label="Pessoa"
                 allLabel="Toda a equipe"

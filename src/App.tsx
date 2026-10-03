@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider, useData } from './context/DataContext';
 import { ToastProvider } from './context/ToastContext';
@@ -8,6 +8,7 @@ import { BrandMark } from './components/layout/Logo';
 import { BrandingProvider } from './context/BrandingContext';
 import { Spinner } from './components/ui';
 import { LoginPage, SetupPage } from './pages/LoginPage';
+import type { ModuleKey } from './lib/types';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const LeadsPage = lazy(() => import('./pages/LeadsPage'));
@@ -16,7 +17,6 @@ const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
-const AgendaPage = lazy(() => import('./pages/AgendaPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -31,9 +31,18 @@ function FullScreenLoader() {
   );
 }
 
-function AdminOnly({ children }: { children: JSX.Element }) {
-  const { isAdmin } = useData();
-  return isAdmin ? children : <Navigate to="/" replace />;
+/** Telas de um módulo: quem não tem o acesso volta para o Painel. */
+function RequireModule({ module, children }: { module: ModuleKey; children: JSX.Element }) {
+  const { can } = useData();
+  return can(module) ? children : <Navigate to="/" replace />;
+}
+
+/** A agenda agora fica no Painel de Projetos; links antigos continuam funcionando. */
+function AgendaRedirect() {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  params.set('aba', 'agenda');
+  return <Navigate to={`/?${params.toString()}`} replace />;
 }
 
 function AuthenticatedApp() {
@@ -44,16 +53,16 @@ function AuthenticatedApp() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
-          <Route path="oportunidades" element={<LeadsPage />} />
-          <Route path="clientes" element={<ClientsPage />} />
-          <Route path="clientes/:id" element={<ClientDetailPage />} />
-          <Route path="projetos" element={<ProjectsPage />} />
-          <Route path="projetos/:id" element={<ProjectDetailPage />} />
+          <Route path="projetos" element={<RequireModule module="projetos"><ProjectsPage /></RequireModule>} />
+          <Route path="projetos/:id" element={<RequireModule module="projetos"><ProjectDetailPage /></RequireModule>} />
           <Route path="tarefas" element={<TasksPage />} />
-          <Route path="agenda" element={<AgendaPage />} />
-          <Route path="relatorios" element={<ReportsPage />} />
-          <Route path="equipe" element={<TeamPage />} />
-          <Route path="configuracoes" element={<AdminOnly><SettingsPage /></AdminOnly>} />
+          <Route path="agenda" element={<AgendaRedirect />} />
+          <Route path="oportunidades" element={<RequireModule module="comercial"><LeadsPage /></RequireModule>} />
+          <Route path="clientes" element={<RequireModule module="comercial"><ClientsPage /></RequireModule>} />
+          <Route path="clientes/:id" element={<RequireModule module="comercial"><ClientDetailPage /></RequireModule>} />
+          <Route path="relatorios" element={<RequireModule module="relatorios"><ReportsPage /></RequireModule>} />
+          <Route path="equipe" element={<RequireModule module="equipe"><TeamPage /></RequireModule>} />
+          <Route path="configuracoes" element={<RequireModule module="configuracoes"><SettingsPage /></RequireModule>} />
           <Route path="perfil" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

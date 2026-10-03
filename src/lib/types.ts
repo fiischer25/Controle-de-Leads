@@ -4,6 +4,12 @@
 
 export type Role = 'admin' | 'member';
 
+/**
+ * Módulos que o administrador libera para cada pessoa. O Painel de Projetos (com a
+ * agenda) e as próprias tarefas são de todos; administradores têm acesso a tudo.
+ */
+export type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes';
+
 export interface Profile {
   id: string;
   name: string;
@@ -14,6 +20,8 @@ export interface Profile {
   color: string;
   active: boolean;
   calendar_embed_url: string | null;
+  /** Módulos liberados (ignorado para administradores). Ausente = acessos padrão. */
+  permissions?: ModuleKey[] | null;
   created_at: string;
 }
 

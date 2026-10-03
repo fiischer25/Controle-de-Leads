@@ -15,7 +15,7 @@ import { Button, Checkbox, Modal } from '../ui';
  * e do projeto estiverem preenchidos. Cria cliente + projeto + tarefas do modelo.
  */
 export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
-  const { db, convertLead } = useData();
+  const { db, convertLead, can } = useData();
   const toast = useToast();
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2>(1);
@@ -77,7 +77,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
       const created = await convertLead(lead.id, client, draft);
       toast.success(`${client.name} agora é cliente! Projeto ${created.name} criado.`);
       onClose();
-      navigate(`/projetos/${created.id}`);
+      if (can('projetos')) navigate(`/projetos/${created.id}`);
     } catch (e) {
       toast.error(e);
     } finally {

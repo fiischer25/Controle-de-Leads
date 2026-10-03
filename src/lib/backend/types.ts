@@ -1,4 +1,4 @@
-import type { Profile, Role, TableName, Tables } from '../types';
+import type { ModuleKey, Profile, Role, TableName, Tables } from '../types';
 
 export interface NewUserInput {
   name: string;
@@ -8,6 +8,8 @@ export interface NewUserInput {
   job_title?: string | null;
   phone?: string | null;
   color: string;
+  /** Módulos liberados (membros). */
+  permissions?: ModuleKey[];
 }
 
 export interface UpdateUserAuthInput {

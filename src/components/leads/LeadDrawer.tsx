@@ -102,7 +102,7 @@ function Detail({ label, children, wide }: { label: string; children: ReactNode;
 }
 
 export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }) {
-  const { db, maps, isAdmin, moveLead, deleteLead, addInteraction, updateLead } = useData();
+  const { db, maps, isAdmin, can, moveLead, deleteLead, addInteraction, updateLead } = useData();
   const toast = useToast();
   const lead = maps.leads[leadId];
   const [editing, setEditing] = useState(false);
@@ -270,7 +270,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
               </span>
               <span className="flex items-center gap-4">
                 <ActionLink to={`/clientes/${client.id}`}>Ver cliente</ActionLink>
-                {project && <ActionLink to={`/projetos/${project.id}`}>Ver projeto</ActionLink>}
+                {project && can('projetos') && <ActionLink to={`/projetos/${project.id}`}>Ver projeto</ActionLink>}
               </span>
             </div>
           )}

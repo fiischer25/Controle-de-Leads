@@ -25,7 +25,10 @@ type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'whatsapp' 
 
 export default function SettingsPage() {
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('aba') as Tab) || 'escritorio';
+  const { isAdmin } = useData();
+  const requested = (params.get('aba') as Tab) || 'escritorio';
+  // Backup exporta todos os dados (inclusive da equipe): só administradores.
+  const tab = requested === 'dados' && !isAdmin ? 'escritorio' : requested;
   return (
     <div>
       <PageHeader title="Configurações" description="Personalize o sistema para a rotina do escritório." />
@@ -40,7 +43,7 @@ export default function SettingsPage() {
           { id: 'origens', label: 'Origens de leads' },
           { id: 'agenda', label: 'Google Agenda' },
           { id: 'whatsapp', label: 'WhatsApp e assistente' },
-          { id: 'dados', label: 'Backup' },
+          ...(isAdmin ? [{ id: 'dados' as const, label: 'Backup' }] : []),
         ]}
       />
       {tab === 'tipos' && <ProjectTypesSettings />}

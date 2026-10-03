@@ -3,8 +3,9 @@ import { Download } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { CSS_COLOR } from '../lib/status';
 import { entryMinutes } from '../lib/domain';
-import { addDays, diffDays, downloadFile, formatDate, formatMinutes, formatNumber, MONTHS_FULL, toCsv, toDateKey, today } from '../lib/utils';
+import { addDays, cn, diffDays, downloadFile, formatDate, formatMinutes, formatNumber, MONTHS_FULL, toCsv, toDateKey, today } from '../lib/utils';
 import { Avatar, BarRow, Button, Listbox, MetricRow, PageHeader, SectionHeader } from '../components/ui';
+import { MonthBars } from '../components/charts/MonthBars';
 
 const PERIODS = [
   { id: '30', label: 'Últimos 30 dias' },
@@ -14,7 +15,7 @@ const PERIODS = [
 ];
 
 export default function ReportsPage() {
-  const { db, maps } = useData();
+  const { db, maps, can } = useData();
   const [period, setPeriod] = useState('90');
   const [showTable, setShowTable] = useState(false);
   const t = today();
@@ -134,17 +135,38 @@ export default function ReportsPage() {
   };
 
   const delivered = r.completed.length;
-  const series: Array<{ key: 'leads' | 'won' | 'delivered'; title: string; total: number }> = [
-    { key: 'leads', title: 'Leads recebidos', total: r.months.reduce((a, m) => a + m.leads, 0) },
-    { key: 'won', title: 'Fechados', total: r.months.reduce((a, m) => a + m.won, 0) },
-    { key: 'delivered', title: 'Projetos entregues', total: r.months.reduce((a, m) => a + m.delivered, 0) },
+  // Sem o módulo Comercial, os números de leads e conversão ficam de fora.
+  const commercial = can('comercial');
+  const allSeries: Array<{
+    key: 'leads' | 'won' | 'delivered';
+    title: string;
+    total: number;
+  }> = [
+    {
+      key: 'leads',
+      title: 'Leads recebidos',
+      total: r.months.reduce((a, m) => a + m.leads, 0),
+    },
+    {
+      key: 'won',
+      title: 'Fechados',
+      total: r.months.reduce((a, m) => a + m.won, 0),
+    },
+    {
+      key: 'delivered',
+      title: 'Projetos entregues',
+      total: r.months.reduce((a, m) => a + m.delivered, 0),
+    },
   ];
+  const series = commercial ? allSeries : allSeries.filter((s) => s.key === 'delivered');
 
   return (
     <div>
       <PageHeader
         title="Relatórios"
-        description="Desempenho comercial e produtividade da equipe · sem dados financeiros"
+        description={
+          commercial ? 'Desempenho comercial e produtividade da equipe · sem dados financeiros' : 'Entregas e produtividade da equipe · sem dados financeiros'
+        }
         actions={
           <>
             <Listbox
@@ -165,9 +187,21 @@ export default function ReportsPage() {
         <MetricRow
           label={PERIODS.find((p) => p.id === period)?.label}
           items={[
-            { label: 'Novos leads', value: r.leadsIn.length },
-            { label: 'Conversão', value: conv === null ? '—' : `${conv}%`, sub: `${r.won.length} ganhos · ${r.lost.length} perdidos` },
-            { label: 'Tempo para fechar', value: r.avgClose === null ? '—' : `${r.avgClose}d`, sub: 'média dos ganhos' },
+            ...(commercial
+              ? [
+                  { label: 'Novos leads', value: r.leadsIn.length },
+                  {
+                    label: 'Conversão',
+                    value: conv === null ? '—' : `${conv}%`,
+                    sub: `${r.won.length} ganhos · ${r.lost.length} perdidos`,
+                  },
+                  {
+                    label: 'Tempo para fechar',
+                    value: r.avgClose === null ? '—' : `${r.avgClose}d`,
+                    sub: 'média dos ganhos',
+                  },
+                ]
+              : []),
             {
               label: 'Projetos entregues',
               value: delivered,
@@ -214,16 +248,18 @@ export default function ReportsPage() {
                   {r.months.map((m) => (
                     <tr key={m.key} className="border-b border-hairline">
                       <td className="py-2.5 pr-4 text-stone-700">{m.label}</td>
-                      <td className="py-2.5 pl-4 text-right text-ink">{m.leads}</td>
-                      <td className="py-2.5 pl-4 text-right text-ink">{m.won}</td>
-                      <td className="py-2.5 pl-4 text-right text-ink">{m.delivered}</td>
+                      {series.map((s) => (
+                        <td key={s.key} className="py-2.5 pl-4 text-right text-ink">
+                          {m[s.key]}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <div className="grid gap-10 border-t border-hairline pt-5 md:grid-cols-3 md:gap-8">
+            <div className={cn('grid gap-10 border-t border-hairline pt-5 md:gap-8', commercial ? 'md:grid-cols-3' : 'md:max-w-md')}>
               {series.map((s) => (
                 <MonthBars key={s.key} title={s.title} total={s.total} months={r.months.map((m) => ({ key: m.key, label: m.label, value: m[s.key] }))} />
               ))}
@@ -231,54 +267,56 @@ export default function ReportsPage() {
           )}
         </section>
 
-        <div className="grid gap-12 lg:grid-cols-[1fr_340px] lg:gap-16">
-          <section aria-labelledby="origem">
-            <SectionHeader id="origem" title="Como os clientes chegam" aside={<span className="text-[12.5px] text-faint">leads que entraram no período</span>} />
-            <div className="grid grid-cols-[minmax(0,1fr)_56px_56px_64px_80px] gap-4 border-b border-hairline pb-2.5 text-right text-[12.5px] text-faint">
-              <span className="text-left">Origem</span>
-              <span>Leads</span>
-              <span>Ganhos</span>
-              <span>Perdidos</span>
-              <span>Conversão</span>
-            </div>
-            {r.sources.length === 0 && <p className="py-6 text-[13px] text-faint">Sem leads no período.</p>}
-            <ul className="tabular">
-              {r.sources.map((src) => {
-                const c = src.won + src.lost ? Math.round((src.won / (src.won + src.lost)) * 100) : null;
-                return (
-                  <li key={src.name} className="grid grid-cols-[minmax(0,1fr)_56px_56px_64px_80px] gap-4 border-b border-hairline py-3 text-right text-[13px]">
-                    <span className="truncate text-left text-ink">{src.name}</span>
-                    <span className="text-stone-700">{src.total}</span>
-                    <span className="text-stone-700">{src.won}</span>
-                    <span className="text-stone-700">{src.lost}</span>
-                    <span className="font-medium text-ink">{c === null ? '—' : `${c}%`}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+        {commercial && (
+          <div className="grid gap-12 lg:grid-cols-[1fr_340px] lg:gap-16">
+            <section aria-labelledby="origem">
+              <SectionHeader id="origem" title="Como os clientes chegam" aside={<span className="text-[12.5px] text-faint">leads que entraram no período</span>} />
+              <div className="grid grid-cols-[minmax(0,1fr)_56px_56px_64px_80px] gap-4 border-b border-hairline pb-2.5 text-right text-[12.5px] text-faint">
+                <span className="text-left">Origem</span>
+                <span>Leads</span>
+                <span>Ganhos</span>
+                <span>Perdidos</span>
+                <span>Conversão</span>
+              </div>
+              {r.sources.length === 0 && <p className="py-6 text-[13px] text-faint">Sem leads no período.</p>}
+              <ul className="tabular">
+                {r.sources.map((src) => {
+                  const c = src.won + src.lost ? Math.round((src.won / (src.won + src.lost)) * 100) : null;
+                  return (
+                    <li key={src.name} className="grid grid-cols-[minmax(0,1fr)_56px_56px_64px_80px] gap-4 border-b border-hairline py-3 text-right text-[13px]">
+                      <span className="truncate text-left text-ink">{src.name}</span>
+                      <span className="text-stone-700">{src.total}</span>
+                      <span className="text-stone-700">{src.won}</span>
+                      <span className="text-stone-700">{src.lost}</span>
+                      <span className="font-medium text-ink">{c === null ? '—' : `${c}%`}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
 
-          <div className="space-y-12">
-            <section aria-labelledby="perdas">
-              <SectionHeader id="perdas" title="Motivos de perda" />
-              <div className="space-y-4 border-t border-hairline pt-4">
-                {r.lostReasons.length === 0 && <p className="text-[13px] text-faint">Nenhuma perda no período.</p>}
-                {r.lostReasons.map(([reason, n]) => (
-                  <BarRow key={reason} label={reason} value={n} max={r.lostReasons[0][1]} color={CSS_COLOR.stone(500)} />
-                ))}
-              </div>
-            </section>
-            <section aria-labelledby="cidades">
-              <SectionHeader id="cidades" title="Leads por cidade" />
-              <div className="space-y-4 border-t border-hairline pt-4">
-                {r.cities.length === 0 && <p className="text-[13px] text-faint">Sem dados.</p>}
-                {r.cities.map(([city, n]) => (
-                  <BarRow key={city} label={city} value={n} max={r.cities[0][1]} />
-                ))}
-              </div>
-            </section>
+            <div className="space-y-12">
+              <section aria-labelledby="perdas">
+                <SectionHeader id="perdas" title="Motivos de perda" />
+                <div className="space-y-4 border-t border-hairline pt-4">
+                  {r.lostReasons.length === 0 && <p className="text-[13px] text-faint">Nenhuma perda no período.</p>}
+                  {r.lostReasons.map(([reason, n]) => (
+                    <BarRow key={reason} label={reason} value={n} max={r.lostReasons[0][1]} color={CSS_COLOR.stone(500)} />
+                  ))}
+                </div>
+              </section>
+              <section aria-labelledby="cidades">
+                <SectionHeader id="cidades" title="Leads por cidade" />
+                <div className="space-y-4 border-t border-hairline pt-4">
+                  {r.cities.length === 0 && <p className="text-[13px] text-faint">Sem dados.</p>}
+                  {r.cities.map(([city, n]) => (
+                    <BarRow key={city} label={city} value={n} max={r.cities[0][1]} />
+                  ))}
+                </div>
+              </section>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="grid gap-12 lg:grid-cols-3 lg:gap-12">
           <section aria-labelledby="h-pessoa">
@@ -350,41 +388,5 @@ export default function ReportsPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-/** Barras mensais de uma única série: total em destaque, valor do mês ao passar o mouse. */
-function MonthBars({ title, total, months }: { title: string; total: number; months: Array<{ key: string; label: string; value: number }> }) {
-  const max = Math.max(1, ...months.map((m) => m.value));
-  const last = months[months.length - 1];
-  return (
-    <figure className="min-w-0">
-      <figcaption className="flex items-baseline justify-between gap-3">
-        <span className="text-[12.5px] text-faint">{title}</span>
-        <span className="text-[12.5px] text-faint">
-          <span className="font-display text-[20px] leading-6 tracking-[-0.02em] tabular text-ink">{total}</span> em 12 meses
-        </span>
-      </figcaption>
-      <div className="mt-4 flex h-28 items-end gap-0.5 border-b border-line-strong" role="img" aria-label={`${title}: ${months.map((m) => `${m.label} ${m.value}`).join(', ')}`}>
-        {months.map((m) => (
-          <div key={m.key} className="group relative flex h-full flex-1 items-end justify-center">
-            <div
-              className="w-full max-w-[18px] rounded-t-[4px] bg-stone-800 transition-colors group-hover:bg-ink"
-              style={{ height: `${(m.value / max) * 100}%`, minHeight: m.value > 0 ? 3 : 0 }}
-            />
-            <span className="pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded-xs bg-ink px-1.5 py-0.5 text-[11px] text-surface tabular group-hover:block">
-              {m.label}: {m.value}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-1.5 flex gap-0.5 text-[10.5px] text-faint">
-        {months.map((m, i) => (
-          <span key={m.key} className="flex-1 text-center">
-            {i % 2 === months.length % 2 || m === last ? m.label : ''}
-          </span>
-        ))}
-      </div>
-    </figure>
   );
 }
