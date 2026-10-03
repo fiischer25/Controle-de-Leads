@@ -95,6 +95,17 @@ export function formatDateShort(key: string | null | undefined): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
+/** "qui, 8 out" */
+export function weekdayDate(key: string): string {
+  return `${WEEKDAYS_SHORT[parseDate(key).getDay()].toLowerCase()}, ${formatDateShort(key)}`;
+}
+
+/** "dom 4" */
+export function weekdayDay(key: string): string {
+  const d = parseDate(key);
+  return `${WEEKDAYS_SHORT[d.getDay()].toLowerCase()} ${d.getDate()}`;
+}
+
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
   const d = new Date(iso);

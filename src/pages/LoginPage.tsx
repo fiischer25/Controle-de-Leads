@@ -28,11 +28,11 @@ function AuthShell({ children }: { children: React.ReactNode }) {
             <h1 className="font-display text-[40px] font-medium leading-[1.1] tracking-[-0.03em] text-ink">
               Do primeiro contato à entrega do projeto.
             </h1>
-            <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-stone-500">
+            <p className="mt-5 max-w-sm text-body-lg text-muted">
               Oportunidades, clientes, projetos, prazos e tarefas da equipe — em um só lugar.
             </p>
           </div>
-          <p className="text-xs text-stone-400">© {new Date().getFullYear()}</p>
+          <p className="text-xs text-faint">© {new Date().getFullYear()}</p>
         </div>
       </div>
       <div className="flex items-center justify-center px-6 py-12">
@@ -69,8 +69,8 @@ export function LoginPage() {
 
   return (
     <AuthShell>
-      <h2 className="font-display text-[28px] font-semibold tracking-[-0.02em]">Entrar</h2>
-      <p className="mt-1 text-sm text-stone-500">Use o e-mail e a senha cadastrados pelo administrador.</p>
+      <h2 className="font-display text-h1 text-ink">Entrar</h2>
+      <p className="mt-1.5 text-body text-muted">Use o e-mail e a senha cadastrados pelo administrador.</p>
       <form onSubmit={submit} className="mt-8 space-y-4">
         <Field label="E-mail">
           <div className="relative">
@@ -84,8 +84,8 @@ export function LoginPage() {
             <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9" placeholder="••••••••" required />
           </div>
         </Field>
-        {error && <p className="rounded-sm bg-danger-bg px-3 py-2 text-sm text-danger-fg">{error}</p>}
-        <Button type="submit" variant="dark" loading={busy} className="h-11 w-full" icon={<ArrowRight className="h-4 w-4" />}>
+        {error && <p className="rounded-md bg-danger-bg px-3 py-2.5 text-[13px] text-danger-fg">{error}</p>}
+        <Button type="submit" variant="primary" size="touch" loading={busy} className="w-full" icon={<ArrowRight className="h-4 w-4" />}>
           Entrar
         </Button>
         <p className="text-center text-xs text-stone-400">Esqueceu a senha? Peça ao administrador para redefini-la.</p>
@@ -128,9 +128,9 @@ export function SetupPage() {
 
   return (
     <AuthShell>
-      <p className="eyebrow">Primeiro acesso</p>
-      <h2 className="mt-2 font-display text-[28px] font-semibold tracking-[-0.02em]">Crie o administrador</h2>
-      <p className="mt-1 text-sm text-stone-500">
+      <p className="text-[13px] text-faint">Primeiro acesso</p>
+      <h2 className="mt-1.5 font-display text-h1 text-ink">Crie o administrador</h2>
+      <p className="mt-1.5 text-body text-muted">
         Esta conta poderá cadastrar os demais membros da equipe e configurar o sistema.
       </p>
       <form onSubmit={submit} className="mt-8 space-y-4">
@@ -154,8 +154,8 @@ export function SetupPage() {
         {mode === 'local' && (
           <Checkbox checked={demo} onChange={setDemo} label="Carregar dados de exemplo para conhecer o sistema" />
         )}
-        {error && <p className="rounded-sm bg-danger-bg px-3 py-2 text-sm text-danger-fg">{error}</p>}
-        <Button type="submit" variant="dark" loading={busy} className="h-11 w-full" icon={<ArrowRight className="h-4 w-4" />}>
+        {error && <p className="rounded-md bg-danger-bg px-3 py-2.5 text-[13px] text-danger-fg">{error}</p>}
+        <Button type="submit" variant="primary" size="touch" loading={busy} className="w-full" icon={<ArrowRight className="h-4 w-4" />}>
           Criar conta e entrar
         </Button>
       </form>

@@ -1,48 +1,44 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import {
-  ArrowLeft,
-  CalendarRange,
-  Check,
-  Clock,
-  ExternalLink,
-  GanttChartSquare,
-  Info,
-  Layers,
-  Link2,
-  ListChecks,
-  Mail,
-  MapPin,
-  Pencil,
-  Phone,
-  Plus,
-  Trash2,
-  Users,
-  History,
-} from 'lucide-react';
+import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
 import { orderedPhases, totalMinutes } from '../lib/domain';
 import type { Project, ProjectStatus, Task } from '../lib/types';
-import { byPosition, cn, diffDays, formatDate, formatDateTime, formatMinutes, formatNumber, formatRelative, today, uid } from '../lib/utils';
+import {
+  byPosition,
+  cn,
+  deadlineState,
+  dueLabel,
+  formatDate,
+  formatDateShort,
+  formatDateTime,
+  formatMinutes,
+  formatNumber,
+  formatRelative,
+  today,
+  uid,
+} from '../lib/utils';
 import { CSS_COLOR } from '../lib/status';
 import {
+  ActionLink,
   Avatar,
-  AvatarStack,
+  BackLink,
   Badge,
   Button,
-  Card,
   ConfirmDialog,
-  DueBadge,
   EmptyState,
   Field,
   IconButton,
   Input,
   Listbox,
+  MetricRow,
   Modal,
-  ProgressBar,
+  PageHeader,
+  SectionHeader,
   Select,
+  Switch,
   Tabs,
   Textarea,
   UserSelect,
@@ -72,9 +68,10 @@ export default function ProjectDetailPage() {
 
   if (!summary) {
     return (
-      <Card>
-        <EmptyState title="Projeto não encontrado" action={<Link to="/projetos"><Button>Voltar para projetos</Button></Link>} />
-      </Card>
+      <div>
+        <BackLink to="/projetos">Projetos</BackLink>
+        <EmptyState title="Projeto não encontrado" description="Ele pode ter sido excluído." className="py-20" />
+      </div>
     );
   }
 
@@ -87,7 +84,8 @@ export default function ProjectDetailPage() {
   const minutes = summary.minutes;
   const estimated = tasks.reduce((a, t) => a + (t.estimated_hours ?? 0), 0);
   const manager = project.manager_id ? maps.profiles[project.manager_id] : null;
-  const daysLeft = project.due_date ? diffDays(today(), project.due_date) : null;
+  const dueState = deadlineState(project.due_date, finished, settings.due_soon_days);
+  const currentIdx = project.status === 'concluido' ? phases.length : open.length === 0 && tasks.length ? phases.length : phases.indexOf(phase);
 
   const addQuick = async (phaseName: string) => {
     const title = quick[phaseName]?.trim();
@@ -117,27 +115,25 @@ export default function ProjectDetailPage() {
 
   return (
     <div>
-      <Link to="/projetos" className="mb-4 inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-800">
-        <ArrowLeft className="h-4 w-4" /> Projetos
-      </Link>
-
-      {/* Cabeçalho */}
-      <div className="card relative mb-5 overflow-hidden">
-        <div className="h-1.5" style={{ backgroundColor: type?.color ?? CSS_COLOR.stone(300) }} />
-        <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
-              <span className="font-semibold uppercase tracking-wider">{project.code}</span>
-              {type && <span className="rounded-xs px-1.5 py-0.5 font-medium" style={{ backgroundColor: `${type.color}14`, color: type.color }}>{type.name}</span>}
-              {project.site_city && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{project.site_city}</span>}
-            </div>
-            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">{project.name}</h1>
-            <div className="mt-1 text-sm text-stone-500">
-              Cliente: {client ? <Link to={`/clientes/${client.id}`} className="font-medium text-brand-700 hover:underline">{client.name}</Link> : '—'}
-              {manager && <> · Responsável: <span className="font-medium text-stone-700">{manager.name}</span></>}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+      <BackLink to="/projetos">Projetos</BackLink>
+      <PageHeader
+        className="md:pt-4"
+        eyebrow={[project.code, type?.name, project.site_city].filter(Boolean).join(' · ')}
+        title={project.name}
+        description={
+          <>
+            {client ? (
+              <Link to={`/clientes/${client.id}`} className="hover:text-ink hover:underline hover:decoration-stone-300 hover:underline-offset-4">
+                {client.name}
+              </Link>
+            ) : (
+              'Cliente removido'
+            )}
+            {manager && <> · responsável {manager.name}</>}
+          </>
+        }
+        actions={
+          <>
             <div className="w-44">
               <Listbox
                 value={project.status}
@@ -151,174 +147,173 @@ export default function ProjectDetailPage() {
                 className={cn('border-transparent font-medium', st.badge)}
               />
             </div>
-            <Button icon={<Pencil className="h-4 w-4" />} onClick={() => setEditing(true)}>Editar</Button>
-            <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setNewTask({ phase: null })}>Tarefa</Button>
+            <IconButton label="Editar projeto" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4" strokeWidth={1.6} />
+            </IconButton>
             {isAdmin && (
-              <IconButton label="Excluir projeto" onClick={() => setConfirmDelete(true)} className="text-stone-400 hover:text-danger-fg">
-                <Trash2 className="h-4 w-4" />
+              <IconButton label="Excluir projeto" onClick={() => setConfirmDelete(true)} className="hover:text-danger-fg">
+                <Trash2 className="h-4 w-4" strokeWidth={1.6} />
               </IconButton>
             )}
-          </div>
-        </div>
+            <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setNewTask({ phase: null })}>
+              Tarefa
+            </Button>
+          </>
+        }
+      />
 
-        <div className="grid border-t border-line/70 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-line/70">
-          <Metric label="Progresso" icon={<Layers className="h-4 w-4" />}>
-            <div className="flex items-baseline gap-2">
-              <span className="font-display text-2xl font-medium tracking-tight tabular">{progress}%</span>
-              <span className="truncate text-xs text-stone-500">Etapa: {phase}</span>
-            </div>
-            <ProgressBar value={progress} className="mt-2" color={project.status === 'concluido' ? CSS_COLOR.success : undefined} />
-          </Metric>
-          <Metric label="Prazo de entrega" icon={<CalendarRange className="h-4 w-4" />}>
-            <div className="font-display text-lg font-semibold tracking-tight">{formatDate(project.due_date)}</div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-stone-500">
-              <DueBadge due={project.due_date} done={finished} soonDays={settings.due_soon_days} />
-              {!finished && daysLeft !== null && daysLeft >= 0 && <span>início {formatDate(project.start_date)}</span>}
-            </div>
-          </Metric>
-          <Metric label="Tarefas" icon={<ListChecks className="h-4 w-4" />}>
-            <div className="font-display text-2xl font-medium tracking-tight tabular">
-              {tasks.length - open.length}<span className="text-base font-medium text-stone-400">/{tasks.length}</span>
-            </div>
-            <div className={cn('mt-1 text-xs', overdue.length ? 'font-medium text-danger-fg' : 'text-stone-500')}>
-              {overdue.length ? `${overdue.length} atrasada${overdue.length > 1 ? 's' : ''}` : `${open.length} em aberto`}
-            </div>
-          </Metric>
-          <Metric label="Horas registradas" icon={<Clock className="h-4 w-4" />}>
-            <div className="font-display text-2xl font-medium tracking-tight tabular">{formatMinutes(minutes)}</div>
-            <div className="mt-1 flex items-center justify-between text-xs text-stone-500">
-              <span>{estimated ? `de ${formatNumber(estimated)}h estimadas` : 'sem estimativa'}</span>
-              <AvatarStack users={people} max={5} size="xs" />
-            </div>
-          </Metric>
-        </div>
-
-        {/* Etapas */}
-        {phases.length > 0 && (
-          <div className="scrollbar-thin flex gap-1 overflow-x-auto border-t border-line/70 px-5 py-3">
+      {/* Trilho de etapas */}
+      {phases.length > 0 && (
+        <section aria-label="Etapas" className="scrollbar-none -mx-5 overflow-x-auto px-5 md:mx-0 md:px-0">
+          <div className="flex min-w-[560px] gap-[3px]">
             {phases.map((p, i) => {
-              const pt = tasks.filter((t) => (t.phase || 'Geral') === p);
-              const done = pt.filter((t) => t.status === 'done').length;
-              const complete = done === pt.length;
-              const current = p === phase;
+              const state = i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'next';
               return (
-                <div key={p} className="min-w-[120px] flex-1">
-                  <div className={cn('h-1.5 rounded-full', complete ? 'bg-stone-800' : current ? 'bg-brand-500' : 'bg-stone-200')}>
-                    {!complete && done > 0 && <div className="h-full rounded-full bg-brand-300" style={{ width: `${(done / pt.length) * 100}%` }} />}
-                  </div>
-                  <div className={cn('mt-1.5 flex items-center gap-1 text-[11px]', current ? 'font-semibold text-ink' : 'text-stone-500')}>
-                    {complete ? <Check className="h-3 w-3 text-success-fg" /> : <span className="text-stone-400">{i + 1}.</span>}
-                    <span className="truncate">{p}</span>
+                <div key={p} className="min-w-0 flex-1">
+                  <div
+                    className="h-0.5 rounded-full"
+                    style={{ backgroundColor: state === 'done' ? CSS_COLOR.stone(800) : state === 'current' ? CSS_COLOR.accent : CSS_COLOR.lineStrong }}
+                  />
+                  <div className={cn('mt-2 truncate pr-2 text-[12px]', state === 'current' ? 'font-medium text-ink' : 'text-faint')} title={p}>
+                    {p}
                   </div>
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
+        </section>
+      )}
 
-      <Tabs<Tab>
-        className="mb-4"
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { id: 'tasks', label: <span className="inline-flex items-center gap-1.5"><ListChecks className="h-4 w-4" />Tarefas</span>, count: tasks.length },
-          { id: 'timeline', label: <span className="inline-flex items-center gap-1.5"><GanttChartSquare className="h-4 w-4" />Cronograma</span> },
-          { id: 'team', label: <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />Equipe e horas</span> },
-          { id: 'info', label: <span className="inline-flex items-center gap-1.5"><Info className="h-4 w-4" />Informações</span> },
-          { id: 'activity', label: <span className="inline-flex items-center gap-1.5"><History className="h-4 w-4" />Atividade</span> },
+      <MetricRow
+        className="mt-10"
+        label="Visão geral"
+        items={[
+          { label: 'Progresso', value: `${progress}%`, sub: finished ? PROJECT_STATUS[project.status].label : `Etapa: ${phase}` },
+          {
+            label: 'Prazo de entrega',
+            value: project.due_date ? formatDateShort(project.due_date) : '—',
+            tone: dueState === 'overdue' ? 'text-danger-fg' : dueState === 'soon' || dueState === 'today' ? 'text-warning-fg' : undefined,
+            sub: project.due_date ? (finished ? `início ${formatDate(project.start_date)}` : dueLabel(project.due_date)) : 'sem prazo definido',
+          },
+          {
+            label: 'Tarefas concluídas',
+            value: (
+              <>
+                {tasks.length - open.length}
+                <span className="text-faint">/{tasks.length}</span>
+              </>
+            ),
+            sub: overdue.length ? <span className="text-danger-fg">{overdue.length} {overdue.length === 1 ? 'atrasada' : 'atrasadas'}</span> : `${open.length} em aberto`,
+          },
+          { label: 'Horas registradas', value: formatMinutes(minutes), sub: estimated ? `de ${formatNumber(estimated)}h estimadas` : 'sem estimativa' },
         ]}
       />
 
-      {tab === 'tasks' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="inline-flex items-center gap-2 text-sm text-stone-600">
-              <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} className="accent-brand-600" />
-              Ocultar concluídas
-            </label>
+      <Tabs<Tab>
+        className="mt-12 md:mt-14"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: 'tasks', label: 'Tarefas', count: tasks.length },
+          { id: 'timeline', label: 'Cronograma' },
+          { id: 'team', label: 'Equipe e horas', count: people.length },
+          { id: 'info', label: 'Informações' },
+          { id: 'activity', label: 'Atividade' },
+        ]}
+      />
+
+      <div className="mt-6">
+        {tab === 'tasks' && (
+          <div className="space-y-10">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Switch checked={hideDone} onChange={setHideDone} label={<span className="text-[13px] text-muted">Ocultar concluídas</span>} />
+              {tasks.length === 0 && (
+                <ActionLink onClick={() => applyTemplates(project.id, project.start_date, project.manager_id).catch(toast.error)}>
+                  Gerar tarefas do modelo “{type?.name}”
+                </ActionLink>
+              )}
+            </div>
             {tasks.length === 0 && (
-              <Button size="sm" onClick={() => applyTemplates(project.id, project.start_date, project.manager_id).catch(toast.error)}>
-                Gerar tarefas do modelo “{type?.name}”
-              </Button>
+              <EmptyState title="Nenhuma tarefa neste projeto" description="Gere as tarefas a partir do modelo ou crie manualmente." className="py-12" />
             )}
+            {phases.map((p, i) => {
+              const pt = tasks.filter((t) => (t.phase || 'Geral') === p).sort(byPosition);
+              const visible = hideDone ? pt.filter((t) => t.status !== 'done') : pt;
+              const done = pt.filter((t) => t.status === 'done').length;
+              const pMinutes = totalMinutes(db.time_entries.filter((e) => pt.some((t) => t.id === e.task_id)));
+              return (
+                <section key={p} aria-label={p}>
+                  <div className="flex items-baseline justify-between gap-3 border-b border-hairline pb-2.5">
+                    <h3 className="flex min-w-0 items-baseline gap-2">
+                      <span className="text-[12.5px] tabular text-faint">{i + 1}.</span>
+                      <span className="truncate font-display text-[15px] font-semibold text-ink">{p}</span>
+                      <span className={cn('text-[12.5px] tabular', done === pt.length ? 'text-success-fg' : 'text-faint')}>
+                        {done}/{pt.length}
+                      </span>
+                    </h3>
+                    {pMinutes > 0 && <span className="shrink-0 text-[12.5px] tabular text-faint">{formatMinutes(pMinutes)}</span>}
+                  </div>
+                  <div className="divide-y divide-hairline-surface [&>div]:px-0 md:[&>div]:px-2">
+                    {visible.map((t) => (
+                      <TaskRow key={t.id} task={t} onOpen={() => openTask(t.id)} />
+                    ))}
+                  </div>
+                  <form
+                    className="flex items-center gap-2 border-t border-hairline-surface py-2 md:px-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      addQuick(p);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 shrink-0 text-faint" strokeWidth={1.6} />
+                    <input
+                      value={quick[p] ?? ''}
+                      onChange={(e) => setQuick((q) => ({ ...q, [p]: e.target.value }))}
+                      placeholder={`Adicionar tarefa em ${p}…`}
+                      aria-label={`Adicionar tarefa em ${p}`}
+                      className="flex-1 rounded-xs bg-transparent py-1.5 text-body outline-none placeholder:text-faint focus-visible:shadow-none"
+                    />
+                    {quick[p]?.trim() && (
+                      <Button size="xs" type="submit" variant="primary">
+                        Adicionar
+                      </Button>
+                    )}
+                  </form>
+                </section>
+              );
+            })}
+            {phases.length > 0 && <ActionLink onClick={() => setNewTask({ phase: null })}>Nova tarefa em outra etapa</ActionLink>}
           </div>
-          {tasks.length === 0 && (
-            <Card>
-              <EmptyState icon={<ListChecks className="h-6 w-6" />} title="Nenhuma tarefa neste projeto" description="Gere as tarefas a partir do modelo ou crie manualmente." />
-            </Card>
-          )}
-          {phases.map((p) => {
-            const pt = tasks.filter((t) => (t.phase || 'Geral') === p).sort(byPosition);
-            const visible = hideDone ? pt.filter((t) => t.status !== 'done') : pt;
-            const done = pt.filter((t) => t.status === 'done').length;
-            const pMinutes = totalMinutes(db.time_entries.filter((e) => pt.some((t) => t.id === e.task_id)));
-            return (
-              <div key={p} className="card overflow-hidden">
-                <div className="flex flex-wrap items-center gap-3 border-b border-line/70 bg-stone-50/60 px-4 py-2.5">
-                  <h3 className="font-display text-sm font-semibold text-ink">{p}</h3>
-                  <span className="text-xs text-stone-500 tabular">{done}/{pt.length}</span>
-                  <ProgressBar value={(done / pt.length) * 100} className="w-24" color={done === pt.length ? CSS_COLOR.success : undefined} />
-                  <span className="ml-auto text-xs text-stone-500">{pMinutes > 0 && formatMinutes(pMinutes)}</span>
-                </div>
-                <div className="divide-y divide-line/70">
-                  {visible.map((t) => <TaskRow key={t.id} task={t} onOpen={() => openTask(t.id)} />)}
-                </div>
-                <form
-                  className="flex items-center gap-2 border-t border-line/70 px-4 py-2"
-                  onSubmit={(e) => { e.preventDefault(); addQuick(p); }}
-                >
-                  <Plus className="h-4 w-4 text-stone-400" />
-                  <input
-                    value={quick[p] ?? ''}
-                    onChange={(e) => setQuick((q) => ({ ...q, [p]: e.target.value }))}
-                    placeholder={`Adicionar tarefa em ${p}…`}
-                    className="flex-1 bg-transparent py-1 text-sm outline-none placeholder:text-stone-400"
-                  />
-                  {quick[p]?.trim() && <Button size="xs" type="submit" variant="dark">Adicionar</Button>}
-                </form>
-              </div>
-            );
-          })}
-          {phases.length > 0 && (
-            <Button variant="ghost" icon={<Plus className="h-4 w-4" />} onClick={() => setNewTask({ phase: null })}>
-              Nova tarefa em outra etapa
-            </Button>
-          )}
-        </div>
-      )}
+        )}
 
-      {tab === 'timeline' && (
-        <GanttChart tasks={tasks} profiles={maps.profiles} projectDue={project.due_date} onOpen={openTask} />
-      )}
+        {tab === 'timeline' && <GanttChart tasks={tasks} profiles={maps.profiles} projectDue={project.due_date} onOpen={openTask} />}
 
-      {tab === 'team' && <TeamTab project={project} tasks={tasks} />}
+        {tab === 'team' && <TeamTab project={project} tasks={tasks} />}
 
-      {tab === 'info' && <InfoTab project={project} />}
+        {tab === 'info' && <InfoTab project={project} />}
 
-      {tab === 'activity' && (
-        <Card className="p-5">
-          {activity.length === 0 ? (
-            <EmptyState title="Sem atividades registradas" />
+        {tab === 'activity' &&
+          (activity.length === 0 ? (
+            <EmptyState title="Sem atividades registradas" className="py-12" />
           ) : (
-            <ol className="space-y-3">
+            <ol>
               {activity.map((a) => {
                 const u = a.user_id ? maps.profiles[a.user_id] : null;
                 return (
-                  <li key={a.id} className="flex items-start gap-3 text-sm">
+                  <li key={a.id} className="flex items-start gap-3 border-b border-hairline py-3 text-body">
                     <Avatar user={u} size="sm" />
-                    <div>
-                      <span className="font-medium text-ink">{u?.name ?? 'Sistema'}</span>{' '}
-                      <span className="text-stone-600">{a.description}</span>
-                      <div className="text-xs text-stone-400" title={formatDateTime(a.created_at)}>{formatRelative(a.created_at)}</div>
+                    <div className="min-w-0">
+                      <span className="text-ink">{u?.name.split(' ')[0] ?? 'Sistema'}</span> <span className="text-muted">{a.description}</span>
+                      <div className="text-[12.5px] text-faint" title={formatDateTime(a.created_at)}>
+                        {formatRelative(a.created_at)}
+                      </div>
                     </div>
                   </li>
                 );
               })}
             </ol>
-          )}
-        </Card>
-      )}
+          ))}
+      </div>
 
       {editing && <EditProjectModal project={project} onClose={() => setEditing(false)} />}
       {newTask && (
@@ -332,7 +327,11 @@ export default function ProjectDetailPage() {
           title="Excluir projeto"
           danger
           confirmLabel="Excluir definitivamente"
-          message={<>Excluir <b>{project.name}</b> e todas as suas {tasks.length} tarefas, horas e comentários? Esta ação não pode ser desfeita.</>}
+          message={
+            <>
+              Excluir <b>{project.name}</b> e todas as suas {tasks.length} tarefas, horas e comentários? Esta ação não pode ser desfeita.
+            </>
+          }
           onClose={() => setConfirmDelete(false)}
           onConfirm={async () => {
             await deleteProject(project.id);
@@ -341,18 +340,6 @@ export default function ProjectDetailPage() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function Metric({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
-  return (
-    <div className="border-line/70 px-5 py-4 max-lg:border-t">
-      <div className="mb-1 flex items-center gap-1.5 text-xs text-stone-500">
-        <span className="text-stone-400">{icon}</span>
-        {label}
-      </div>
-      {children}
     </div>
   );
 }
@@ -383,54 +370,59 @@ function TeamTab({ project, tasks }: { project: Project; tasks: Task[] }) {
   const maxMin = Math.max(1, ...rows.map((r) => r.minutes));
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-      <Card className="overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-stone-400">
-            <tr>
-              <th className="px-4 py-2.5 font-medium">Pessoa</th>
-              <th className="px-4 py-2.5 text-right font-medium">Abertas</th>
-              <th className="px-4 py-2.5 text-right font-medium">Concluídas</th>
-              <th className="px-4 py-2.5 text-right font-medium">Atrasadas</th>
-              <th className="w-1/3 px-4 py-2.5 font-medium">Horas</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line/70">
-            {rows.map((r) => (
-              <tr key={r.user.id}>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Avatar user={r.user} size="sm" />
-                    <div>
-                      <div className="font-medium">{r.user.name}</div>
-                      <div className="text-xs text-stone-500">{r.user.id === project.manager_id ? 'Responsável pelo projeto' : r.user.job_title}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right tabular">{r.open}</td>
-                <td className="px-4 py-3 text-right tabular">{r.done}</td>
-                <td className={cn('px-4 py-3 text-right tabular', r.overdue && 'font-semibold text-danger-fg')}>{r.overdue}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-100">
-                      <div className="h-full rounded-full" style={{ width: `${(r.minutes / maxMin) * 100}%`, backgroundColor: r.user.color }} />
-                    </div>
-                    <span className="w-16 text-right text-xs font-medium tabular">{formatMinutes(r.minutes)}</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-      <Card className="space-y-4 p-5">
+    <div className="grid gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
+      <section aria-label="Pessoas e horas">
+        <div className="hidden grid-cols-[minmax(0,1fr)_64px_64px_64px_minmax(0,1fr)] gap-6 border-b border-hairline pb-2.5 text-[12.5px] text-faint md:grid">
+          <span>Pessoa</span>
+          <span className="text-right">Abertas</span>
+          <span className="text-right">Feitas</span>
+          <span className="text-right">Atrasadas</span>
+          <span>Horas</span>
+        </div>
+        {rows.length === 0 && <p className="py-6 text-[13px] text-faint">Ninguém ligado a este projeto ainda.</p>}
+        <ul>
+          {rows.map((r) => (
+            <li
+              key={r.user.id}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2 border-b border-hairline py-3.5 md:grid-cols-[minmax(0,1fr)_64px_64px_64px_minmax(0,1fr)]"
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                <Avatar user={r.user} size="sm" />
+                <div className="min-w-0">
+                  <div className="truncate text-body text-ink">{r.user.name}</div>
+                  <div className="truncate text-[12.5px] text-faint">{r.user.id === project.manager_id ? 'Responsável pelo projeto' : r.user.job_title}</div>
+                </div>
+              </div>
+              <span className="hidden text-right text-[13px] tabular text-muted md:block">{r.open}</span>
+              <span className="hidden text-right text-[13px] tabular text-muted md:block">{r.done}</span>
+              <span className={cn('hidden text-right text-[13px] tabular md:block', r.overdue ? 'text-danger-fg' : 'text-faint')}>{r.overdue}</span>
+              <div className="flex items-center gap-3">
+                <div className="h-0.5 flex-1 overflow-hidden rounded-full bg-hairline max-md:w-16">
+                  <div className="h-full rounded-full bg-brand-500" style={{ width: `${(r.minutes / maxMin) * 100}%` }} />
+                </div>
+                <span className="w-16 text-right text-[13px] tabular text-muted">{formatMinutes(r.minutes)}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <aside className="space-y-6">
         <Field label="Responsável pelo projeto">
           <UserSelect users={db.profiles} value={project.manager_id} onChange={(id) => updateProject(project.id, { manager_id: id }).catch(toast.error)} />
         </Field>
         <Field label="Equipe do projeto">
           <MemberPicker users={db.profiles} value={project.member_ids} onChange={(ids) => updateProject(project.id, { member_ids: ids }).catch(toast.error)} />
         </Field>
-      </Card>
+      </aside>
+    </div>
+  );
+}
+
+function InfoRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="border-t border-hairline py-3">
+      <dt className="text-[12.5px] text-faint">{label}</dt>
+      <dd className="mt-0.5 text-body text-ink">{children}</dd>
     </div>
   );
 }
@@ -450,64 +442,89 @@ function InfoTab({ project }: { project: Project }) {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <Card className="p-5">
-        <h3 className="mb-3 font-display text-sm font-semibold">Cliente</h3>
-        {client ? (
-          <div className="space-y-2 text-sm">
-            <Link to={`/clientes/${client.id}`} className="font-semibold text-brand-700 hover:underline">{client.name}</Link>
-            <div className="text-stone-500">{client.document}</div>
-            <div className="flex items-center gap-2 text-stone-700"><Phone className="h-4 w-4 text-stone-400" />{client.phone}</div>
-            <div className="flex items-center gap-2 text-stone-700"><Mail className="h-4 w-4 text-stone-400" />{client.email}</div>
-            <div className="flex items-start gap-2 text-stone-700">
-              <MapPin className="mt-0.5 h-4 w-4 text-stone-400" />
-              <span>{client.street}, {client.number}{client.complement ? ` - ${client.complement}` : ''}<br />{client.neighborhood} · {client.city}/{client.state} · {client.cep}</span>
-            </div>
-          </div>
-        ) : <p className="text-sm text-stone-500">Cliente não encontrado.</p>}
-      </Card>
-      <Card className="p-5">
-        <h3 className="mb-3 font-display text-sm font-semibold">Dados do projeto</h3>
-        <dl className="grid grid-cols-2 gap-3 text-sm">
-          <div><dt className="text-xs text-stone-500">Área</dt><dd className="font-medium">{project.area_m2 ? `${formatNumber(project.area_m2)} m²` : '—'}</dd></div>
-          <div><dt className="text-xs text-stone-500">Início</dt><dd className="font-medium">{formatDate(project.start_date)}</dd></div>
-          <div className="col-span-2"><dt className="text-xs text-stone-500">Endereço da obra</dt><dd className="font-medium">{project.site_address || '—'}{project.site_city ? ` · ${project.site_city}` : ''}</dd></div>
-          <div className="col-span-2"><dt className="text-xs text-stone-500">Escopo</dt><dd className="whitespace-pre-wrap text-stone-700">{project.description || '—'}</dd></div>
-          {project.completed_at && <div className="col-span-2"><dt className="text-xs text-stone-500">Concluído em</dt><dd className="font-medium">{formatDateTime(project.completed_at)}</dd></div>}
+    <div className="grid gap-12 lg:grid-cols-3 lg:gap-12">
+      <section aria-labelledby="info-projeto">
+        <SectionHeader id="info-projeto" title="Projeto" />
+        <dl>
+          <InfoRow label="Área">{project.area_m2 ? `${formatNumber(project.area_m2)} m²` : '—'}</InfoRow>
+          <InfoRow label="Início">{formatDate(project.start_date)}</InfoRow>
+          <InfoRow label="Endereço da obra">
+            {project.site_address || '—'}
+            {project.site_city ? ` · ${project.site_city}` : ''}
+          </InfoRow>
+          <InfoRow label="Escopo">
+            <span className="whitespace-pre-wrap text-stone-700">{project.description || '—'}</span>
+          </InfoRow>
+          {project.completed_at && <InfoRow label="Concluído em">{formatDateTime(project.completed_at)}</InfoRow>}
         </dl>
-      </Card>
-      <Card className="p-5">
-        <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold"><Link2 className="h-4 w-4 text-stone-400" />Links e arquivos</h3>
-        <ul className="space-y-1.5">
+      </section>
+      <section aria-labelledby="info-cliente">
+        <SectionHeader id="info-cliente" title="Cliente" aside={client && <ActionLink to={`/clientes/${client.id}`} muted>Abrir</ActionLink>} />
+        {client ? (
+          <dl>
+            <InfoRow label="Nome">{client.name}</InfoRow>
+            <InfoRow label="Telefone">{client.phone}</InfoRow>
+            <InfoRow label="E-mail">
+              <span className="break-all">{client.email}</span>
+            </InfoRow>
+            <InfoRow label="Endereço">
+              {client.street}, {client.number}
+              {client.complement ? ` - ${client.complement}` : ''}
+              <span className="block text-[13px] text-muted">
+                {client.neighborhood} · {client.city}/{client.state} · {client.cep}
+              </span>
+            </InfoRow>
+          </dl>
+        ) : (
+          <p className="text-[13px] text-faint">Cliente não encontrado.</p>
+        )}
+      </section>
+      <section aria-labelledby="info-links">
+        <SectionHeader id="info-links" title="Links e arquivos" />
+        <ul>
           {(project.links ?? []).map((l) => (
-            <li key={l.id} className="group flex items-center gap-2 text-sm">
-              <ExternalLink className="h-3.5 w-3.5 shrink-0 text-stone-400" />
-              <a href={l.url} target="_blank" rel="noreferrer" className="flex-1 truncate text-brand-700 hover:underline">{l.label}</a>
-              <button onClick={() => updateProject(project.id, { links: project.links.filter((x) => x.id !== l.id) }).catch(toast.error)} className="text-stone-300 opacity-0 hover:text-danger-fg group-hover:opacity-100" aria-label="Remover link">
+            <li key={l.id} className="group flex items-center gap-2 border-t border-hairline py-3 text-body">
+              <ExternalLink className="h-3.5 w-3.5 shrink-0 text-faint" strokeWidth={1.8} />
+              <a href={l.url} target="_blank" rel="noreferrer" className="flex-1 truncate text-accent-fg hover:underline">
+                {l.label}
+              </a>
+              <button
+                type="button"
+                onClick={() => updateProject(project.id, { links: project.links.filter((x) => x.id !== l.id) }).catch(toast.error)}
+                className="rounded-xs text-faint opacity-0 hover:text-danger-fg focus-visible:opacity-100 group-hover:opacity-100"
+                aria-label={`Remover ${l.label}`}
+              >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </li>
           ))}
-          {(project.links ?? []).length === 0 && <li className="text-xs text-stone-500">Pasta do Drive, pranchas, contrato, fotos da obra…</li>}
+          {(project.links ?? []).length === 0 && <li className="border-t border-hairline py-3 text-[13px] text-faint">Pasta do Drive, pranchas, contrato, fotos da obra…</li>}
         </ul>
         <div className="mt-3 space-y-2">
-          <Input value={link.label} onChange={(e) => setLink({ ...link, label: e.target.value })} placeholder="Nome (ex.: Pasta no Drive)" className="h-8 py-1" />
+          <Input value={link.label} onChange={(e) => setLink({ ...link, label: e.target.value })} placeholder="Nome (ex.: Pasta no Drive)" className="h-8" />
           <div className="flex gap-2">
-            <Input value={link.url} onChange={(e) => setLink({ ...link, url: e.target.value })} placeholder="https://…" className="h-8 py-1" />
-            <Button size="sm" onClick={addLink} disabled={!link.url.trim()}>Adicionar</Button>
+            <Input value={link.url} onChange={(e) => setLink({ ...link, url: e.target.value })} placeholder="https://…" className="h-8" />
+            <Button size="sm" onClick={addLink} disabled={!link.url.trim()}>
+              Adicionar
+            </Button>
           </div>
         </div>
-      </Card>
-      <Card className="p-5 lg:col-span-3">
-        <h3 className="mb-3 font-display text-sm font-semibold">Anotações do projeto</h3>
+      </section>
+      <section aria-labelledby="info-notas" className="lg:col-span-3">
+        <SectionHeader id="info-notas" title="Anotações" aside={<span className="text-[12.5px] text-faint">salva ao sair do campo</span>} />
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          onBlur={() => (notes || null) !== project.notes && updateProject(project.id, { notes: notes || null }).then(() => toast.success('Anotações salvas.')).catch(toast.error)}
+          onBlur={() =>
+            (notes || null) !== project.notes &&
+            updateProject(project.id, { notes: notes || null })
+              .then(() => toast.success('Anotações salvas.'))
+              .catch(toast.error)
+          }
           rows={6}
-          placeholder="Decisões do cliente, pendências, observações de obra… (salva automaticamente)"
+          placeholder="Decisões do cliente, pendências, observações de obra…"
         />
-      </Card>
+      </section>
     </div>
   );
 }

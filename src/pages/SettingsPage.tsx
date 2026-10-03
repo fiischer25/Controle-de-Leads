@@ -3,17 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import {
   ArrowDown,
   ArrowUp,
-  Building,
-  CalendarDays,
   Copy,
-  Database,
   Download,
-  FolderKanban,
   GripVertical,
-  Layers,
-  MessageCircle,
   Plus,
-  Tag,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -35,19 +28,19 @@ export default function SettingsPage() {
   const tab = (params.get('aba') as Tab) || 'escritorio';
   return (
     <div>
-      <PageHeader eyebrow="Administração" title="Configurações" description="Personalize o sistema para a rotina do escritório." />
+      <PageHeader title="Configurações" description="Personalize o sistema para a rotina do escritório." />
       <Tabs<Tab>
-        className="mb-6"
+        className="mb-8"
         value={tab}
         onChange={(t) => setParams({ aba: t }, { replace: true })}
         tabs={[
-          { id: 'escritorio', label: <span className="inline-flex items-center gap-1.5"><Building className="h-4 w-4" />Escritório e logo</span> },
-          { id: 'tipos', label: <span className="inline-flex items-center gap-1.5"><Layers className="h-4 w-4" />Tipos de projeto e tarefas</span> },
-          { id: 'funil', label: <span className="inline-flex items-center gap-1.5"><FolderKanban className="h-4 w-4" />Etapas do funil</span> },
-          { id: 'origens', label: <span className="inline-flex items-center gap-1.5"><Tag className="h-4 w-4" />Origens de leads</span> },
-          { id: 'agenda', label: <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />Google Agenda</span> },
-          { id: 'whatsapp', label: <span className="inline-flex items-center gap-1.5"><MessageCircle className="h-4 w-4" />WhatsApp e assistente</span> },
-          { id: 'dados', label: <span className="inline-flex items-center gap-1.5"><Database className="h-4 w-4" />Backup</span> },
+          { id: 'escritorio', label: 'Escritório e logo' },
+          { id: 'tipos', label: 'Tipos de projeto e tarefas' },
+          { id: 'funil', label: 'Etapas do funil' },
+          { id: 'origens', label: 'Origens de leads' },
+          { id: 'agenda', label: 'Google Agenda' },
+          { id: 'whatsapp', label: 'WhatsApp e assistente' },
+          { id: 'dados', label: 'Backup' },
         ]}
       />
       {tab === 'tipos' && <ProjectTypesSettings />}
@@ -439,7 +432,7 @@ function CalendarSettings() {
         {preview ? (
           <iframe title="Pré-visualização" src={preview} className="h-[480px] w-full border-t border-line/70" frameBorder={0} />
         ) : (
-          <EmptyState icon={<CalendarDays className="h-6 w-6" />} title="Nenhuma agenda configurada" />
+          <EmptyState title="Nenhuma agenda configurada" description="Cole o código de incorporação ao lado para ver a pré-visualização." />
         )}
       </Card>
     </div>

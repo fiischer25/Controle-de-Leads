@@ -1,10 +1,10 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { BarChart3, Clock, Download, Hourglass, Target, Timer, TrendingUp, Trophy } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Download } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { CSS_COLOR, personColor } from '../lib/status';
+import { CSS_COLOR } from '../lib/status';
 import { entryMinutes } from '../lib/domain';
-import { addDays, cn, diffDays, downloadFile, formatDate, formatMinutes, formatNumber, MONTHS_FULL, toCsv, toDateKey, today } from '../lib/utils';
-import { Avatar, BarRow, Button, Card, CardHeader, PageHeader, Select } from '../components/ui';
+import { addDays, diffDays, downloadFile, formatDate, formatMinutes, formatNumber, MONTHS_FULL, toCsv, toDateKey, today } from '../lib/utils';
+import { Avatar, BarRow, Button, Listbox, MetricRow, PageHeader, SectionHeader } from '../components/ui';
 
 const PERIODS = [
   { id: '30', label: 'Últimos 30 dias' },
@@ -16,6 +16,7 @@ const PERIODS = [
 export default function ReportsPage() {
   const { db, maps } = useData();
   const [period, setPeriod] = useState('90');
+  const [showTable, setShowTable] = useState(false);
   const t = today();
   const since = addDays(t, -Number(period));
   const dateOf = (iso: string) => toDateKey(new Date(iso));
@@ -107,7 +108,6 @@ export default function ReportsPage() {
   }, [db, maps, since]);
 
   const conv = r.won.length + r.lost.length ? Math.round((r.won.length / (r.won.length + r.lost.length)) * 100) : null;
-  const maxMonth = Math.max(1, ...r.months.map((m) => Math.max(m.leads, m.won, m.delivered)));
 
   const exportTimesheet = () => {
     downloadFile(
@@ -133,170 +133,258 @@ export default function ReportsPage() {
     );
   };
 
+  const delivered = r.completed.length;
+  const series: Array<{ key: 'leads' | 'won' | 'delivered'; title: string; total: number }> = [
+    { key: 'leads', title: 'Leads recebidos', total: r.months.reduce((a, m) => a + m.leads, 0) },
+    { key: 'won', title: 'Fechados', total: r.months.reduce((a, m) => a + m.won, 0) },
+    { key: 'delivered', title: 'Projetos entregues', total: r.months.reduce((a, m) => a + m.delivered, 0) },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div>
       <PageHeader
-        eyebrow="Indicadores"
         title="Relatórios"
-        description="Desempenho comercial e produtividade da equipe (sem dados financeiros)."
+        description="Desempenho comercial e produtividade da equipe · sem dados financeiros"
         actions={
           <>
-            <Select value={period} onChange={(e) => setPeriod(e.target.value)} className="w-auto">
-              {PERIODS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-            </Select>
-            <Button icon={<Download className="h-4 w-4" />} onClick={exportTimesheet}>Exportar horas</Button>
+            <Listbox
+              value={period}
+              onChange={setPeriod}
+              aria-label="Período"
+              options={PERIODS.map((p) => ({ value: p.id, label: p.label }))}
+              className="h-9 w-auto gap-1.5 border-transparent bg-transparent px-3 text-body font-medium shadow-none hover:bg-ink/5"
+            />
+            <Button variant="ghost" icon={<Download className="h-4 w-4" strokeWidth={1.6} />} onClick={exportTimesheet}>
+              Exportar horas
+            </Button>
           </>
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
-        <Tile icon={<Target className="h-4 w-4" />} label="Novos leads" value={r.leadsIn.length} />
-        <Tile icon={<TrendingUp className="h-4 w-4" />} label="Taxa de conversão" value={conv === null ? '—' : `${conv}%`} sub={`${r.won.length} ganhos · ${r.lost.length} perdidos`} />
-        <Tile icon={<Hourglass className="h-4 w-4" />} label="Tempo médio p/ fechar" value={r.avgClose === null ? '—' : `${r.avgClose} dias`} />
-        <Tile icon={<Trophy className="h-4 w-4" />} label="Projetos entregues" value={r.completed.length} sub={r.completed.length ? `${Math.round((r.onTime / r.completed.length) * 100)}% no prazo` : undefined} />
-        <Tile icon={<Timer className="h-4 w-4" />} label="Tarefas no prazo" value={r.tasksDone.length ? `${Math.round((r.tasksOnTime / r.tasksDone.length) * 100)}%` : '—'} sub={`${r.tasksDone.length} concluídas`} />
-        <Tile icon={<Clock className="h-4 w-4" />} label="Horas registradas" value={formatMinutes(r.totalMin)} sub={r.avgDuration ? `duração média ${r.avgDuration} dias/projeto` : undefined} />
-      </div>
+      <div className="space-y-12 md:space-y-14">
+        <MetricRow
+          label={PERIODS.find((p) => p.id === period)?.label}
+          items={[
+            { label: 'Novos leads', value: r.leadsIn.length },
+            { label: 'Conversão', value: conv === null ? '—' : `${conv}%`, sub: `${r.won.length} ganhos · ${r.lost.length} perdidos` },
+            { label: 'Tempo para fechar', value: r.avgClose === null ? '—' : `${r.avgClose}d`, sub: 'média dos ganhos' },
+            {
+              label: 'Projetos entregues',
+              value: delivered,
+              sub: delivered ? `${Math.round((r.onTime / delivered) * 100)}% no prazo` : 'nenhum no período',
+            },
+            {
+              label: 'Tarefas no prazo',
+              value: r.tasksDone.length ? `${Math.round((r.tasksOnTime / r.tasksDone.length) * 100)}%` : '—',
+              sub: `${r.tasksDone.length} concluídas`,
+            },
+            {
+              label: 'Horas registradas',
+              value: `${formatNumber(r.totalMin / 60, 0)}h`,
+              sub: r.avgDuration ? `${formatMinutes(r.totalMin)} · ${r.avgDuration} dias por projeto` : formatMinutes(r.totalMin),
+            },
+          ]}
+        />
 
-      <Card>
-        <CardHeader icon={<BarChart3 className="h-4 w-4" />} title="Últimos 12 meses" subtitle="Leads recebidos, fechamentos e entregas por mês" />
-        <div className="px-5 pb-5">
-          <div className="mb-3 flex flex-wrap gap-4 text-xs text-stone-600">
-            <Legend color={CSS_COLOR.stone(300)} label="Leads recebidos" />
-            <Legend color={CSS_COLOR.brand(500)} label="Fechados" />
-            <Legend color={CSS_COLOR.success} label="Projetos entregues" />
-          </div>
-          <div className="flex h-56 items-end gap-2 border-b border-line">
-            {r.months.map((m) => (
-              <div key={m.key} className="flex h-full flex-1 flex-col justify-end" title={`${m.label}: ${m.leads} leads, ${m.won} fechados, ${m.delivered} entregues`}>
-                <div className="flex h-full items-end justify-center gap-[2px]">
-                  {[[CSS_COLOR.stone(300), m.leads], [CSS_COLOR.brand(500), m.won], [CSS_COLOR.success, m.delivered]].map(([c, v]) => (
-                    <div key={c as string} className="w-full max-w-[14px] rounded-t-[4px]" style={{ height: `${((v as number) / maxMonth) * 100}%`, minHeight: (v as number) > 0 ? 3 : 0, backgroundColor: c as string }} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-1.5 flex gap-2">
-            {r.months.map((m) => <div key={m.key} className="flex-1 text-center text-[11px] text-stone-500">{m.label}</div>)}
-          </div>
-        </div>
-      </Card>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card>
-          <CardHeader title="Como os clientes chegam" subtitle="Conversão por origem dos leads que entraram no período" />
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-stone-400">
-                <tr>
-                  <th className="px-5 py-2 font-medium">Origem</th>
-                  <th className="px-3 py-2 text-right font-medium">Leads</th>
-                  <th className="px-3 py-2 text-right font-medium">Ganhos</th>
-                  <th className="px-3 py-2 text-right font-medium">Perdidos</th>
-                  <th className="px-5 py-2 text-right font-medium">Conversão</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line/70 tabular">
-                {r.sources.map((s) => {
-                  const c = s.won + s.lost ? Math.round((s.won / (s.won + s.lost)) * 100) : null;
-                  return (
-                    <tr key={s.name}>
-                      <td className="px-5 py-2.5">{s.name}</td>
-                      <td className="px-3 py-2.5 text-right">{s.total}</td>
-                      <td className="px-3 py-2.5 text-right">{s.won}</td>
-                      <td className="px-3 py-2.5 text-right">{s.lost}</td>
-                      <td className="px-5 py-2.5 text-right font-semibold">{c === null ? '—' : `${c}%`}</td>
+        {/* Últimos 12 meses: três gráficos pequenos de uma série cada (sem legenda de cores) */}
+        <section aria-labelledby="meses">
+          <SectionHeader
+            id="meses"
+            title="Últimos 12 meses"
+            aside={
+              <button type="button" onClick={() => setShowTable((v) => !v)} className="text-[13px] text-faint hover:text-ink">
+                {showTable ? 'Ver gráficos' : 'Ver tabela'}
+              </button>
+            }
+          />
+          {showTable ? (
+            <div className="overflow-x-auto border-t border-hairline">
+              <table className="w-full text-[13px]">
+                <thead className="text-left text-[12.5px] text-faint">
+                  <tr className="border-b border-hairline">
+                    <th className="py-2.5 pr-4 font-normal">Mês</th>
+                    {series.map((s) => (
+                      <th key={s.key} className="py-2.5 pl-4 text-right font-normal">
+                        {s.title}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="tabular">
+                  {r.months.map((m) => (
+                    <tr key={m.key} className="border-b border-hairline">
+                      <td className="py-2.5 pr-4 text-stone-700">{m.label}</td>
+                      <td className="py-2.5 pl-4 text-right text-ink">{m.leads}</td>
+                      <td className="py-2.5 pl-4 text-right text-ink">{m.won}</td>
+                      <td className="py-2.5 pl-4 text-right text-ink">{m.delivered}</td>
                     </tr>
-                  );
-                })}
-                {r.sources.length === 0 && <tr><td colSpan={5} className="px-5 py-6 text-center text-stone-500">Sem leads no período.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          <Card>
-            <CardHeader title="Motivos de perda" />
-            <div className="space-y-3 px-5 pb-5">
-              {r.lostReasons.length === 0 && <p className="text-sm text-stone-500">Nenhuma perda no período. 🎉</p>}
-              {r.lostReasons.map(([reason, n]) => <BarRow key={reason} label={reason} value={n} max={r.lostReasons[0][1]} color={CSS_COLOR.stone(500)} />)}
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </Card>
-          <Card>
-            <CardHeader title="Leads por cidade" />
-            <div className="space-y-3 px-5 pb-5">
-              {r.cities.length === 0 && <p className="text-sm text-stone-500">Sem dados.</p>}
-              {r.cities.map(([city, n]) => <BarRow key={city} label={city} value={n} max={r.cities[0][1]} />)}
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card>
-          <CardHeader title="Horas por pessoa" subtitle="No período" />
-          <div className="space-y-3 px-5 pb-5">
-            {r.byMember.length === 0 && <p className="text-sm text-stone-500">Nenhuma hora registrada.</p>}
-            {r.byMember.map(([uid, min]) => {
-              const u = maps.profiles[uid];
-              return (
-                <BarRow
-                  key={uid}
-                  label={<span className="inline-flex items-center gap-2"><Avatar user={u} size="xs" />{u?.name ?? '—'}</span>}
-                  value={Math.round(min / 60)}
-                  suffix="h"
-                  max={Math.round(r.byMember[0][1] / 60) || 1}
-                  color={personColor(uid)}
-                  title={formatMinutes(min)}
-                />
-              );
-            })}
-          </div>
-        </Card>
-        <Card>
-          <CardHeader title="Horas por projeto" subtitle="Top 10 no período" />
-          <div className="space-y-3 px-5 pb-5">
-            {r.byProject.length === 0 && <p className="text-sm text-stone-500">Nenhuma hora registrada.</p>}
-            {r.byProject.map(([pid, min]) => (
-              <BarRow key={pid} label={pid === 'avulsas' ? 'Tarefas avulsas' : maps.projects[pid]?.name ?? '—'} value={Math.round(min / 60)} suffix="h" max={Math.round(r.byProject[0][1] / 60) || 1} title={formatMinutes(min)} />
-            ))}
-          </div>
-        </Card>
-        <Card>
-          <CardHeader title="Horas por tipo de projeto" />
-          <div className="space-y-3 px-5 pb-5">
-            {r.byType.length === 0 && <p className="text-sm text-stone-500">Nenhuma hora registrada.</p>}
-            {r.byType.map(([name, min]) => (
-              <BarRow key={name} label={name} value={Math.round(min / 60)} suffix="h" max={Math.round(r.byType[0][1] / 60) || 1} color={CSS_COLOR.brand(500)} title={formatMinutes(min)} />
-            ))}
-          </div>
-          {r.perSqm.length > 0 && (
-            <div className="border-t border-line/70 px-5 py-3 text-xs text-stone-600">
-              Média em projetos concluídos: <b>{formatNumber(r.perSqm.reduce((a, x) => a + x.hoursPerSqm, 0) / r.perSqm.length, 2)} h/m²</b> — útil para estimar prazos de novas propostas.
+          ) : (
+            <div className="grid gap-10 border-t border-hairline pt-5 md:grid-cols-3 md:gap-8">
+              {series.map((s) => (
+                <MonthBars key={s.key} title={s.title} total={s.total} months={r.months.map((m) => ({ key: m.key, label: m.label, value: m[s.key] }))} />
+              ))}
             </div>
           )}
-        </Card>
+        </section>
+
+        <div className="grid gap-12 lg:grid-cols-[1fr_340px] lg:gap-16">
+          <section aria-labelledby="origem">
+            <SectionHeader id="origem" title="Como os clientes chegam" aside={<span className="text-[12.5px] text-faint">leads que entraram no período</span>} />
+            <div className="grid grid-cols-[minmax(0,1fr)_56px_56px_64px_80px] gap-4 border-b border-hairline pb-2.5 text-right text-[12.5px] text-faint">
+              <span className="text-left">Origem</span>
+              <span>Leads</span>
+              <span>Ganhos</span>
+              <span>Perdidos</span>
+              <span>Conversão</span>
+            </div>
+            {r.sources.length === 0 && <p className="py-6 text-[13px] text-faint">Sem leads no período.</p>}
+            <ul className="tabular">
+              {r.sources.map((src) => {
+                const c = src.won + src.lost ? Math.round((src.won / (src.won + src.lost)) * 100) : null;
+                return (
+                  <li key={src.name} className="grid grid-cols-[minmax(0,1fr)_56px_56px_64px_80px] gap-4 border-b border-hairline py-3 text-right text-[13px]">
+                    <span className="truncate text-left text-ink">{src.name}</span>
+                    <span className="text-stone-700">{src.total}</span>
+                    <span className="text-stone-700">{src.won}</span>
+                    <span className="text-stone-700">{src.lost}</span>
+                    <span className="font-medium text-ink">{c === null ? '—' : `${c}%`}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <div className="space-y-12">
+            <section aria-labelledby="perdas">
+              <SectionHeader id="perdas" title="Motivos de perda" />
+              <div className="space-y-4 border-t border-hairline pt-4">
+                {r.lostReasons.length === 0 && <p className="text-[13px] text-faint">Nenhuma perda no período.</p>}
+                {r.lostReasons.map(([reason, n]) => (
+                  <BarRow key={reason} label={reason} value={n} max={r.lostReasons[0][1]} color={CSS_COLOR.stone(500)} />
+                ))}
+              </div>
+            </section>
+            <section aria-labelledby="cidades">
+              <SectionHeader id="cidades" title="Leads por cidade" />
+              <div className="space-y-4 border-t border-hairline pt-4">
+                {r.cities.length === 0 && <p className="text-[13px] text-faint">Sem dados.</p>}
+                {r.cities.map(([city, n]) => (
+                  <BarRow key={city} label={city} value={n} max={r.cities[0][1]} />
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div className="grid gap-12 lg:grid-cols-3 lg:gap-12">
+          <section aria-labelledby="h-pessoa">
+            <SectionHeader id="h-pessoa" title="Horas por pessoa" />
+            <div className="space-y-4 border-t border-hairline pt-4">
+              {r.byMember.length === 0 && <p className="text-[13px] text-faint">Nenhuma hora registrada.</p>}
+              {r.byMember.map(([uid, min]) => {
+                const u = maps.profiles[uid];
+                return (
+                  <BarRow
+                    key={uid}
+                    label={
+                      <span className="inline-flex items-center gap-2">
+                        <Avatar user={u} size="xs" />
+                        {u?.name ?? '—'}
+                      </span>
+                    }
+                    value={Math.round(min / 60)}
+                    suffix="h"
+                    max={Math.round(r.byMember[0][1] / 60) || 1}
+                    color={CSS_COLOR.brand(500)}
+                    title={formatMinutes(min)}
+                  />
+                );
+              })}
+            </div>
+          </section>
+          <section aria-labelledby="h-projeto">
+            <SectionHeader id="h-projeto" title="Horas por projeto" aside={<span className="text-[12.5px] text-faint">top 10</span>} />
+            <div className="space-y-4 border-t border-hairline pt-4">
+              {r.byProject.length === 0 && <p className="text-[13px] text-faint">Nenhuma hora registrada.</p>}
+              {r.byProject.map(([pid, min]) => (
+                <BarRow
+                  key={pid}
+                  label={pid === 'avulsas' ? 'Tarefas avulsas' : maps.projects[pid]?.name ?? '—'}
+                  value={Math.round(min / 60)}
+                  suffix="h"
+                  max={Math.round(r.byProject[0][1] / 60) || 1}
+                  color={CSS_COLOR.brand(500)}
+                  title={formatMinutes(min)}
+                />
+              ))}
+            </div>
+          </section>
+          <section aria-labelledby="h-tipo">
+            <SectionHeader id="h-tipo" title="Horas por tipo" />
+            <div className="space-y-4 border-t border-hairline pt-4">
+              {r.byType.length === 0 && <p className="text-[13px] text-faint">Nenhuma hora registrada.</p>}
+              {r.byType.map(([name, min]) => (
+                <BarRow
+                  key={name}
+                  label={name}
+                  value={Math.round(min / 60)}
+                  suffix="h"
+                  max={Math.round(r.byType[0][1] / 60) || 1}
+                  color={CSS_COLOR.brand(500)}
+                  title={formatMinutes(min)}
+                />
+              ))}
+            </div>
+            {r.perSqm.length > 0 && (
+              <p className="mt-5 border-t border-hairline pt-3 text-[12.5px] text-muted">
+                Média em projetos concluídos:{' '}
+                <span className="text-ink">{formatNumber(r.perSqm.reduce((a, x) => a + x.hoursPerSqm, 0) / r.perSqm.length, 2)} h/m²</span> — útil para estimar prazos de
+                novas propostas.
+              </p>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );
 }
 
-function Tile({ icon, label, value, sub }: { icon: ReactNode; label: string; value: ReactNode; sub?: string }) {
+/** Barras mensais de uma única série: total em destaque, valor do mês ao passar o mouse. */
+function MonthBars({ title, total, months }: { title: string; total: number; months: Array<{ key: string; label: string; value: number }> }) {
+  const max = Math.max(1, ...months.map((m) => m.value));
+  const last = months[months.length - 1];
   return (
-    <div className="card px-4 py-3.5">
-      <div className="flex items-center gap-1.5 text-xs text-stone-500"><span className="text-stone-400">{icon}</span>{label}</div>
-      <div className="mt-1.5 font-display text-2xl font-medium tracking-tight leading-none">{value}</div>
-      {sub && <div className={cn('mt-1 text-[11px] text-stone-500')}>{sub}</div>}
-    </div>
-  );
-}
-
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="h-2.5 w-2.5 rounded-[2px]" style={{ backgroundColor: color }} />
-      {label}
-    </span>
+    <figure className="min-w-0">
+      <figcaption className="flex items-baseline justify-between gap-3">
+        <span className="text-[12.5px] text-faint">{title}</span>
+        <span className="text-[12.5px] text-faint">
+          <span className="font-display text-[20px] leading-6 tracking-[-0.02em] tabular text-ink">{total}</span> em 12 meses
+        </span>
+      </figcaption>
+      <div className="mt-4 flex h-28 items-end gap-0.5 border-b border-line-strong" role="img" aria-label={`${title}: ${months.map((m) => `${m.label} ${m.value}`).join(', ')}`}>
+        {months.map((m) => (
+          <div key={m.key} className="group relative flex h-full flex-1 items-end justify-center">
+            <div
+              className="w-full max-w-[18px] rounded-t-[4px] bg-stone-800 transition-colors group-hover:bg-ink"
+              style={{ height: `${(m.value / max) * 100}%`, minHeight: m.value > 0 ? 3 : 0 }}
+            />
+            <span className="pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded-xs bg-ink px-1.5 py-0.5 text-[11px] text-surface tabular group-hover:block">
+              {m.label}: {m.value}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-0.5 text-[10.5px] text-faint">
+        {months.map((m, i) => (
+          <span key={m.key} className="flex-1 text-center">
+            {i % 2 === months.length % 2 || m === last ? m.label : ''}
+          </span>
+        ))}
+      </div>
+    </figure>
   );
 }

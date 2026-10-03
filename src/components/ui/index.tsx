@@ -22,7 +22,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Clock, Loader2, Pause, Search, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, ChevronRight, Clock, Loader2, Pause, Search, X } from 'lucide-react';
 import type { Profile, ProjectStatus, TaskStatus } from '../../lib/types';
 import {
   avatarTone,
@@ -1275,26 +1275,186 @@ export function EmptyState({
   );
 }
 
+/**
+ * Cabeçalho de página da "versão limpa": linha de contexto opcional (13px),
+ * título grande e uma linha de resumo; ações alinhadas à base.
+ */
 export function PageHeader({
   title,
   description,
   actions,
   eyebrow,
+  className,
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  /** Linha discreta acima do título (ex.: data, código, "Comercial"). */
   eyebrow?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className={cn('mb-8 flex flex-col gap-5 pt-2 sm:flex-row sm:items-end sm:justify-between md:mb-12 md:pt-6', className)}>
       <div className="min-w-0">
-        {eyebrow && <div className="eyebrow mb-2">{eyebrow}</div>}
-        <h1 className="font-display text-h1 text-ink">{title}</h1>
-        {description && <p className="mt-1.5 text-body text-muted">{description}</p>}
+        {eyebrow && <div className="mb-1.5 text-[13px] text-faint">{eyebrow}</div>}
+        <h1 className="font-display text-[30px] font-medium leading-9 tracking-[-0.03em] text-ink md:text-hero">{title}</h1>
+        {description && <p className="mt-2 text-[14.5px] leading-[21px] text-muted md:text-body-lg">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
+  );
+}
+
+/** Título de seção (Inter Tight 18/600) com um link ou contador à direita. */
+export function SectionHeader({ title, aside, id, className }: { title: ReactNode; aside?: ReactNode; id?: string; className?: string }) {
+  return (
+    <div className={cn('mb-4 flex items-baseline justify-between gap-4', className)}>
+      <h2 id={id} className="font-display text-section text-ink">
+        {title}
+      </h2>
+      {aside}
+    </div>
+  );
+}
+
+export interface Metric {
+  label: string;
+  value: ReactNode;
+  /** Classe de cor do número (só quando pede ação). */
+  tone?: string;
+  to?: string;
+  hint?: string;
+  /** Linha de apoio abaixo do número (12px, discreta). */
+  sub?: ReactNode;
+}
+
+/** Números sem caixas: rótulo 12.5 + número 32/36, separados do resto por uma hairline. */
+export function MetricRow({ items, className, label }: { items: Metric[]; className?: string; label?: string }) {
+  const cols = { 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-4', 5: 'md:grid-cols-3 xl:grid-cols-5', 6: 'md:grid-cols-3 xl:grid-cols-6' }[
+    Math.min(6, Math.max(2, items.length)) as 2 | 3 | 4 | 5 | 6
+  ];
+  return (
+    <section aria-label={label ?? 'Números'} className={className}>
+      {label && <div className="mb-3 text-[12.5px] text-faint">{label}</div>}
+      <div className={cn('grid grid-cols-2 gap-x-8 gap-y-6 border-t border-hairline pt-5', cols)}>
+        {items.map((k) => {
+          const inner = (
+            <>
+              <div className="truncate text-[12.5px] text-faint group-hover:text-muted">{k.label}</div>
+              <div className={cn('mt-1.5 font-display text-[28px] font-normal leading-[34px] tracking-[-0.025em] tabular md:text-metric', k.tone ?? 'text-ink')}>
+                {k.value}
+              </div>
+              {k.sub && <div className="mt-1 truncate text-xs text-faint">{k.sub}</div>}
+            </>
+          );
+          return k.to ? (
+            <Link key={k.label} to={k.to} title={k.hint} className="group min-w-0">
+              {inner}
+            </Link>
+          ) : (
+            <div key={k.label} title={k.hint} className="min-w-0">
+              {inner}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** Busca discreta (fundo translúcido, sem borda) com botão de limpar. */
+export function SearchField({
+  value,
+  onChange,
+  placeholder = 'Buscar…',
+  label,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('relative', className)}>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-faint" strokeWidth={1.8} />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={label ?? placeholder}
+        className="h-9 w-full rounded-[9px] bg-ink/[0.04] pl-9 pr-8 text-body text-ink outline-none transition-colors placeholder:text-faint hover:bg-ink/[0.06] focus:bg-surface focus:shadow-[0_0_0_1px_rgb(var(--accent)),0_0_0_3px_rgb(var(--accent)/0.22)]"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          aria-label="Limpar busca"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xs p-0.5 text-faint hover:text-ink"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Filtro em texto: "Responsável ⌄"; quando ativo mostra o valor escolhido. */
+export function FilterPick({
+  label,
+  value,
+  onChange,
+  options,
+  allLabel,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: ListboxOption[];
+  /** Rótulo da opção "todos" no menu (padrão: "{label}: todos"). */
+  allLabel?: string;
+}) {
+  const all: ListboxOption[] = [{ value: '', label: allLabel ?? `${label}: todos` }, ...options];
+  return (
+    <div className="shrink-0">
+      <Listbox
+        value={value}
+        onChange={onChange}
+        options={all}
+        aria-label={label}
+        searchable={options.length > 10}
+        renderValue={(o) => (value && o ? <span className="truncate font-medium text-ink">{o.label}</span> : <span className="text-muted">{label}</span>)}
+        className={cn(
+          'h-8 w-auto max-w-[220px] gap-1 rounded-[9px] border-transparent bg-transparent px-2.5 text-[13px] shadow-none hover:bg-ink/5',
+          value && 'bg-ink/[0.05]',
+        )}
+      />
+    </div>
+  );
+}
+
+/** Linha de ferramentas: busca + filtros (rolam no celular) + algo à direita. */
+export function Toolbar({ search, filters, aside, className }: { search?: ReactNode; filters?: ReactNode; aside?: ReactNode; className?: string }) {
+  return (
+    <div className={cn('flex flex-col gap-3 lg:flex-row lg:items-center', className)}>
+      {search && <div className="lg:w-72">{search}</div>}
+      {filters && (
+        <div className="scrollbar-none -mx-5 flex items-center gap-1 overflow-x-auto px-5 md:mx-0 md:px-0 lg:flex-1">{filters}</div>
+      )}
+      {!filters && <div className="hidden lg:block lg:flex-1" />}
+      {aside && <div className="flex shrink-0 items-center gap-4">{aside}</div>}
+    </div>
+  );
+}
+
+/** "← Projetos": volta discreta para a lista. */
+export function BackLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="inline-flex items-center gap-1.5 rounded-xs pt-2 text-[13px] text-faint transition-colors hover:text-ink md:pt-6">
+      <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.8} />
+      {children}
+    </Link>
   );
 }
 
@@ -1306,17 +1466,16 @@ export function CardHeader({
   title,
   subtitle,
   action,
-  icon,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
   action?: ReactNode;
+  /** Ignorado: a versão limpa não usa ícones decorativos em títulos. */
   icon?: ReactNode;
 }) {
   return (
     <div className="flex items-start justify-between gap-3 px-6 pb-3 pt-5">
       <div className="flex min-w-0 items-center gap-2.5">
-        {icon && <span className="text-stone-400">{icon}</span>}
         <div className="min-w-0">
           <h3 className="font-display text-[15px] font-semibold leading-5 tracking-[-0.01em] text-ink">{title}</h3>
           {subtitle && <p className="text-xs text-faint">{subtitle}</p>}

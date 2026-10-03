@@ -1,12 +1,13 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, Clock, Columns3, List, ListChecks, Plus, Search, Send } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { CheckCircle2, ChevronDown, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
-import { TASK_PRIORITY, TASK_STATUS, TASK_STATUS_ORDER } from '../lib/constants';
+import { TASK_PRIORITY, TASK_STATUS_ORDER } from '../lib/constants';
 import { totalMinutes } from '../lib/domain';
+import { TASK_STATUS_STYLE } from '../lib/status';
 import type { Task, TaskStatus } from '../lib/types';
 import { addDays, cn, diffDays, formatMinutes, matches, startOfWeek, today, toDateKey } from '../lib/utils';
-import { Avatar, Button, DueBadge, EmptyState, Input, PageHeader, Segmented, Select, Tabs } from '../components/ui';
+import { ActionLink, Avatar, Button, DueBadge, EmptyState, FilterPick, PageHeader, SearchField, Tabs, Toolbar } from '../components/ui';
 import { TaskRow } from '../components/tasks/TaskRow';
 import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { useOpenTask } from '../components/tasks/useOpenTask';
@@ -25,19 +26,17 @@ export default function TasksPage() {
   const [creating, setCreating] = useState(false);
   const [showDone, setShowDone] = useState(false);
 
-  const viewing = person === 'all' ? null : maps.profiles[person];
+  const viewing = person ? maps.profiles[person] : null;
 
   const base = useMemo(() => {
     return db.tasks.filter((t) => {
       if (scope === 'assigned') {
-        if (person !== 'all' && t.assignee_id !== person) return false;
-      } else {
-        if (t.created_by !== me.id || t.assignee_id === me.id) return false;
-      }
+        if (person && t.assignee_id !== person) return false;
+      } else if (t.created_by !== me.id || t.assignee_id === me.id) return false;
       if (project === 'none' && t.project_id) return false;
       if (project && project !== 'none' && t.project_id !== project) return false;
       const p = t.project_id ? maps.projects[t.project_id] : null;
-      if (p && (p.status === 'cancelado')) return false;
+      if (p && p.status === 'cancelado') return false;
       return matches(query, t.title, t.phase, p?.name);
     });
   }, [db.tasks, scope, person, me.id, project, query, maps.projects]);
@@ -63,13 +62,11 @@ export default function TasksPage() {
 
   const weekMinutes = useMemo(() => {
     const ws = startOfWeek(t);
-    const uidFilter = person === 'all' ? null : person;
-    return totalMinutes(
-      db.time_entries.filter((e) => (!uidFilter || e.user_id === uidFilter) && toDateKey(new Date(e.started_at)) >= ws),
-    );
+    return totalMinutes(db.time_entries.filter((e) => (!person || e.user_id === person) && toDateKey(new Date(e.started_at)) >= ws));
   }, [db.time_entries, person, t]);
 
   const openCount = base.filter((x) => x.status !== 'done').length;
+  const soonCount = groups.today.length + groups.week.length;
   const delegatedCount = db.tasks.filter((x) => x.created_by === me.id && x.assignee_id !== me.id && x.status !== 'done').length;
 
   const projectsWithTasks = useMemo(() => {
@@ -77,136 +74,178 @@ export default function TasksPage() {
     return db.projects.filter((p) => ids.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [db.tasks, db.projects]);
 
+  const title =
+    scope === 'delegated'
+      ? 'Tarefas que designei'
+      : person === me.id
+        ? 'Minhas tarefas'
+        : viewing
+          ? `Tarefas de ${viewing.name.split(' ')[0]}`
+          : 'Tarefas da equipe';
+
+  const sections: Array<{ key: string; title: string; color: string; tasks: Task[] }> = [
+    { key: 'overdue', title: 'Atrasadas', color: 'text-danger-fg', tasks: groups.overdue },
+    { key: 'today', title: 'Hoje', color: 'text-warning-fg', tasks: groups.today },
+    { key: 'week', title: 'Próximos 7 dias', color: 'text-stone-700', tasks: groups.week },
+    { key: 'later', title: 'Mais adiante', color: 'text-stone-700', tasks: groups.later },
+    { key: 'noDate', title: 'Sem prazo', color: 'text-stone-700', tasks: groups.noDate },
+  ];
+
   return (
     <div>
       <PageHeader
-        eyebrow="Produção"
-        title={scope === 'assigned' && person === me.id ? 'Minhas tarefas' : scope === 'assigned' ? (viewing ? `Tarefas de ${viewing.name.split(' ')[0]}` : 'Tarefas da equipe') : 'Tarefas que designei'}
-        description="Tudo o que está com você — de projetos e tarefas avulsas designadas pela equipe."
-        actions={
+        title={title}
+        description={
           <>
-            <Segmented<View>
+            {openCount} {openCount === 1 ? 'pendente' : 'pendentes'}
+            {groups.overdue.length > 0 && (
+              <>
+                {' · '}
+                <span className="text-danger-fg">
+                  {groups.overdue.length} {groups.overdue.length === 1 ? 'atrasada' : 'atrasadas'}
+                </span>
+              </>
+            )}
+            {soonCount > 0 && (
+              <>
+                {' · '}
+                <span className="text-warning-fg">
+                  {soonCount} {soonCount === 1 ? 'vence' : 'vencem'} em 7 dias
+                </span>
+              </>
+            )}
+            {scope === 'assigned' && <> · {formatMinutes(weekMinutes)} registradas nesta semana</>}
+          </>
+        }
+        actions={
+          <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setCreating(true)}>
+            Tarefa
+          </Button>
+        }
+      />
+
+      <Toolbar
+        search={<SearchField value={query} onChange={setQuery} placeholder="Buscar tarefa ou projeto…" label="Buscar tarefas" />}
+        filters={
+          <>
+            {scope === 'assigned' && (
+              <FilterPick
+                label="Pessoa"
+                allLabel="Toda a equipe"
+                value={person}
+                onChange={setPerson}
+                options={[
+                  { value: me.id, label: 'Eu', icon: <Avatar user={me} size="xs" /> },
+                  ...db.profiles.filter((p) => p.id !== me.id && p.active).map((p) => ({ value: p.id, label: p.name, icon: <Avatar user={p} size="xs" /> })),
+                ]}
+              />
+            )}
+            <FilterPick
+              label="Projeto"
+              allLabel="Todos os projetos"
+              value={project}
+              onChange={setProject}
+              options={[{ value: 'none', label: 'Somente avulsas' }, ...projectsWithTasks.map((p) => ({ value: p.id, label: p.name }))]}
+            />
+          </>
+        }
+        aside={
+          <>
+            <Tabs<Scope>
+              tabs={[
+                { id: 'assigned', label: 'Designadas' },
+                { id: 'delegated', label: 'Que designei', count: delegatedCount },
+              ]}
+              value={scope}
+              onChange={setScope}
+              size="sm"
+              underline={1}
+              bordered={false}
+            />
+            <span className="h-4 w-px bg-line max-md:hidden" aria-hidden />
+            <Tabs<View>
+              tabs={[
+                { id: 'list', label: 'Lista' },
+                { id: 'board', label: 'Quadro' },
+              ]}
               value={view}
               onChange={setView}
-              options={[
-                { id: 'list', label: 'Lista', icon: <List className="h-4 w-4" /> },
-                { id: 'board', label: 'Quadro', icon: <Columns3 className="h-4 w-4" /> },
-              ]}
+              size="sm"
+              underline={1}
+              bordered={false}
+              className="max-md:hidden"
             />
-            <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)}>
-              Nova tarefa
-            </Button>
           </>
         }
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi icon={<ListChecks className="h-4 w-4" />} label="Pendentes" value={openCount} />
-        <Kpi icon={<AlertTriangle className="h-4 w-4" />} label="Atrasadas" value={groups.overdue.length} tone={groups.overdue.length ? 'bad' : undefined} />
-        <Kpi icon={<CalendarDays className="h-4 w-4" />} label="Vencem em 7 dias" value={groups.today.length + groups.week.length} tone={groups.today.length + groups.week.length ? 'warn' : undefined} />
-        <Kpi icon={<Clock className="h-4 w-4" />} label="Horas nesta semana" value={formatMinutes(weekMinutes)} />
-      </div>
-
-      <Tabs<Scope>
-        className="mb-4"
-        value={scope}
-        onChange={setScope}
-        tabs={[
-          { id: 'assigned', label: 'Designadas a mim', count: undefined },
-          { id: 'delegated', label: <span className="inline-flex items-center gap-1.5"><Send className="h-3.5 w-3.5" /> Que designei a outros</span>, count: delegatedCount },
-        ]}
-      />
-
-      <div className="card mb-4 flex flex-wrap items-center gap-2 p-3">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar tarefa…" className="pl-9" />
-        </div>
-        {scope === 'assigned' && (
-          <Select value={person} onChange={(e) => setPerson(e.target.value)} className="w-auto">
-            <option value={me.id}>Minhas tarefas</option>
-            {db.profiles.filter((p) => p.id !== me.id && p.active).map((p) => (
-              <option key={p.id} value={p.id}>Tarefas de {p.name}</option>
-            ))}
-            <option value="all">Toda a equipe</option>
-          </Select>
-        )}
-        <Select value={project} onChange={(e) => setProject(e.target.value)} className="w-auto">
-          <option value="">Todos os projetos</option>
-          <option value="none">Somente avulsas</option>
-          {projectsWithTasks.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </Select>
-      </div>
-
-      {view === 'list' ? (
-        base.length === 0 ? (
-          <div className="card">
+      <div className="mt-6 md:mt-8">
+        {view === 'board' ? (
+          <TaskBoard tasks={base} onOpen={openTask} />
+        ) : base.length === 0 ? (
+          <div className="rounded-[16px] bg-surface shadow-surface">
             <EmptyState
-              icon={<CheckCircle2 className="h-6 w-6" />}
+              tone="success"
+              icon={<CheckCircle2 strokeWidth={1.6} />}
               title="Nenhuma tarefa por aqui"
               description="Quando alguém designar uma tarefa para você, ela aparece nesta tela."
-              action={<Button variant="primary" onClick={() => setCreating(true)} icon={<Plus className="h-4 w-4" />}>Criar tarefa</Button>}
+              action={<ActionLink onClick={() => setCreating(true)}>Criar tarefa</ActionLink>}
+              className="py-14"
             />
           </div>
         ) : (
-          <div className="space-y-4">
-            <Group title="Atrasadas" tone="bad" tasks={groups.overdue} onOpen={openTask} />
-            <Group title="Hoje" tone="warn" tasks={groups.today} onOpen={openTask} />
-            <Group title="Próximos 7 dias" tasks={groups.week} onOpen={openTask} />
-            <Group title="Mais adiante" tasks={groups.later} onOpen={openTask} />
-            <Group title="Sem prazo" tasks={groups.noDate} onOpen={openTask} />
+          <>
+            {openCount > 0 ? (
+              <div className="overflow-hidden rounded-[16px] bg-surface pb-1.5 shadow-surface">
+                {sections
+                  .filter((s) => s.tasks.length > 0)
+                  .map((s) => (
+                    <div key={s.key} role="group" aria-label={s.title}>
+                      <div className={cn('px-4 pb-2 pt-[18px] text-[12.5px] font-medium md:px-6', s.color)}>
+                        {s.title} <span className="ml-1 font-normal text-faint">{s.tasks.length}</span>
+                      </div>
+                      <div className="divide-y divide-hairline-surface border-t border-hairline-surface md:[&>div]:px-6">
+                        {s.tasks.map((x) => (
+                          <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <p className="py-6 text-[13px] text-faint">Nenhuma tarefa pendente.</p>
+            )}
             {groups.done.length > 0 && (
-              <div className="card overflow-hidden">
-                <button className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-stone-600" onClick={() => setShowDone((s) => !s)}>
-                  <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-success-fg" /> Concluídas recentemente ({groups.done.length})</span>
-                  <ChevronDown className={cn('h-4 w-4 transition-transform', showDone && 'rotate-180')} />
+              <div className="mt-6">
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-[13px] text-faint hover:text-ink"
+                  onClick={() => setShowDone((s) => !s)}
+                  aria-expanded={showDone}
+                >
+                  <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', !showDone && '-rotate-90')} />
+                  Concluídas recentemente <span className="tabular">{groups.done.length}</span>
                 </button>
-                {showDone && <div className="divide-y divide-line/70 border-t border-line/70">{groups.done.map((x) => <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />)}</div>}
+                {showDone && (
+                  <div className="mt-3 divide-y divide-hairline border-y border-hairline [&>div]:px-0 md:[&>div]:px-2">
+                    {groups.done.map((x) => (
+                      <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )
-      ) : (
-        <TaskBoard tasks={base} onOpen={openTask} />
-      )}
+          </>
+        )}
+      </div>
 
       {creating && (
         <TaskFormModal
           title={scope === 'delegated' ? 'Designar tarefa' : 'Nova tarefa'}
-          defaults={{ assignee_id: person !== 'all' ? person : me.id }}
+          defaults={{ assignee_id: person || me.id }}
           onClose={() => setCreating(false)}
         />
       )}
-    </div>
-  );
-}
-
-function Kpi({ icon, label, value, tone }: { icon: ReactNode; label: string; value: ReactNode; tone?: 'bad' | 'warn' }) {
-  return (
-    <div className="card px-4 py-3">
-      <div className="flex items-center gap-2 text-xs text-stone-500">
-        <span className="text-stone-300">{icon}</span>
-        {label}
-      </div>
-      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' ? 'text-danger-fg' : 'text-ink')}>{value}</div>
-    </div>
-  );
-}
-
-function Group({ title, tasks, tone, onOpen }: { title: string; tasks: Task[]; tone?: 'bad' | 'warn'; onOpen: (id: string) => void }) {
-  if (tasks.length === 0) return null;
-  return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-line/70 px-4 py-2.5">
-        <span className={cn('h-2 w-2 rounded-full', tone === 'bad' ? 'bg-danger-solid' : tone === 'warn' ? 'bg-warning-solid' : 'bg-stone-300')} />
-        <h3 className="text-sm font-semibold text-stone-800">{title}</h3>
-        <span className="text-xs text-stone-500 tabular">{tasks.length}</span>
-      </div>
-      <div className="divide-y divide-line/70">
-        {tasks.map((x) => (
-          <TaskRow key={x.id} task={x} onOpen={() => onOpen(x.id)} showProject />
-        ))}
-      </div>
     </div>
   );
 }
@@ -215,49 +254,84 @@ function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string) => v
   const { maps, settings, updateTask } = useData();
   const toast = useToast();
   const [over, setOver] = useState<TaskStatus | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
   const t = today();
   return (
-    <div className="scrollbar-thin -mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-      <div className="flex gap-3">
+    <div className="scrollbar-thin -mx-8 overflow-x-auto px-8 pb-6 xl:-mx-16 xl:px-16">
+      <div className="flex gap-6">
         {TASK_STATUS_ORDER.map((status) => {
+          const style = TASK_STATUS_STYLE[status];
           const items = tasks
             .filter((x) => x.status === status)
             .filter((x) => status !== 'done' || !x.completed_at || diffDays(toDateKey(new Date(x.completed_at)), t) <= 14)
             .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
+          const target = over === status && dragging && maps.tasks[dragging]?.status !== status;
           return (
             <section
               key={status}
-              onDragOver={(e) => { e.preventDefault(); setOver(status); }}
-              onDragLeave={() => setOver(null)}
+              aria-label={style.label}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setOver(status);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(null);
+              }}
               onDrop={(e) => {
                 e.preventDefault();
                 setOver(null);
+                setDragging(null);
                 const id = e.dataTransfer.getData('text/plain');
                 if (id) updateTask(id, { status }).catch(toast.error);
               }}
-              className={cn('flex w-[280px] shrink-0 flex-col rounded-xl border bg-stone-100/50', over === status ? 'border-brand-300 bg-brand-50/60' : 'border-transparent')}
+              className="flex w-[272px] shrink-0 flex-col"
             >
-              <header className="flex items-center gap-2 px-3 pb-2 pt-3">
-                <span className={cn('h-2 w-2 rounded-full', TASK_STATUS[status].dot)} />
-                <h3 className="text-sm font-semibold">{TASK_STATUS[status].label}</h3>
-                <span className="rounded-full bg-surface px-1.5 text-xs text-stone-500 tabular">{items.length}</span>
+              <header className="flex items-center gap-2 border-b border-hairline pb-3">
+                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', style.dot)} aria-hidden />
+                <h2 className="text-[13.5px] font-medium text-ink">{style.label}</h2>
+                <span className="text-[13px] tabular text-faint">{items.length}</span>
               </header>
-              <div className="min-h-[200px] space-y-2 px-2 pb-3">
+              <div className="min-h-[200px] space-y-2.5 pt-3">
+                {target && (
+                  <div className="flex h-14 items-center justify-center rounded-lg border-[1.5px] border-dashed border-brand-300 bg-brand-50 text-[13px] text-brand-700">
+                    Soltar em {style.label}
+                  </div>
+                )}
                 {items.map((x) => {
                   const project = x.project_id ? maps.projects[x.project_id] : null;
                   return (
                     <article
                       key={x.id}
                       draggable
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', x.id)}
+                      tabIndex={0}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', x.id);
+                        const el = e.currentTarget;
+                        el.classList.add('drag-ghost');
+                        requestAnimationFrame(() => el.classList.remove('drag-ghost'));
+                        setDragging(x.id);
+                      }}
+                      onDragEnd={() => {
+                        setDragging(null);
+                        setOver(null);
+                      }}
                       onClick={() => onOpen(x.id)}
-                      className="cursor-pointer rounded-lg border border-line bg-surface p-3 shadow-xs hover:border-stone-300"
+                      onKeyDown={(e) => e.key === 'Enter' && onOpen(x.id)}
+                      className={cn(
+                        'cursor-pointer rounded-lg border border-line bg-surface p-3.5 transition-[border-color,box-shadow,opacity] hover:border-stone-300 hover:shadow-sm',
+                        dragging === x.id && 'opacity-40',
+                      )}
                     >
-                      <div className="text-[11px] font-medium text-stone-500">{project ? project.name : 'Avulsa'}{x.phase ? ` · ${x.phase}` : ''}</div>
-                      <div className="mt-0.5 text-sm font-medium text-ink">{x.title}</div>
-                      <div className="mt-2 flex items-center justify-between gap-2">
+                      <div className="truncate text-[12.5px] text-faint">
+                        {project ? project.name : 'Avulsa'}
+                        {x.phase ? ` · ${x.phase}` : ''}
+                      </div>
+                      <div className={cn('mt-0.5 text-[14px] font-medium leading-5', x.status === 'done' ? 'text-faint line-through decoration-stone-300' : 'text-ink')}>
+                        {x.title}
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-2">
                         <DueBadge due={x.due_date} done={x.status === 'done'} soonDays={settings.due_soon_days} compact />
-                        <Avatar user={x.assignee_id ? maps.profiles[x.assignee_id] : null} size="sm" />
+                        <Avatar user={x.assignee_id ? maps.profiles[x.assignee_id] : null} size="xs" />
                       </div>
                     </article>
                   );
