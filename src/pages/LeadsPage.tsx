@@ -1,6 +1,6 @@
 import { useMemo, useState, type DragEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowDown, ArrowUp, Check, Download, Plus, Search, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Download, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { stageColor } from '../lib/status';
@@ -21,7 +21,7 @@ import {
   toDateKey,
   today,
 } from '../lib/utils';
-import { ActionLink, Avatar, Button, EmptyState, IconButton, Listbox, Tabs, type ListboxOption } from '../components/ui';
+import { ActionLink, Avatar, Button, EmptyState, FilterPick, IconButton, SearchField, Tabs } from '../components/ui';
 import { LeadDrawer, LostReasonModal } from '../components/leads/LeadDrawer';
 import { LeadFormModal } from '../components/leads/LeadFormModal';
 import { ConvertLeadModal } from '../components/leads/ConvertLeadModal';
@@ -210,26 +210,7 @@ export default function LeadsPage() {
 
       {/* Busca, filtros e visualização */}
       <div className="mt-8 flex flex-col gap-3 md:mt-12 lg:flex-row lg:items-center">
-        <div className="relative lg:w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-faint" strokeWidth={1.8} />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar nome, cidade, telefone…"
-            aria-label="Buscar oportunidades"
-            className="h-9 w-full rounded-[9px] bg-ink/[0.04] pl-9 pr-8 text-body text-ink outline-none transition-colors placeholder:text-faint hover:bg-ink/[0.06] focus:bg-surface focus:shadow-[0_0_0_1px_rgb(var(--accent)),0_0_0_3px_rgb(var(--accent)/0.22)]"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery('')}
-              aria-label="Limpar busca"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xs p-0.5 text-faint hover:text-ink"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+        <SearchField value={query} onChange={setQuery} placeholder="Buscar nome, cidade, telefone…" label="Buscar oportunidades" className="lg:w-72" />
         <div className="scrollbar-none -mx-5 flex items-center gap-1 overflow-x-auto px-5 md:mx-0 md:px-0 lg:flex-1">
           <FilterPick
             label="Responsável"
@@ -431,29 +412,6 @@ export default function LeadsPage() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-/** Filtro discreto: texto + chevron; quando ativo mostra o valor em ink. */
-function FilterPick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: ListboxOption[] }) {
-  const all: ListboxOption[] = [{ value: '', label: `${label}: todos` }, ...options];
-  return (
-    <div className="shrink-0">
-      <Listbox
-        value={value}
-        onChange={onChange}
-        options={all}
-        aria-label={label}
-        searchable={options.length > 10}
-        renderValue={(o) =>
-          value && o ? <span className="truncate font-medium text-ink">{o.label}</span> : <span className="text-muted">{label}</span>
-        }
-        className={cn(
-          'h-8 w-auto max-w-[200px] gap-1 rounded-[9px] border-transparent bg-transparent px-2.5 text-[13px] shadow-none hover:bg-ink/5',
-          value && 'bg-ink/[0.05]',
-        )}
-      />
     </div>
   );
 }

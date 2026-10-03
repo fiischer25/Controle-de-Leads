@@ -1,109 +1,175 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Download, Plus, Search, UsersRound } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Download, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { isProjectActive } from '../lib/domain';
 import { downloadFile, formatDate, matches, toCsv, today, toDateKey } from '../lib/utils';
-import { Badge, Button, Card, EmptyState, Input, PageHeader } from '../components/ui';
+import { Button, EmptyState, FilterPick, PageHeader, SearchField, Toolbar } from '../components/ui';
 import { ClientFormModal } from '../components/clients/ClientFormModal';
+
+type Filter = '' | 'active' | 'none';
 
 export default function ClientsPage() {
   const { db, maps } = useData();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('');
   const [creating, setCreating] = useState(false);
 
-  const rows = useMemo(() => {
+  const all = useMemo(() => {
     return db.clients
-      .filter((c) => matches(query, c.name, c.document, c.email, c.phone, c.city))
       .map((c) => {
         const projects = db.projects.filter((p) => p.client_id === c.id);
         const lead = c.lead_id ? maps.leads[c.lead_id] : null;
         return {
           client: c,
           projects,
-          active: projects.filter((p) => ['nao_iniciado', 'em_andamento', 'pausado'].includes(p.status)).length,
+          active: projects.filter(isProjectActive),
           source: lead?.source_id ? maps.sources[lead.source_id]?.name : null,
         };
       })
       .sort((a, b) => a.client.name.localeCompare(b.client.name));
-  }, [db.clients, db.projects, maps, query]);
+  }, [db.clients, db.projects, maps]);
+
+  const rows = all.filter((r) => {
+    if (filter === 'active' && r.active.length === 0) return false;
+    if (filter === 'none' && r.active.length > 0) return false;
+    return matches(query, r.client.name, r.client.document, r.client.email, r.client.phone, r.client.city);
+  });
+  const withActive = all.filter((r) => r.active.length > 0).length;
 
   const exportCsv = () =>
     downloadFile(
       `clientes-${today()}.csv`,
       toCsv(
         rows.map(({ client: c, projects, source }) => ({
-          Nome: c.name, 'CPF/CNPJ': c.document, RG: c.rg ?? '', Nascimento: formatDate(c.birth_date), Email: c.email, Telefone: c.phone,
-          Profissão: c.profession ?? '', CEP: c.cep, Endereço: `${c.street}, ${c.number}${c.complement ? ` - ${c.complement}` : ''}`,
-          Bairro: c.neighborhood, Cidade: c.city, UF: c.state, Projetos: projects.map((p) => p.name).join(', '), Origem: source ?? '',
+          Nome: c.name,
+          'CPF/CNPJ': c.document,
+          RG: c.rg ?? '',
+          Nascimento: formatDate(c.birth_date),
+          Email: c.email,
+          Telefone: c.phone,
+          Profissão: c.profession ?? '',
+          CEP: c.cep,
+          Endereço: `${c.street}, ${c.number}${c.complement ? ` - ${c.complement}` : ''}`,
+          Bairro: c.neighborhood,
+          Cidade: c.city,
+          UF: c.state,
+          Projetos: projects.map((p) => p.name).join(', '),
+          Origem: source ?? '',
           'Cliente desde': formatDate(toDateKey(new Date(c.created_at))),
         })),
       ),
       'text/csv',
     );
 
+  const cols = 'grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_88px]';
+
   return (
     <div>
       <PageHeader
-        eyebrow="Relacionamento"
         title="Clientes"
-        description="Clientes convertidos a partir das oportunidades e seus projetos."
+        description={
+          <>
+            {all.length} {all.length === 1 ? 'cliente' : 'clientes'} · {withActive} com projeto em andamento
+          </>
+        }
         actions={
           <>
-            <Button icon={<Download className="h-4 w-4" />} onClick={exportCsv}>Exportar</Button>
-            <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)}>Novo cliente</Button>
+            <Button variant="ghost" icon={<Download className="h-4 w-4" strokeWidth={1.6} />} onClick={exportCsv} className="max-sm:hidden">
+              Exportar
+            </Button>
+            <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setCreating(true)}>
+              Cliente
+            </Button>
           </>
         }
       />
-      <div className="card mb-4 p-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nome, CPF/CNPJ, e-mail, telefone, cidade…" className="pl-9" />
-        </div>
-      </div>
-      {rows.length === 0 ? (
-        <Card>
-          <EmptyState icon={<UsersRound className="h-6 w-6" />} title="Nenhum cliente" description="Clientes aparecem aqui quando uma oportunidade fechada vira cliente." />
-        </Card>
-      ) : (
-        <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-stone-400">
-              <tr>
-                <th className="px-4 py-2.5 font-medium">Cliente</th>
-                <th className="px-4 py-2.5 font-medium">Contato</th>
-                <th className="px-4 py-2.5 font-medium">Cidade</th>
-                <th className="px-4 py-2.5 font-medium">Projetos</th>
-                <th className="px-4 py-2.5 font-medium">Origem</th>
-                <th className="px-4 py-2.5 font-medium">Desde</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line/70">
+
+      <Toolbar
+        search={<SearchField value={query} onChange={setQuery} placeholder="Buscar nome, CPF/CNPJ, e-mail, cidade…" label="Buscar clientes" />}
+        filters={
+          <FilterPick
+            label="Projetos"
+            allLabel="Todos os clientes"
+            value={filter}
+            onChange={(v) => setFilter(v as Filter)}
+            options={[
+              { value: 'active', label: 'Com projeto em andamento' },
+              { value: 'none', label: 'Sem projeto em andamento' },
+            ]}
+          />
+        }
+      />
+
+      <div className="mt-6 md:mt-8">
+        {rows.length === 0 ? (
+          <EmptyState
+            title={all.length ? 'Nenhum cliente encontrado' : 'Nenhum cliente ainda'}
+            description={all.length ? 'Ajuste a busca ou o filtro.' : 'Clientes aparecem aqui quando uma oportunidade fechada vira cliente.'}
+            className="py-16"
+          />
+        ) : (
+          <>
+            <div className={`hidden gap-6 border-b border-hairline pb-2.5 text-[12.5px] text-faint md:grid ${cols}`}>
+              <span>Cliente</span>
+              <span>Contato</span>
+              <span>Projetos</span>
+              <span>Origem</span>
+              <span className="text-right">Desde</span>
+            </div>
+            <ul>
               {rows.map(({ client: c, projects, active, source }) => (
-                <tr key={c.id} className="cursor-pointer hover:bg-stone-50" onClick={() => navigate(`/clientes/${c.id}`)}>
-                  <td className="px-4 py-3">
-                    <div className="font-semibold text-ink">{c.name}</div>
-                    <div className="text-xs text-stone-500">{c.document}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-stone-700">{c.phone}</div>
-                    <div className="text-xs text-stone-500">{c.email}</div>
-                  </td>
-                  <td className="px-4 py-3 text-stone-700">{c.city}/{c.state}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {projects.slice(0, 3).map((p) => <Badge key={p.id}>{p.name}</Badge>)}
-                      {active > 0 && <span className="text-xs text-stone-500">{active} ativo{active > 1 ? 's' : ''}</span>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-stone-600">{source ?? '—'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-stone-600">{formatDate(toDateKey(new Date(c.created_at)))}</td>
-                </tr>
+                <li key={c.id}>
+                  <div
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate(`/clientes/${c.id}`)}
+                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/clientes/${c.id}`)}
+                    className={`grid cursor-pointer items-center gap-x-6 gap-y-1 border-b border-hairline py-3.5 transition-colors hover:bg-ink/[0.025] ${cols}`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-[14px] font-medium text-ink">{c.name}</span>
+                      <span className="block truncate text-[12.5px] text-faint">
+                        {c.city}/{c.state}
+                      </span>
+                    </span>
+                    <span className="hidden min-w-0 md:block">
+                      <span className="block truncate text-[13px] text-stone-700">{c.phone}</span>
+                      <span className="block truncate text-[12.5px] text-faint">{c.email}</span>
+                    </span>
+                    <span className="min-w-0 text-right text-[13px] md:text-left">
+                      {projects.length === 0 ? (
+                        <span className="text-faint">—</span>
+                      ) : (
+                        <span className="flex min-w-0 flex-wrap items-center justify-end gap-x-2 md:justify-start">
+                          {projects.slice(0, 2).map((p) => (
+                            <Link
+                              key={p.id}
+                              to={`/projetos/${p.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="truncate font-display text-[13px] font-semibold tracking-[0.01em] text-ink hover:underline hover:decoration-stone-300 hover:underline-offset-4"
+                            >
+                              {p.name}
+                            </Link>
+                          ))}
+                          {projects.length > 2 && <span className="text-faint">+{projects.length - 2}</span>}
+                          {active.length > 0 && <span className="hidden text-[12.5px] text-faint lg:inline">· {active.length} em andamento</span>}
+                        </span>
+                      )}
+                    </span>
+                    <span className="hidden truncate text-[13px] text-muted md:block">{source ?? '—'}</span>
+                    <span className="hidden text-right text-[13px] tabular text-muted md:block">{formatDate(toDateKey(new Date(c.created_at)))}</span>
+                  </div>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
+            </ul>
+            <p className="mt-3 text-[12.5px] text-faint">
+              {rows.length} {rows.length === 1 ? 'cliente' : 'clientes'}
+            </p>
+          </>
+        )}
+      </div>
       {creating && <ClientFormModal onClose={() => setCreating(false)} onSaved={(c) => navigate(`/clientes/${c.id}`)} />}
     </div>
   );

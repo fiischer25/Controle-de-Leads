@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import { useProjectSummaries, type ProjectSummary } from '../projects/useProjectSummaries';
-import { isProjectActive, orderedPhases, totalMinutes } from '../../lib/domain';
+import { projectRail, templatePhasesByType } from '../projects/rail';
+import { isProjectActive, totalMinutes } from '../../lib/domain';
 import { stageColor } from '../../lib/status';
 import type { Lead, LeadStage, Profile, Task } from '../../lib/types';
 import {
@@ -11,11 +12,10 @@ import {
   formatCurrency,
   formatDateShort,
   isoToLocalTime,
-  parseDate,
   startOfWeek,
   today,
   toDateKey,
-  WEEKDAYS_SHORT,
+  weekdayDate,
 } from '../../lib/utils';
 
 // ---------------------------------------------------------------- Fila "Pede sua atenção"
@@ -84,16 +84,6 @@ export interface TeamRow {
   minutes: number;
   open: number;
   overdue: number;
-}
-
-/** "qui, 8 out" */
-export function weekdayDate(key: string): string {
-  return `${WEEKDAYS_SHORT[parseDate(key).getDay()].toLowerCase()}, ${formatDateShort(key)}`;
-}
-
-/** "dom 4" */
-export function weekdayDay(key: string): string {
-  return `${WEEKDAYS_SHORT[parseDate(key).getDay()].toLowerCase()} ${parseDate(key).getDate()}`;
 }
 
 function firstName(p: Profile | undefined) {
@@ -307,21 +297,11 @@ export function useHomeData() {
     };
 
     // ------------------------------------------------------------ projetos (por urgência)
-    const templatesByType: Record<string, string[]> = {};
-    for (const tpl of [...db.task_templates].sort(byPosition)) {
-      const list = (templatesByType[tpl.project_type_id] ||= []);
-      if (!list.includes(tpl.phase)) list.push(tpl.phase);
-    }
+    const templatesByType = templatePhasesByType(db.task_templates);
     const urgency = (s: ProjectSummary) => (s.deadline === 'overdue' || s.overdueTasks > 0 ? 0 : 1);
     const projects: HomeProject[] = [...activeSummaries]
       .sort((a, b) => urgency(a) - urgency(b) || (a.project.due_date ?? '9999').localeCompare(b.project.due_date ?? '9999'))
-      .map((summary) => {
-        const fromTasks = orderedPhases(summary.tasks);
-        const phases = fromTasks.length ? fromTasks : templatesByType[summary.project.project_type_id] ?? [];
-        const pending = summary.tasks.length ? summary.tasks.some((x) => x.status !== 'done') : true;
-        const current = summary.tasks.length === 0 ? -1 : pending ? phases.indexOf(summary.phase) : phases.length;
-        return { summary, phases, current };
-      });
+      .map((summary) => ({ summary, ...projectRail(summary, templatesByType[summary.project.project_type_id]) }));
 
     // ------------------------------------------------------------ funil
     const stagesSorted = [...db.lead_stages].sort(byPosition);

@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Briefcase, CalendarDays, ChevronLeft, ChevronRight, FolderKanban, ListChecks, Plus, Rocket, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { CSS_COLOR, personColor } from '../lib/status';
 import { isProjectActive } from '../lib/domain';
 import { addDays, cn, formatDate, isoToLocalTime, MONTHS_FULL, parseDate, toDateKey, today, WEEKDAYS_SHORT } from '../lib/utils';
 import { EventFormModal } from '../components/events/EventFormModal';
 import type { CalendarEvent } from '../lib/types';
-import { Button, Card, Checkbox, PageHeader, Segmented, Select } from '../components/ui';
+import { ActionLink, Avatar, Button, Checkbox, FilterPick, IconButton, PageHeader, SectionHeader, Tabs, Toolbar } from '../components/ui';
 import { CalendarEmbed } from '../components/dashboard/CalendarEmbed';
 import { useOpenTask } from '../components/tasks/useOpenTask';
 
@@ -23,12 +23,12 @@ interface CalEvent {
   onClick: () => void;
 }
 
-const KIND_META: Record<Kind, { label: string; icon: typeof Briefcase }> = {
-  meeting: { label: 'Reuniões', icon: Users },
-  delivery: { label: 'Entregas de projeto', icon: Briefcase },
-  start: { label: 'Inícios de projeto', icon: Rocket },
-  task: { label: 'Prazos de tarefas', icon: ListChecks },
-  lead: { label: 'Retornos de leads', icon: FolderKanban },
+const KIND_META: Record<Kind, { label: string; one: string }> = {
+  meeting: { label: 'Reuniões', one: 'Reunião' },
+  delivery: { label: 'Entregas de projeto', one: 'Entrega de projeto' },
+  start: { label: 'Inícios de projeto', one: 'Início de projeto' },
+  task: { label: 'Prazos de tarefas', one: 'Prazo de tarefa' },
+  lead: { label: 'Retornos de leads', one: 'Retorno de lead' },
 };
 
 export default function AgendaPage() {
@@ -106,127 +106,203 @@ export default function AgendaPage() {
     return { y: d.getFullYear(), m: d.getMonth() };
   });
   const dayEvents = byDate[selected] ?? [];
+  const weekEnd = addDays(t, 7);
+  const weekMeetings = db.events.filter((e) => {
+    const d = toDateKey(new Date(e.starts_at));
+    return d >= t && d <= weekEnd && (e.participant_ids.includes(me.id) || e.created_by === me.id);
+  }).length;
+  const weekDeliveries = db.projects.filter((p) => isProjectActive(p) && p.due_date && p.due_date >= t && p.due_date <= weekEnd).length;
+  const selectedDate = parseDate(selected);
 
   return (
     <div>
       <PageHeader
-        eyebrow="Planejamento"
         title="Agenda"
-        description="Entregas, prazos de tarefas e retornos comerciais — e o Google Agenda do escritório."
-        actions={
+        description={
           <>
-          <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setCreatingOn(selected)}>Nova reunião</Button>
-          <Segmented
-            value={tab}
-            onChange={setTab}
-            options={[
-              { id: 'internal', label: 'Prazos do sistema', icon: <CalendarDays className="h-4 w-4" /> },
-              { id: 'google', label: 'Google Agenda' },
-            ]}
-          />
+            {weekMeetings} {weekMeetings === 1 ? 'reunião sua' : 'reuniões suas'} nos próximos 7 dias
+            {weekDeliveries > 0 && (
+              <>
+                {' · '}
+                <span className="text-warning-fg">
+                  {weekDeliveries} {weekDeliveries === 1 ? 'entrega de projeto' : 'entregas de projeto'}
+                </span>
+              </>
+            )}
           </>
+        }
+        actions={
+          <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setCreatingOn(selected)}>
+            Reunião
+          </Button>
         }
       />
 
-      {tab === 'google' ? (
-        <CalendarEmbed height={720} />
-      ) : (
-        <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
-          <Card className="overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="ghost" onClick={() => move(-1)} aria-label="Mês anterior"><ChevronLeft className="h-4 w-4" /></Button>
-                <h2 className="w-44 text-center font-display text-lg font-semibold tracking-tight">{MONTHS_FULL[cursor.m]} {cursor.y}</h2>
-                <Button size="sm" variant="ghost" onClick={() => move(1)} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></Button>
-                <Button size="sm" onClick={() => { const d = new Date(); setCursor({ y: d.getFullYear(), m: d.getMonth() }); setSelected(t); }}>Hoje</Button>
+      <Toolbar
+        filters={
+          tab === 'internal' && (
+            <>
+              <div className="flex items-center gap-0.5">
+                <IconButton label="Mês anterior" size="sm" onClick={() => move(-1)}>
+                  <ChevronLeft className="h-4 w-4" strokeWidth={1.6} />
+                </IconButton>
+                <h2 className="min-w-[150px] text-center font-display text-section text-ink">
+                  {MONTHS_FULL[cursor.m]} {cursor.y}
+                </h2>
+                <IconButton label="Próximo mês" size="sm" onClick={() => move(1)}>
+                  <ChevronRight className="h-4 w-4" strokeWidth={1.6} />
+                </IconButton>
               </div>
-              <Select value={person} onChange={(e) => setPerson(e.target.value)} className="h-8 w-auto py-1 text-sm">
-                <option value="all">Toda a equipe</option>
-                <option value={me.id}>Somente eu</option>
-                {db.profiles.filter((p) => p.id !== me.id).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </Select>
-            </div>
-            <div className="grid grid-cols-7 border-b border-line/70 bg-stone-50 text-center text-[11px] font-semibold uppercase tracking-wide text-stone-500">
-              {WEEKDAYS_SHORT.map((d) => <div key={d} className="py-2">{d}</div>)}
-            </div>
-            <div className="grid grid-cols-7">
-              {days.map((key) => {
-                const d = parseDate(key);
-                const inMonth = d.getMonth() === cursor.m;
-                const evs = byDate[key] ?? [];
-                const isToday = key === t;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setSelected(key)}
-                    onDoubleClick={() => setCreatingOn(key)}
-                    title="Clique duas vezes para agendar uma reunião"
-                    className={cn(
-                      'flex min-h-[92px] flex-col items-stretch justify-start border-b border-r border-line/70 p-1.5 text-left transition-colors hover:bg-canvas/60 sm:min-h-[116px]',
-                      !inMonth && 'bg-canvas/40 text-stone-300',
-                      selected === key && 'bg-canvas ring-1 ring-inset ring-ink/15',
-                    )}
-                  >
-                    <span className={cn('inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', isToday ? 'bg-ink text-surface' : 'text-stone-600')}>{d.getDate()}</span>
-                    <div className="mt-1 space-y-0.5">
-                      {evs.slice(0, 3).map((e) => (
-                        <div
-                          key={e.id}
-                          className={cn(
-                            'flex items-center gap-1 truncate rounded px-1 py-px text-[10px] sm:text-[11px]',
-                            e.kind === 'meeting' ? 'bg-ink text-surface' : 'text-stone-700',
-                            e.done && 'line-through opacity-60',
-                          )}
-                          style={e.kind === 'meeting' ? undefined : { backgroundColor: `color-mix(in srgb, ${e.color} 9%, transparent)` }}
-                        >
-                          {e.kind !== 'meeting' && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: e.color }} />}
-                          {e.time && <span className="shrink-0 tabular opacity-70">{e.time}</span>}
-                          <span className="truncate">{e.title}</span>
-                        </div>
-                      ))}
-                      {evs.length > 3 && <div className="px-1 text-[10px] font-medium text-stone-500">+{evs.length - 3} mais</div>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  const d = new Date();
+                  setCursor({ y: d.getFullYear(), m: d.getMonth() });
+                  setSelected(t);
+                }}
+              >
+                Hoje
+              </Button>
+              <FilterPick
+                label="Pessoa"
+                allLabel="Toda a equipe"
+                value={person === 'all' ? '' : person}
+                onChange={(v) => setPerson(v || 'all')}
+                options={[
+                  { value: me.id, label: 'Somente eu', icon: <Avatar user={me} size="xs" /> },
+                  ...db.profiles.filter((p) => p.id !== me.id && p.active).map((p) => ({ value: p.id, label: p.name, icon: <Avatar user={p} size="xs" /> })),
+                ]}
+              />
+            </>
+          )
+        }
+        aside={
+          <Tabs<'internal' | 'google'>
+            tabs={[
+              { id: 'internal', label: 'Calendário' },
+              { id: 'google', label: 'Google Agenda' },
+            ]}
+            value={tab}
+            onChange={setTab}
+            size="sm"
+            underline={1}
+            bordered={false}
+          />
+        }
+      />
 
-          <div className="space-y-5">
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-sm font-semibold">{formatDate(selected)}</h3>
-                <Button size="xs" variant="ghost" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setCreatingOn(selected)}>Reunião</Button>
-              </div>
-              <ul className="mt-3 space-y-1">
-                {dayEvents.length === 0 && <li className="text-sm text-stone-500">Nada neste dia.</li>}
-                {dayEvents.map((e) => {
-                  const Icon = KIND_META[e.kind].icon;
-                  return (
-                    <li key={e.id}>
-                      <button onClick={e.onClick} className="flex w-full items-start gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-canvas/70">
-                        <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: e.color }} strokeWidth={1.6} />
-                        <span className="min-w-0 flex-1">
-                          <span className={cn('block text-sm', e.done && 'text-stone-400 line-through')}>{e.title}</span>
-                          {e.time && <span className="block text-xs text-stone-400 tabular">{e.time}</span>}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Card>
-            <Card className="space-y-2 p-4">
-              <h3 className="mb-1 font-display text-sm font-semibold">Mostrar</h3>
-              <div className="flex flex-col gap-2">
-                {(Object.keys(KIND_META) as Kind[]).map((k) => (
-                  <Checkbox key={k} checked={kinds[k]} onChange={(v) => setKinds((s) => ({ ...s, [k]: v }))} label={KIND_META[k].label} />
+      <div className="mt-6 md:mt-8">
+        {tab === 'google' ? (
+          <CalendarEmbed height={720} />
+        ) : (
+          <div className="grid gap-12 xl:grid-cols-[1fr_300px] xl:gap-16">
+            <div className="min-w-0">
+              <div className="grid grid-cols-7 border-b border-hairline pb-2 text-[12px] text-faint">
+                {WEEKDAYS_SHORT.map((d) => (
+                  <div key={d} className="px-1.5">
+                    {d}
+                  </div>
                 ))}
               </div>
-            </Card>
+              <div className="grid grid-cols-7">
+                {days.map((key) => {
+                  const d = parseDate(key);
+                  const inMonth = d.getMonth() === cursor.m;
+                  const evs = byDate[key] ?? [];
+                  const isToday = key === t;
+                  const isSel = selected === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setSelected(key)}
+                      onDoubleClick={() => setCreatingOn(key)}
+                      title="Clique duas vezes para agendar uma reunião"
+                      aria-label={`${formatDate(key)}: ${evs.length} ${evs.length === 1 ? 'item' : 'itens'}`}
+                      aria-pressed={isSel}
+                      className={cn(
+                        'flex min-h-[56px] flex-col items-stretch justify-start border-b border-hairline p-1 text-left transition-colors sm:min-h-[112px] sm:p-1.5',
+                        isSel ? 'bg-brand-50 shadow-[inset_0_2px_0_rgb(var(--accent))]' : 'hover:bg-ink/[0.025]',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'inline-flex h-6 w-6 items-center justify-center rounded-full text-[12.5px] tabular',
+                          isToday ? 'bg-ink font-medium text-surface' : inMonth ? 'text-ink' : 'text-stone-300',
+                        )}
+                      >
+                        {d.getDate()}
+                      </span>
+                      {/* Celular: só pontos; o dia selecionado mostra os detalhes abaixo. */}
+                      <div className="mt-1.5 flex flex-wrap gap-1 px-1 sm:hidden" aria-hidden>
+                        {evs.slice(0, 6).map((e) => (
+                          <span key={e.id} className={cn('h-1.5 w-1.5 rounded-full', (e.done || !inMonth) && 'opacity-40')} style={{ backgroundColor: e.color }} />
+                        ))}
+                      </div>
+                      <div className="mt-1 hidden space-y-0.5 sm:block">
+                        {evs.slice(0, 3).map((e) => (
+                          <div
+                            key={e.id}
+                            className={cn('flex items-center gap-1 truncate px-0.5 text-[11.5px] leading-4', e.done ? 'text-faint line-through' : 'text-stone-700', !inMonth && 'opacity-50')}
+                          >
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: e.color }} />
+                            {e.time && e.kind === 'meeting' && <span className="shrink-0 font-mono text-[10.5px] tabular text-muted">{e.time}</span>}
+                            <span className="truncate">{e.title}</span>
+                          </div>
+                        ))}
+                        {evs.length > 3 && <div className="px-0.5 text-[10.5px] text-faint">+{evs.length - 3}</div>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <aside className="space-y-10">
+              <section aria-labelledby="dia">
+                <SectionHeader
+                  id="dia"
+                  title={`${WEEKDAYS_SHORT[selectedDate.getDay()]}, ${selectedDate.getDate()} de ${MONTHS_FULL[selectedDate.getMonth()].toLowerCase()}`}
+                  aside={<ActionLink onClick={() => setCreatingOn(selected)}>Reunião</ActionLink>}
+                />
+                {dayEvents.length === 0 ? (
+                  <p className="border-t border-hairline py-3 text-[13px] text-faint">Nada neste dia.</p>
+                ) : (
+                  <ul>
+                    {dayEvents.map((e) => (
+                      <li key={e.id}>
+                        <button
+                          type="button"
+                          onClick={e.onClick}
+                          className="grid w-full grid-cols-[44px_minmax(0,1fr)] gap-3 border-t border-hairline py-3 text-left transition-colors hover:bg-ink/[0.025]"
+                        >
+                          <span className="pt-px font-mono text-xs tabular text-muted">{e.time ?? ''}</span>
+                          <span className="min-w-0">
+                            <span className={cn('block truncate text-[13.5px] leading-5', e.done ? 'text-faint line-through' : 'text-ink')}>{e.title}</span>
+                            <span className="flex items-center gap-1.5 text-[12.5px] text-faint">
+                              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: e.color }} aria-hidden />
+                              {KIND_META[e.kind].one}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+              <section aria-labelledby="mostrar">
+                <SectionHeader id="mostrar" title="Mostrar" />
+                <div className="flex flex-col gap-2.5 border-t border-hairline pt-3">
+                  {(Object.keys(KIND_META) as Kind[]).map((k) => (
+                    <Checkbox key={k} checked={kinds[k]} onChange={(v) => setKinds((st) => ({ ...st, [k]: v }))} label={<span className="text-[13.5px]">{KIND_META[k].label}</span>} />
+                  ))}
+                </div>
+              </section>
+            </aside>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       {(editing || paramEvent) && <EventFormModal event={(editing ?? paramEvent)!} onClose={closeEditor} />}
       {creatingOn && <EventFormModal defaults={{ date: creatingOn }} onClose={() => setCreatingOn(null)} />}
     </div>

@@ -4,8 +4,7 @@ import { AlarmClock, Check, CheckCircle2, MoreHorizontal, Phone, Plus } from 'lu
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { openCreate } from '../lib/create';
-import { CSS_COLOR } from '../lib/status';
-import { addDays, cn, deadlineState, diffDays, digitsOnly, formatCurrency, formatDateShort, today } from '../lib/utils';
+import { addDays, cn, digitsOnly, formatCurrency, today, weekdayDay } from '../lib/utils';
 import { ActionLink, Avatar, AvatarStack, Button, EmptyState, IconButton, Sheet, Tabs } from '../components/ui';
 import { MobileTimerBar } from '../components/layout/MobileTimerBar';
 import { LeadDrawer } from '../components/leads/LeadDrawer';
@@ -14,8 +13,6 @@ import {
   GROUP_LABEL,
   GROUP_ORDER,
   useHomeData,
-  weekdayDate,
-  weekdayDay,
   type AgendaItem,
   type AttentionCategory,
   type AttentionDot,
@@ -23,6 +20,7 @@ import {
   type AttentionItem,
   type HomeProject,
 } from '../components/dashboard/useHomeData';
+import { ProjectDeadline, StageRail } from '../components/projects/StageRail';
 
 type Filter = 'all' | AttentionCategory;
 
@@ -660,36 +658,6 @@ function Overview({
 }
 
 // ---------------------------------------------------------------- Projetos
-function StageRail({ phases, current }: { phases: string[]; current: number }) {
-  if (phases.length === 0) return <div className="h-0.5 rounded-full bg-line-strong" />;
-  return (
-    <div className="flex gap-[3px]" aria-hidden>
-      {phases.map((p, i) => (
-        <span
-          key={p}
-          className="h-0.5 flex-1 rounded-full"
-          style={{ backgroundColor: i < current ? CSS_COLOR.stone(800) : i === current ? CSS_COLOR.accent : CSS_COLOR.lineStrong }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function ProjectDeadline({ due, soonDays }: { due: string | null; soonDays: number }) {
-  if (!due) return <div className="text-[13px] text-faint">Sem prazo</div>;
-  const state = deadlineState(due, false, soonDays);
-  const d = diffDays(today(), due);
-  const main =
-    state === 'overdue' ? `venceu ${formatDateShort(due)}` : state === 'today' ? 'hoje' : state === 'soon' ? (d === 1 ? 'amanhã' : `em ${d} dias`) : formatDateShort(due);
-  const sub = state === 'ok' ? `${d} dias` : state === 'overdue' ? `há ${-d} ${d === -1 ? 'dia' : 'dias'}` : weekdayDate(due);
-  return (
-    <div className="leading-tight">
-      <div className={cn('text-[13px]', state === 'overdue' ? 'text-danger-fg' : state === 'ok' ? 'text-stone-700' : 'text-warning-fg')}>{main}</div>
-      <div className="mt-0.5 text-xs text-faint">{sub}</div>
-    </div>
-  );
-}
-
 function ProjectsSection({ projects, soonDays }: { projects: HomeProject[]; soonDays: number }) {
   const shown = projects.slice(0, 6);
   return (

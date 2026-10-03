@@ -1,53 +1,68 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Briefcase, CalendarClock, CheckCircle2, Download, LayoutGrid, List, MapPin, Plus, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Download, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
-import type { ProjectStatus } from '../lib/types';
-import { byPosition, cn, downloadFile, formatDate, formatMinutes, matches, toCsv, today } from '../lib/utils';
-import { CSS_COLOR } from '../lib/status';
-import { AvatarStack, Button, DueBadge, EmptyState, Input, PageHeader, ProgressBar, Segmented, Select, StatusBadge } from '../components/ui';
+import { PROJECT_STATUS } from '../lib/constants';
+import { isProjectActive } from '../lib/domain';
+import { byPosition, downloadFile, formatDate, matches, toCsv, today } from '../lib/utils';
+import { ActionLink, Avatar, AvatarStack, Button, EmptyState, FilterPick, PageHeader, SearchField, StatusBadge, Tabs, Toolbar } from '../components/ui';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { useProjectSummaries, type ProjectSummary } from '../components/projects/useProjectSummaries';
+import { projectRail, templatePhasesByType } from '../components/projects/rail';
+import { ProjectDeadline, StageRail } from '../components/projects/StageRail';
 
-type View = 'cards' | 'table';
-type StatusFilter = 'ativos' | 'todos' | ProjectStatus;
+type Scope = 'ativos' | 'concluidos' | 'todos';
 type DeadlineFilter = '' | 'overdue' | 'soon';
+
+/** Mais urgente primeiro: prazo vencido ou tarefas atrasadas, depois o prazo mais próximo. */
+function byUrgency(a: ProjectSummary, b: ProjectSummary) {
+  const u = (s: ProjectSummary) => (isProjectActive(s.project) ? (s.deadline === 'overdue' || s.overdueTasks > 0 ? 0 : 1) : 2);
+  return u(a) - u(b) || (a.project.due_date ?? '9999').localeCompare(b.project.due_date ?? '9999');
+}
 
 export default function ProjectsPage() {
   const { db, settings } = useData();
   const summaries = useProjectSummaries();
-  const [view, setView] = useState<View>(() => (localStorage.getItem('airos:projectsView') as View) || 'cards');
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('ativos');
+  const [scope, setScope] = useState<Scope>('ativos');
   const [type, setType] = useState('');
   const [person, setPerson] = useState('');
   const [deadline, setDeadline] = useState<DeadlineFilter>('');
   const [creating, setCreating] = useState(false);
+  const templates = useMemo(() => templatePhasesByType(db.task_templates), [db.task_templates]);
+
+  const counts = useMemo(
+    () => ({
+      ativos: summaries.filter((s) => isProjectActive(s.project)).length,
+      concluidos: summaries.filter((s) => s.project.status === 'concluido').length,
+      todos: summaries.length,
+    }),
+    [summaries],
+  );
 
   const filtered = useMemo(() => {
     return summaries
       .filter((s) => {
         const p = s.project;
-        if (status === 'ativos' && !['nao_iniciado', 'em_andamento', 'pausado'].includes(p.status)) return false;
-        if (status !== 'ativos' && status !== 'todos' && p.status !== status) return false;
+        if (scope === 'ativos' && !isProjectActive(p)) return false;
+        if (scope === 'concluidos' && p.status !== 'concluido') return false;
         if (type && p.project_type_id !== type) return false;
         if (person && !s.people.some((x) => x.id === person)) return false;
         if (deadline === 'overdue' && s.deadline !== 'overdue') return false;
         if (deadline === 'soon' && !['soon', 'today'].includes(s.deadline)) return false;
         return matches(query, p.name, p.code, s.client?.name, p.site_city, s.type?.name);
       })
-      .sort((a, b) => (a.project.due_date ?? '9999').localeCompare(b.project.due_date ?? '9999'));
-  }, [summaries, status, type, person, deadline, query]);
+      .sort(byUrgency);
+  }, [summaries, scope, type, person, deadline, query]);
 
   const kpis = useMemo(() => {
-    const active = summaries.filter((s) => ['nao_iniciado', 'em_andamento', 'pausado'].includes(s.project.status));
+    const active = summaries.filter((s) => isProjectActive(s.project));
     const year = String(new Date().getFullYear());
     return {
-      active: active.length,
       overdue: active.filter((s) => s.deadline === 'overdue').length,
       soon: active.filter((s) => s.deadline === 'soon' || s.deadline === 'today').length,
-      done: summaries.filter((s) => s.project.status === 'concluido' && (s.project.completed_at ?? '').startsWith(year)).length,
+      lateTasks: active.reduce((acc, s) => acc + s.overdueTasks, 0),
+      doneYear: summaries.filter((s) => s.project.status === 'concluido' && (s.project.completed_at ?? '').startsWith(year)).length,
     };
   }, [summaries]);
 
@@ -76,185 +91,175 @@ export default function ProjectsPage() {
     );
   };
 
+  const activeFilters = [type, person, deadline].filter(Boolean).length;
+  const cols = 'grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[200px_minmax(0,1fr)_44px_130px_64px]';
+
   return (
     <div>
       <PageHeader
-        eyebrow="Produção"
         title="Projetos"
-        description="Todos os projetos do escritório, com etapa atual, prazos e equipe."
+        description={
+          <>
+            {counts.ativos} em andamento
+            {kpis.overdue > 0 && (
+              <>
+                {' · '}
+                <button type="button" className="text-danger-fg hover:underline" onClick={() => { setScope('ativos'); setDeadline('overdue'); }}>
+                  {kpis.overdue} com prazo vencido
+                </button>
+              </>
+            )}
+            {kpis.soon > 0 && (
+              <>
+                {' · '}
+                <button type="button" className="text-warning-fg hover:underline" onClick={() => { setScope('ativos'); setDeadline('soon'); }}>
+                  {kpis.soon} {kpis.soon === 1 ? 'vence' : 'vencem'} em {settings.due_soon_days} dias
+                </button>
+              </>
+            )}
+            {kpis.lateTasks > 0 && (
+              <>
+                {' · '}
+                <span className="text-danger-fg">
+                  {kpis.lateTasks} {kpis.lateTasks === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}
+                </span>
+              </>
+            )}
+            {' · '}
+            {kpis.doneYear} {kpis.doneYear === 1 ? 'concluído' : 'concluídos'} no ano
+          </>
+        }
         actions={
           <>
-            <Segmented<View>
-              value={view}
-              onChange={(v) => { setView(v); localStorage.setItem('airos:projectsView', v); }}
-              options={[
-                { id: 'cards', label: 'Cards', icon: <LayoutGrid className="h-4 w-4" /> },
-                { id: 'table', label: 'Lista', icon: <List className="h-4 w-4" /> },
-              ]}
-            />
-            <Button icon={<Download className="h-4 w-4" />} onClick={exportCsv}>Exportar</Button>
-            <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)}>Novo projeto</Button>
+            <Button variant="ghost" icon={<Download className="h-4 w-4" strokeWidth={1.6} />} onClick={exportCsv} className="max-sm:hidden">
+              Exportar
+            </Button>
+            <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setCreating(true)}>
+              Projeto
+            </Button>
           </>
         }
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiButton icon={<Briefcase className="h-4 w-4" />} label="Projetos ativos" value={kpis.active} onClick={() => { setStatus('ativos'); setDeadline(''); }} active={status === 'ativos' && !deadline} />
-        <KpiButton icon={<AlertTriangle className="h-4 w-4" />} label="Prazo vencido" value={kpis.overdue} tone="bad" onClick={() => { setStatus('ativos'); setDeadline('overdue'); }} active={deadline === 'overdue'} />
-        <KpiButton icon={<CalendarClock className="h-4 w-4" />} label={`Vencem em ${settings.due_soon_days} dias`} value={kpis.soon} tone="warn" onClick={() => { setStatus('ativos'); setDeadline('soon'); }} active={deadline === 'soon'} />
-        <KpiButton icon={<CheckCircle2 className="h-4 w-4" />} label="Concluídos no ano" value={kpis.done} tone="good" onClick={() => { setStatus('concluido'); setDeadline(''); }} active={status === 'concluido'} />
-      </div>
+      <Toolbar
+        search={<SearchField value={query} onChange={setQuery} placeholder="Buscar projeto, código, cliente…" label="Buscar projetos" />}
+        filters={
+          <>
+            <FilterPick label="Tipo" value={type} onChange={setType} options={[...db.project_types].sort(byPosition).map((t) => ({ value: t.id, label: t.name }))} />
+            <FilterPick
+              label="Equipe"
+              value={person}
+              onChange={setPerson}
+              options={db.profiles.filter((p) => p.active || p.id === person).map((p) => ({ value: p.id, label: p.name, icon: <Avatar user={p} size="xs" /> }))}
+            />
+            <FilterPick
+              label="Prazo"
+              allLabel="Qualquer prazo"
+              value={deadline}
+              onChange={(v) => setDeadline(v as DeadlineFilter)}
+              options={[
+                { value: 'overdue', label: 'Vencidos' },
+                { value: 'soon', label: `Vencem em ${settings.due_soon_days} dias` },
+              ]}
+            />
+            {activeFilters > 0 && (
+              <button type="button" onClick={() => { setType(''); setPerson(''); setDeadline(''); }} className="ml-1 shrink-0 text-[13px] text-faint hover:text-ink">
+                Limpar
+              </button>
+            )}
+          </>
+        }
+        aside={
+          <Tabs<Scope>
+            tabs={[
+              { id: 'ativos', label: 'Ativos', count: counts.ativos },
+              { id: 'concluidos', label: 'Concluídos', count: counts.concluidos },
+              { id: 'todos', label: 'Todos', count: counts.todos },
+            ]}
+            value={scope}
+            onChange={setScope}
+            size="sm"
+            underline={1}
+            bordered={false}
+          />
+        }
+      />
 
-      <div className="card mb-4 grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto]">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar projeto, código, cliente, cidade…" className="pl-9" />
-        </div>
-        <Select value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
-          <option value="ativos">Ativos</option>
-          <option value="todos">Todos os status</option>
-          {PROJECT_STATUS_ORDER.map((s) => <option key={s} value={s}>{PROJECT_STATUS[s].label}</option>)}
-        </Select>
-        <Select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="">Todos os tipos</option>
-          {[...db.project_types].sort(byPosition).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </Select>
-        <Select value={person} onChange={(e) => setPerson(e.target.value)}>
-          <option value="">Toda a equipe</option>
-          {db.profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </Select>
-        <Select value={deadline} onChange={(e) => setDeadline(e.target.value as DeadlineFilter)}>
-          <option value="">Qualquer prazo</option>
-          <option value="overdue">Vencidos</option>
-          <option value="soon">A vencer</option>
-        </Select>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="card">
+      <div className="mt-6 md:mt-8">
+        {filtered.length === 0 ? (
           <EmptyState
-            icon={<Briefcase className="h-6 w-6" />}
             title="Nenhum projeto encontrado"
             description="Projetos são criados ao converter uma oportunidade em cliente, ou manualmente."
-            action={<Button variant="primary" onClick={() => setCreating(true)} icon={<Plus className="h-4 w-4" />}>Novo projeto</Button>}
+            action={<ActionLink onClick={() => setCreating(true)}>Novo projeto</ActionLink>}
+            className="py-16"
           />
-        </div>
-      ) : view === 'cards' ? (
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-          {filtered.map((s) => <ProjectCard key={s.project.id} s={s} soonDays={settings.due_soon_days} />)}
-        </div>
-      ) : (
-        <ProjectTable items={filtered} soonDays={settings.due_soon_days} />
-      )}
+        ) : (
+          <>
+            <div className={`hidden gap-6 border-b border-hairline pb-2.5 text-[12.5px] text-faint md:grid ${cols}`}>
+              <span>Projeto</span>
+              <span>Etapa</span>
+              <span className="text-right">%</span>
+              <span>Prazo</span>
+              <span className="sr-only">Equipe</span>
+            </div>
+            <ul>
+              {filtered.map((s) => {
+                const p = s.project;
+                const { phases, current } = projectRail(s, templates[p.project_type_id]);
+                const active = isProjectActive(p);
+                return (
+                  <li key={p.id}>
+                    <Link
+                      to={`/projetos/${p.id}`}
+                      className={`grid items-center gap-x-6 gap-y-2.5 border-b border-hairline py-4 transition-colors hover:bg-ink/[0.025] ${cols}`}
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate font-display text-[14.5px] font-semibold tracking-[0.01em] text-ink">{p.name}</div>
+                        <div className="truncate text-[12.5px] text-faint">
+                          {s.client?.name ?? 'Cliente removido'}
+                          {s.type && <> · {s.type.name}</>}
+                        </div>
+                      </div>
+                      <div className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:row-start-auto">
+                        {active ? (
+                          <>
+                            <StageRail phases={phases} current={current} />
+                            <div className="mt-2 flex min-w-0 items-baseline gap-2 text-[12.5px]">
+                              <span className="truncate text-muted">
+                                {current >= 0 && current < phases.length ? `${phases[current]} · ${current + 1}/${phases.length}` : s.phase}
+                              </span>
+                              {p.status === 'pausado' && <span className="shrink-0 text-faint">· pausado</span>}
+                              {s.overdueTasks > 0 && (
+                                <span className="shrink-0 text-danger-fg">
+                                  · {s.overdueTasks} {s.overdueTasks === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <StatusBadge kind="project" value={p.status} />
+                        )}
+                      </div>
+                      <div className="hidden text-right text-[13px] tabular text-muted md:block">{s.progress}%</div>
+                      <div className="col-start-2 row-start-1 text-right md:col-start-auto md:row-start-auto md:text-left">
+                        <ProjectDeadline due={p.due_date} soonDays={settings.due_soon_days} done={p.status === 'concluido'} />
+                      </div>
+                      <div className="hidden justify-end md:flex">
+                        <AvatarStack users={s.people} max={3} size={22} ring="ring-canvas" />
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-3 text-[12.5px] text-faint">
+              {filtered.length} {filtered.length === 1 ? 'projeto' : 'projetos'}
+            </p>
+          </>
+        )}
+      </div>
 
       {creating && <ProjectFormModal onClose={() => setCreating(false)} />}
-    </div>
-  );
-}
-
-function KpiButton({ icon, label, value, tone, onClick, active }: { icon: ReactNode; label: string; value: number; tone?: 'bad' | 'warn' | 'good'; onClick: () => void; active?: boolean }) {
-  return (
-    <button onClick={onClick} className={cn('card px-4 py-3 text-left transition-all hover:border-stone-300', active && 'ring-2 ring-brand-400/50')}>
-      <div className="flex items-center gap-2 text-xs text-stone-500">
-        <span className="text-stone-300">{icon}</span>
-        {label}
-      </div>
-      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' && value > 0 ? 'text-danger-fg' : 'text-ink')}>{value}</div>
-    </button>
-  );
-}
-
-function ProjectCard({ s, soonDays }: { s: ProjectSummary; soonDays: number }) {
-  const p = s.project;
-  const finished = p.status === 'concluido' || p.status === 'cancelado';
-  return (
-    <Link
-      to={`/projetos/${p.id}`}
-      className={cn(
-        'card group relative flex flex-col overflow-hidden p-5 transition-all hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md',
-        s.deadline === 'overdue' && 'border-danger-line',
-      )}
-    >
-      <span className="absolute inset-y-0 left-0 w-1" style={{ backgroundColor: s.type?.color ?? CSS_COLOR.stone(300) }} />
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-stone-400">{p.code}</div>
-          <h3 className="mt-0.5 truncate font-display text-lg font-semibold text-ink group-hover:text-stone-600 tracking-tight">{p.name}</h3>
-          <div className="truncate text-sm text-stone-500">{s.client?.name ?? 'Cliente removido'}</div>
-        </div>
-        <StatusBadge kind="project" value={p.status} />
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
-        {s.type && <span className="font-medium" style={{ color: s.type.color }}>{s.type.name}</span>}
-        {p.site_city && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{p.site_city}</span>}
-        {s.minutes > 0 && <span>{formatMinutes(s.minutes)} registradas</span>}
-      </div>
-      <div className="mt-4">
-        <div className="mb-1.5 flex items-baseline justify-between text-xs">
-          <span className="font-medium text-stone-700">Etapa: <span className="text-ink">{s.phase}</span></span>
-          <span className="font-semibold text-ink tabular">{s.progress}%</span>
-        </div>
-        <ProgressBar value={s.progress} color={p.status === 'concluido' ? CSS_COLOR.success : undefined} />
-      </div>
-      <div className="mt-4 flex items-center justify-between gap-2 border-t border-line/70 pt-3">
-        <div className="flex items-center gap-2">
-          <DueBadge due={p.due_date} done={finished} soonDays={soonDays} />
-          {s.overdueTasks > 0 && !finished && (
-            <span className="text-xs font-medium text-danger-fg">{s.overdueTasks} tarefa{s.overdueTasks > 1 ? 's' : ''} atrasada{s.overdueTasks > 1 ? 's' : ''}</span>
-          )}
-        </div>
-        <AvatarStack users={s.people} />
-      </div>
-    </Link>
-  );
-}
-
-function ProjectTable({ items, soonDays }: { items: ProjectSummary[]; soonDays: number }) {
-  const navigate = useNavigate();
-  return (
-    <div className="card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-stone-400">
-          <tr>
-            <th className="px-4 py-2.5 font-medium">Projeto</th>
-            <th className="px-4 py-2.5 font-medium">Cliente</th>
-            <th className="px-4 py-2.5 font-medium">Status</th>
-            <th className="px-4 py-2.5 font-medium">Etapa atual</th>
-            <th className="w-40 px-4 py-2.5 font-medium">Progresso</th>
-            <th className="px-4 py-2.5 font-medium">Prazo</th>
-            <th className="px-4 py-2.5 font-medium">Equipe</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line/70">
-          {items.map((s) => {
-            const p = s.project;
-            return (
-              <tr key={p.id} className="cursor-pointer hover:bg-stone-50" onClick={() => navigate(`/projetos/${p.id}`)}>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="h-8 w-1 rounded-full" style={{ backgroundColor: s.type?.color ?? CSS_COLOR.stone(300) }} />
-                    <div>
-                      <div className="font-semibold text-ink">{p.name}</div>
-                      <div className="text-xs text-stone-500">{p.code} · {s.type?.name}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-stone-700">{s.client?.name}</td>
-                <td className="px-4 py-3"><StatusBadge kind="project" value={p.status} /></td>
-                <td className="px-4 py-3 text-stone-700">{s.phase}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <ProgressBar value={s.progress} className="flex-1" />
-                    <span className="w-9 text-right text-xs tabular">{s.progress}%</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3"><DueBadge due={p.due_date} done={p.status === 'concluido' || p.status === 'cancelado'} soonDays={soonDays} compact /></td>
-                <td className="px-4 py-3"><AvatarStack users={s.people} /></td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </div>
   );
 }

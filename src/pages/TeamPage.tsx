@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Briefcase, Clock, KeyRound, ListChecks, Mail, Pencil, Phone, Plus, ShieldCheck, UserX, UserCheck } from 'lucide-react';
+import { KeyRound, Pencil, Plus, ShieldCheck, UserX, UserCheck } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { SWATCHES } from '../lib/constants';
 import { isProjectActive, totalMinutes } from '../lib/domain';
 import type { Profile, Role } from '../lib/types';
 import { cn, formatMinutes, isValidEmail, maskPhone, startOfWeek, today, toDateKey } from '../lib/utils';
-import { Avatar, Badge, Button, Card, ConfirmDialog, Field, Input, Modal, PageHeader, Select } from '../components/ui';
+import { ActionLink, Avatar, Button, ConfirmDialog, Field, IconButton, Input, Modal, PageHeader, SectionHeader, Select } from '../components/ui';
 import { TaskRow } from '../components/tasks/TaskRow';
 import { useOpenTask } from '../components/tasks/useOpenTask';
 
@@ -46,90 +46,149 @@ export default function TeamPage() {
   const selectedTasks = selected
     ? db.tasks.filter((x) => x.assignee_id === selected.id && x.status !== 'done').sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
     : [];
+  const active = members.filter((p) => p.active);
+  const totalOpen = active.reduce((acc, p) => acc + (stats[p.id]?.open ?? 0), 0);
+  const totalOverdue = active.reduce((acc, p) => acc + (stats[p.id]?.overdue ?? 0), 0);
+  const cols = 'grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_110px_72px_minmax(0,1fr)_64px]';
 
   return (
     <div>
       <PageHeader
-        eyebrow="Pessoas"
         title="Equipe"
-        description={isAdmin ? 'Cadastre membros, defina acessos e acompanhe a carga de trabalho.' : 'Membros do escritório e suas responsabilidades.'}
-        actions={isAdmin && <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)}>Novo membro</Button>}
+        description={
+          <>
+            {active.length} {active.length === 1 ? 'pessoa ativa' : 'pessoas ativas'} · {totalOpen} {totalOpen === 1 ? 'tarefa aberta' : 'tarefas abertas'}
+            {totalOverdue > 0 && (
+              <>
+                {' · '}
+                <span className="text-danger-fg">
+                  {totalOverdue} {totalOverdue === 1 ? 'atrasada' : 'atrasadas'}
+                </span>
+              </>
+            )}
+          </>
+        }
+        actions={
+          isAdmin && (
+            <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setCreating(true)}>
+              Membro
+            </Button>
+          )
+        }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className={`hidden gap-6 border-b border-hairline pb-2.5 text-[12.5px] text-faint md:grid ${cols}`}>
+        <span>Pessoa</span>
+        <span>Contato</span>
+        <span>Tarefas</span>
+        <span>Projetos</span>
+        <span>Horas na semana</span>
+        <span className="sr-only">Ações</span>
+      </div>
+      <ul>
         {members.map((p) => {
-          const s = stats[p.id];
+          const st = stats[p.id];
+          const isSel = selectedId === p.id;
           return (
-            <div
-              key={p.id}
-              className={cn('card cursor-pointer p-5 transition-all hover:border-stone-300', !p.active && 'opacity-60', selectedId === p.id && 'ring-2 ring-brand-400/60')}
-              onClick={() => setParams(selectedId === p.id ? {} : { membro: p.id }, { replace: true })}
-            >
-              <div className="flex items-start gap-3">
-                <Avatar user={p} size="lg" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate font-display text-base font-semibold">{p.name}</h3>
-                    {p.id === me.id && <span className="text-xs text-stone-400">(você)</span>}
-                  </div>
-                  <div className="text-sm text-stone-500">{p.job_title || '—'}</div>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {p.role === 'admin' && <Badge tone="brand"><ShieldCheck /> Administrador</Badge>}
-                    {!p.active && <Badge>Desativado</Badge>}
-                  </div>
-                </div>
-                {isAdmin && (
-                  <div className="flex" onClick={(e) => e.stopPropagation()}>
-                    <Button size="xs" variant="ghost" onClick={() => setEditing(p)} aria-label="Editar"><Pencil className="h-3.5 w-3.5" /></Button>
-                    {p.id !== me.id && (
-                      <Button size="xs" variant="ghost" onClick={() => setToggling(p)} aria-label={p.active ? 'Desativar' : 'Reativar'}>
-                        {p.active ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
-                      </Button>
-                    )}
-                  </div>
+            <li key={p.id}>
+              <div
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSel}
+                onClick={() => setParams(isSel ? {} : { membro: p.id }, { replace: true })}
+                onKeyDown={(e) => e.key === 'Enter' && setParams(isSel ? {} : { membro: p.id }, { replace: true })}
+                className={cn(
+                  'group grid cursor-pointer items-center gap-x-6 gap-y-1 border-b border-hairline py-3.5 transition-colors md:px-2',
+                  cols,
+                  isSel ? 'bg-brand-50 shadow-[inset_2px_0_0_rgb(var(--accent))]' : 'hover:bg-ink/[0.025]',
+                  !p.active && 'opacity-60',
                 )}
-              </div>
-              <div className="mt-3 space-y-1 text-xs text-stone-500">
-                <div className="flex items-center gap-2 truncate"><Mail className="h-3.5 w-3.5" />{p.email}</div>
-                {p.phone && <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" />{p.phone}</div>}
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line/70 pt-3 text-center">
-                <div>
-                  <div className="flex items-center justify-center gap-1 text-[11px] text-stone-500"><ListChecks className="h-3 w-3" />Tarefas</div>
-                  <div className="font-display text-lg font-medium tracking-tight tabular">{s?.open ?? 0}</div>
-                  {s?.overdue ? <div className="text-[11px] font-medium text-danger-fg">{s.overdue} atrasadas</div> : <div className="text-[11px] text-stone-400">em dia</div>}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar user={p} size="md" me={p.id === me.id} />
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-[14px] font-medium text-ink">{p.name}</span>
+                      {p.role === 'admin' && <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-accent-fg" strokeWidth={1.8} aria-label="Administrador" />}
+                    </div>
+                    <div className="truncate text-[12.5px] text-faint">
+                      {p.job_title || (p.role === 'admin' ? 'Administrador' : 'Membro')}
+                      {!p.active && ' · desativado'}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="flex items-center justify-center gap-1 text-[11px] text-stone-500"><Briefcase className="h-3 w-3" />Projetos</div>
-                  <div className="font-display text-lg font-medium tracking-tight tabular">{s?.projects ?? 0}</div>
-                  <div className="text-[11px] text-stone-400">ativos</div>
+                <div className="hidden min-w-0 md:block">
+                  <div className="truncate text-[13px] text-stone-700">{p.email}</div>
+                  <div className="truncate text-[12.5px] text-faint">{p.phone || 'sem telefone'}</div>
                 </div>
-                <div>
-                  <div className="flex items-center justify-center gap-1 text-[11px] text-stone-500"><Clock className="h-3 w-3" />Semana</div>
-                  <div className="font-display text-lg font-medium tracking-tight tabular">{formatMinutes(s?.week ?? 0)}</div>
-                  <div className="text-[11px] text-stone-400">{formatMinutes(s?.month ?? 0)} no mês</div>
+                <div className="text-right text-[13px] md:text-left">
+                  <span className="tabular text-ink">{st?.open ?? 0}</span> <span className="text-faint">{st?.open === 1 ? 'aberta' : 'abertas'}</span>
+                  {st?.overdue ? (
+                    <div className="text-[12.5px] text-danger-fg">
+                      {st.overdue} {st.overdue === 1 ? 'atrasada' : 'atrasadas'}
+                    </div>
+                  ) : (
+                    <div className="text-[12.5px] text-faint">em dia</div>
+                  )}
+                </div>
+                <div className="hidden text-[13px] tabular text-muted md:block">{st?.projects ?? 0}</div>
+                <div className="hidden min-w-0 md:block">
+                  <div className="flex items-baseline justify-between text-[13px]">
+                    <span className="tabular text-ink">{formatMinutes(st?.week ?? 0)}</span>
+                    <span className="text-[12px] text-faint">{formatMinutes(st?.month ?? 0)} no mês</span>
+                  </div>
+                  <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-hairline">
+                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.min(100, ((st?.week ?? 0) / 60 / 40) * 100)}%` }} />
+                  </div>
+                </div>
+                <div className="hidden justify-end md:flex" onClick={(e) => e.stopPropagation()}>
+                  {isAdmin && (
+                    <div className="flex opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                      <IconButton label={`Editar ${p.name}`} size="xs" onClick={() => setEditing(p)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </IconButton>
+                      {p.id !== me.id && (
+                        <IconButton label={p.active ? `Desativar ${p.name}` : `Reativar ${p.name}`} size="xs" onClick={() => setToggling(p)}>
+                          {p.active ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
+                        </IconButton>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       {selected && (
-        <Card className="mt-6 overflow-hidden">
-          <div className="flex items-center gap-3 border-b border-line/70 px-5 py-3">
-            <Avatar user={selected} size="sm" />
-            <h3 className="font-display text-sm font-semibold">Tarefas abertas de {selected.name}</h3>
-            <span className="text-xs text-stone-500">{selectedTasks.length}</span>
-          </div>
+        <section aria-labelledby="tarefas-membro" className="mt-12">
+          <SectionHeader
+            id="tarefas-membro"
+            title={`Tarefas abertas de ${selected.name.split(' ')[0]}`}
+            aside={
+              <span className="flex items-center gap-4">
+                {isAdmin && (
+                  <ActionLink onClick={() => setEditing(selected)} muted>
+                    Editar cadastro
+                  </ActionLink>
+                )}
+                <span className="text-[13px] tabular text-faint">{selectedTasks.length}</span>
+              </span>
+            }
+          />
           {selectedTasks.length === 0 ? (
-            <p className="px-5 py-6 text-sm text-stone-500">Nenhuma tarefa aberta.</p>
+            <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhuma tarefa aberta.</p>
           ) : (
-            <div className="divide-y divide-line/70">
-              {selectedTasks.map((x) => <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />)}
+            <div className="overflow-hidden rounded-[16px] bg-surface shadow-surface">
+              <div className="divide-y divide-hairline-surface md:[&>div]:px-6">
+                {selectedTasks.map((x) => (
+                  <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />
+                ))}
+              </div>
             </div>
           )}
-        </Card>
+        </section>
       )}
 
       {creating && <MemberModal onClose={() => setCreating(false)} />}
