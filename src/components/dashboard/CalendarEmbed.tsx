@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, ExternalLink } from 'lucide-react';
+import { ExternalLink, Plus } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { toCalendarEmbedUrl } from '../../lib/utils';
-import { Card, CardHeader, EmptyState, Segmented } from '../ui';
+import { Button, EmptyState, Segmented } from '../ui';
 
-/** Espelho do Google Agenda (iframe oficial de incorporação do Google). */
+const GOOGLE_NEW_EVENT = 'https://calendar.google.com/calendar/r/eventedit';
+const GOOGLE_CALENDAR = 'https://calendar.google.com/calendar/r';
+
+/**
+ * Espelho do Google Agenda (iframe oficial de incorporação do Google).
+ * A incorporação do Google é somente leitura: criar ou editar eventos de lá
+ * acontece no próprio Google Agenda, aberto em outra aba.
+ */
 export function CalendarEmbed({ height = 560 }: { height?: number }) {
   const { settings, me, isAdmin } = useData();
   const office = toCalendarEmbedUrl(settings.calendar_embed_url);
@@ -13,52 +20,69 @@ export function CalendarEmbed({ height = 560 }: { height?: number }) {
   const [which, setWhich] = useState<'office' | 'mine'>(mine && !office ? 'mine' : 'office');
   const url = which === 'mine' ? mine ?? office : office ?? mine;
 
-  return (
-    <Card className="flex flex-col overflow-hidden">
-      <CardHeader
-        icon={<CalendarDays className="h-4 w-4" />}
-        title="Google Agenda"
-        subtitle={which === 'mine' && mine ? 'Minha agenda' : 'Agenda do escritório'}
-        action={
-          <div className="flex items-center gap-2">
-            {office && mine && (
-              <Segmented
-                value={which}
-                onChange={setWhich}
-                options={[
-                  { id: 'office', label: 'Escritório' },
-                  { id: 'mine', label: 'Minha' },
-                ]}
-              />
-            )}
-            <a href="https://calendar.google.com" target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 rounded-sm px-2 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800">
-              Abrir <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
+  if (!url) {
+    return (
+      <EmptyState
+        title="Conecte o Google Agenda"
+        description={
+          <>
+            Cole o código de incorporação da agenda em{' '}
+            {isAdmin ? (
+              <Link className="text-accent-fg hover:underline" to="/configuracoes?aba=agenda">
+                Configurações → Google Agenda
+              </Link>
+            ) : (
+              'Configurações (administrador)'
+            )}{' '}
+            ou a sua agenda pessoal em{' '}
+            <Link className="text-accent-fg hover:underline" to="/perfil">
+              Meu perfil
+            </Link>
+            .
+          </>
         }
+        className="py-16"
       />
-      {url ? (
-        <iframe
-          title="Google Agenda"
-          src={url}
-          className="w-full flex-1 border-t border-line/70"
-          style={{ minHeight: height }}
-          frameBorder={0}
-          scrolling="no"
-        />
-      ) : (
-        <EmptyState
-          icon={<CalendarDays className="h-6 w-6" />}
-          title="Conecte o Google Agenda"
-          description={
-            <>
-              Cole o link de incorporação da agenda em{' '}
-              {isAdmin ? <Link className="font-medium text-brand-700 hover:underline" to="/configuracoes?aba=agenda">Configurações → Google Agenda</Link> : 'Configurações (administrador)'}{' '}
-              ou a sua agenda pessoal em <Link className="font-medium text-brand-700 hover:underline" to="/perfil">Meu perfil</Link>.
-            </>
-          }
-        />
-      )}
-    </Card>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {office && mine && (
+            <Segmented
+              value={which}
+              onChange={setWhich}
+              options={[
+                { id: 'office', label: 'Escritório' },
+                { id: 'mine', label: 'Minha' },
+              ]}
+            />
+          )}
+          <p className="text-[12.5px] text-faint">Somente visualização — para criar ou editar eventos do Google, use os botões ao lado.</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <a href={GOOGLE_CALENDAR} target="_blank" rel="noreferrer">
+            <Button size="sm" variant="ghost" icon={<ExternalLink className="h-3.5 w-3.5" strokeWidth={1.8} />}>
+              Abrir no Google Agenda
+            </Button>
+          </a>
+          <a href={GOOGLE_NEW_EVENT} target="_blank" rel="noreferrer">
+            <Button size="sm" variant="secondary" icon={<Plus className="h-3.5 w-3.5" strokeWidth={1.8} />}>
+              Evento no Google
+            </Button>
+          </a>
+        </div>
+      </div>
+      <iframe
+        title="Google Agenda"
+        src={url}
+        className="w-full flex-1 rounded-lg border border-line bg-surface"
+        style={{ minHeight: height }}
+        frameBorder={0}
+        scrolling="no"
+      />
+    </div>
   );
 }

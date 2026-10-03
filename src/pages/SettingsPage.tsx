@@ -399,7 +399,7 @@ function CalendarSettings() {
     try {
       if (db.app_settings.length) await patch('app_settings', 'office', { calendar_embed_url: value.trim() || null });
       else await insertRows('app_settings', [{ ...settings, calendar_embed_url: value.trim() || null, updated_at: nowIso() }]);
-      toast.success('Agenda salva. Ela aparece no painel inicial e na aba Agenda.');
+      toast.success('Agenda salva. Ela aparece em Agenda → Google Agenda.');
     } catch (e) {
       toast.error(e);
     }
