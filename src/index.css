@@ -69,6 +69,11 @@
   .skeleton {
     @apply animate-shimmer rounded bg-stone-100;
   }
+  /* Card do kanban no instante em que o navegador "fotografa" o arraste. */
+  .drag-ghost {
+    @apply border-brand-300 shadow-drag;
+    transform: rotate(1.2deg);
+  }
 }
 
 @layer utilities {
@@ -100,7 +105,7 @@
   .animate-shimmer {
     animation: none !important;
   }
-  .drag-tilt {
+  .drag-ghost {
     transform: none !important;
   }
 }

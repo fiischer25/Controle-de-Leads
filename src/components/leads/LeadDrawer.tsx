@@ -1,56 +1,28 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  ArrowRight,
-  Building2,
-  CalendarClock,
-  CalendarPlus,
-  FileText,
-  Mail,
-  MapPin,
-  MessageCircle,
-  Pencil,
-  Phone,
-  Ruler,
-  Send,
-  Tag,
-  Trash2,
-  Trophy,
-  UserCheck,
-  X,
-  XCircle,
-} from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { CalendarPlus, Mail, MessageCircle, Pencil, Phone, Trash2, Trophy, X, XCircle } from 'lucide-react';
 import { useData } from '../../context/DataContext';
-import { stageColor } from '../../lib/status';
 import { useToast } from '../../context/ToastContext';
 import { INTERACTION_TYPES, LOST_REASONS } from '../../lib/constants';
+import { stageColor } from '../../lib/status';
 import type { InteractionType } from '../../lib/types';
 import {
   byPosition,
+  cn,
   diffDays,
   digitsOnly,
   formatCurrency,
   formatDate,
-  formatDateTime,
+  formatDateShort,
   formatNumber,
+  isoToLocalTime,
+  parseDate,
   today,
   toDateKey,
+  WEEKDAYS_SHORT,
 } from '../../lib/utils';
-import {
-  Avatar,
-  Badge,
-  Button,
-  ColorDot,
-  ConfirmDialog,
-  Drawer,
-  Field,
-  IconButton,
-  Input,
-  Modal,
-  Select,
-  Textarea,
-} from '../ui';
+import { ActionLink, Avatar, Button, ConfirmDialog, Drawer, Field, IconButton, Listbox, Modal, Select, Textarea } from '../ui';
 import { ConvertLeadModal } from './ConvertLeadModal';
+import { ContactLogModal } from './ContactLogModal';
 import { EventFormModal } from '../events/EventFormModal';
 import { LeadFormModal } from './LeadFormModal';
 
@@ -101,6 +73,34 @@ export function LostReasonModal({ onConfirm, onClose }: { onConfirm: (reason: st
   );
 }
 
+/** "2 out, 14:30" */
+function shortDateTime(iso: string) {
+  return `${formatDateShort(toDateKey(new Date(iso)))}, ${isoToLocalTime(iso)}`;
+}
+
+function Section({ title, aside, children, className }: { title?: ReactNode; aside?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <section className={cn('border-t border-hairline-surface py-5', className)}>
+      {(title || aside) && (
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          {title && <h3 className="text-[12.5px] text-faint">{title}</h3>}
+          {aside}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+function Detail({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
+  return (
+    <div className={cn('min-w-0', wide && 'col-span-2')}>
+      <dt className="text-[12.5px] text-faint">{label}</dt>
+      <dd className="mt-0.5 truncate text-body text-ink">{children}</dd>
+    </div>
+  );
+}
+
 export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }) {
   const { db, maps, isAdmin, moveLead, deleteLead, addInteraction, updateLead } = useData();
   const toast = useToast();
@@ -110,6 +110,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
   const [losing, setLosing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [scheduling, setScheduling] = useState(false);
+  const [logging, setLogging] = useState(false);
   const [noteType, setNoteType] = useState<InteractionType>('nota');
   const [note, setNote] = useState('');
   const [noteDate, setNoteDate] = useState(today());
@@ -122,19 +123,29 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
   );
 
   if (!lead) return null;
+  const t = today();
   const stage = maps.stages[lead.stage_id];
+  const open = stage?.kind === 'open';
   const owner = lead.owner_id ? maps.profiles[lead.owner_id] : null;
   const client = lead.client_id ? maps.clients[lead.client_id] : null;
   const project = client ? db.projects.find((p) => p.lead_id === lead.id || p.client_id === client.id) : null;
   const wonStage = stages.find((s) => s.kind === 'won');
   const lostStage = stages.find((s) => s.kind === 'lost');
-  const whatsapp = `https://wa.me/55${digitsOnly(lead.phone)}`;
+  const phone = digitsOnly(lead.phone);
+  const whatsapp = `https://wa.me/55${phone}`;
+  const daysInStage = diffDays(toDateKey(new Date(lead.stage_changed_at)), t);
+  const type = lead.project_type_id ? maps.types[lead.project_type_id] : null;
+  const source = lead.source_id ? maps.sources[lead.source_id] : null;
+  const subtitle = [lead.city + (lead.state ? `/${lead.state}` : ''), lead.area_m2 ? `${formatNumber(lead.area_m2)} m²` : null, lead.category]
+    .filter(Boolean)
+    .join(' · ');
 
   const changeStage = async (stageId: string) => {
     const target = maps.stages[stageId];
     if (target?.kind === 'lost') return setLosing(true);
     try {
       await moveLead(lead.id, stageId);
+      if (target?.kind === 'won' && !lead.client_id) toast.success(`${lead.name} fechou! Complete os dados para virar cliente.`);
     } catch (e) {
       toast.error(e);
     }
@@ -144,7 +155,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
     if (!note.trim()) return;
     setSending(true);
     try {
-      const at = noteDate === today() ? new Date().toISOString() : new Date(`${noteDate}T12:00:00`).toISOString();
+      const at = noteDate === t ? new Date().toISOString() : new Date(`${noteDate}T12:00:00`).toISOString();
       await addInteraction(lead.id, noteType, note.trim(), at);
       setNote('');
     } catch (e) {
@@ -154,195 +165,226 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
     }
   };
 
-  const info: Array<[React.ReactNode, string, React.ReactNode]> = [
-    [<Phone key="p" className="h-4 w-4" />, 'Telefone', <a key="pv" href={whatsapp} target="_blank" rel="noreferrer" className="text-brand-700 hover:underline">{lead.phone}</a>],
-    [<Mail key="m" className="h-4 w-4" />, 'E-mail', lead.email || '—'],
-    [<MapPin key="c" className="h-4 w-4" />, 'Cidade', `${lead.city}${lead.state ? `/${lead.state}` : ''}`],
-    [<Building2 key="t" className="h-4 w-4" />, 'Tipo de projeto', lead.project_type_id ? maps.types[lead.project_type_id]?.name ?? '—' : '—'],
-    [<Ruler key="r" className="h-4 w-4" />, 'Tamanho', lead.area_m2 ? `${formatNumber(lead.area_m2)} m² · ${lead.category ?? ''}` : lead.category ?? '—'],
-    [<Tag key="s" className="h-4 w-4" />, 'Origem', `${lead.source_id ? maps.sources[lead.source_id]?.name ?? '—' : '—'}${lead.referred_by ? ` · ${lead.referred_by}` : ''}`],
-    [<FileText key="v" className="h-4 w-4" />, 'Proposta', formatCurrency(lead.proposal_value)],
-    [<CalendarClock key="n" className="h-4 w-4" />, 'Próximo contato', lead.next_contact_date ? formatDate(lead.next_contact_date) : '—'],
-  ];
-
-  const followUpLate = lead.next_contact_date && lead.next_contact_date < today() && stage?.kind === 'open';
+  // Próximo retorno segundo a regra-mãe: vencido = danger, hoje = warning.
+  const ret = lead.next_contact_date;
+  const retText = !ret
+    ? 'Sem retorno agendado'
+    : ret < t
+      ? `Atrasado desde ${formatDateShort(ret)}`
+      : ret === t
+        ? 'Hoje'
+        : `${WEEKDAYS_SHORT[parseDate(ret).getDay()].toLowerCase()}, ${formatDateShort(ret)}`;
+  const retClass = !ret ? 'text-faint' : ret < t ? 'text-danger-fg' : ret === t ? 'text-warning-fg' : 'text-ink';
 
   return (
-    <Drawer onClose={onClose}>
-      <div className="flex items-start justify-between gap-3 border-b border-line/70 px-6 py-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-xs text-stone-500">
-            <ColorDot color={stageColor(stage, stages)} /> {stage?.name}
-            <span>· há {diffDays(toDateKey(new Date(lead.stage_changed_at)), today())} dias nesta etapa</span>
+    <Drawer onClose={onClose} label={lead.name}>
+      {/* Cabeçalho */}
+      <div className="px-6 pb-4 pt-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2 text-[12.5px] text-faint">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: stageColor(stage, stages) }} aria-hidden />
+            <span className="truncate text-stone-700">{stage?.name}</span>
+            <span className="shrink-0">· há {daysInStage} {daysInStage === 1 ? 'dia' : 'dias'}</span>
           </div>
-          <h2 className="mt-1 truncate font-display text-xl font-semibold tracking-tight">{lead.name}</h2>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            {client && <Badge tone="success"><UserCheck /> Cliente</Badge>}
-            {followUpLate && <Badge tone="danger">Retorno atrasado</Badge>}
+          <div className="-mr-2 flex shrink-0 items-center">
+            <IconButton label="Editar" size="sm" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4" strokeWidth={1.6} />
+            </IconButton>
+            {isAdmin && (
+              <IconButton label="Excluir" size="sm" onClick={() => setConfirmDelete(true)} className="hover:text-danger-fg">
+                <Trash2 className="h-4 w-4" strokeWidth={1.6} />
+              </IconButton>
+            )}
+            <IconButton label="Fechar" size="sm" onClick={onClose}>
+              <X className="h-[18px] w-[18px]" strokeWidth={1.6} />
+            </IconButton>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <IconButton label="Editar" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></IconButton>
-          {isAdmin && <IconButton label="Excluir" onClick={() => setConfirmDelete(true)}><Trash2 className="h-4 w-4" /></IconButton>}
-          <IconButton label="Fechar" onClick={onClose}><X className="h-5 w-5" /></IconButton>
+        <h2 className="mt-2 font-display text-h2 text-ink">{lead.name}</h2>
+        {subtitle && <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p>}
+        <div className="-ml-2.5 mt-3 flex flex-wrap items-center gap-0.5">
+          <a href={`tel:${phone}`}>
+            <Button size="sm" variant="ghost" icon={<Phone className="h-4 w-4" strokeWidth={1.6} />}>
+              Ligar
+            </Button>
+          </a>
+          <a href={whatsapp} target="_blank" rel="noreferrer">
+            <Button size="sm" variant="ghost" icon={<MessageCircle className="h-4 w-4" strokeWidth={1.6} />}>
+              WhatsApp
+            </Button>
+          </a>
+          {lead.email && (
+            <a href={`mailto:${lead.email}`}>
+              <Button size="sm" variant="ghost" icon={<Mail className="h-4 w-4" strokeWidth={1.6} />}>
+                E-mail
+              </Button>
+            </a>
+          )}
+          <Button size="sm" variant="ghost" icon={<CalendarPlus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setScheduling(true)}>
+            Reunião
+          </Button>
         </div>
       </div>
 
-      <div className="scrollbar-thin flex-1 overflow-y-auto">
-        <div className="space-y-6 px-6 py-5">
-          {/* Etapa */}
-          <div className="flex flex-wrap items-end gap-2">
-            <Field label="Etapa do funil" className="min-w-[200px] flex-1">
-              <Select value={lead.stage_id} onChange={(e) => changeStage(e.target.value)}>
-                {stages.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </Select>
-            </Field>
-            {stage?.kind === 'open' && wonStage && (
-              <Button variant="secondary" icon={<Trophy className="h-4 w-4 text-success-fg" />} onClick={() => changeStage(wonStage.id)}>
-                Fechado
+      <div className="scrollbar-thin flex-1 overflow-y-auto px-6 pb-8">
+        {/* Etapa e desfecho */}
+        <Section title="Etapa">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-[200px] flex-1">
+              <Listbox
+                value={lead.stage_id}
+                onChange={changeStage}
+                aria-label="Etapa do funil"
+                options={stages.map((s) => ({
+                  value: s.id,
+                  label: s.name,
+                  icon: <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: stageColor(s, stages) }} />,
+                }))}
+              />
+            </div>
+            {open && wonStage && (
+              <Button variant="ghost" icon={<Trophy className="h-4 w-4" strokeWidth={1.6} />} onClick={() => changeStage(wonStage.id)}>
+                Ganho
               </Button>
             )}
-            {stage?.kind === 'open' && lostStage && (
-              <Button variant="secondary" icon={<XCircle className="h-4 w-4 text-danger-fg" />} onClick={() => setLosing(true)}>
+            {open && lostStage && (
+              <Button variant="ghost" icon={<XCircle className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setLosing(true)}>
                 Perdido
               </Button>
             )}
           </div>
 
-          {/* Conversão */}
           {stage?.kind === 'won' && !client && (
-            <div className="rounded-xl border border-success-line bg-success-bg p-5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-surface text-success-fg"><Trophy className="h-5 w-5" strokeWidth={1.6} /></div>
-                <div className="flex-1">
-                  <div className="font-display font-semibold text-success-fg">Projeto fechado</div>
-                  <p className="mt-0.5 text-sm text-success-fg/80">
-                    Complete os dados do cliente para convertê-lo e iniciar o projeto com as tarefas do modelo.
-                  </p>
-                  <Button variant="primary" className="mt-3" icon={<UserCheck className="h-4 w-4" />} onClick={() => setConverting(true)}>
-                    Virar cliente
-                  </Button>
-                </div>
-              </div>
+            <div className="mt-4 rounded-lg bg-success-bg px-4 py-3.5">
+              <div className="text-body font-medium text-success-fg">Oportunidade fechada</div>
+              <p className="mt-0.5 text-[13px] text-success-fg/80">Complete os dados do cliente para criar o projeto com as tarefas do modelo.</p>
+              <Button variant="primary" size="sm" className="mt-3" onClick={() => setConverting(true)}>
+                Virar cliente
+              </Button>
             </div>
           )}
           {client && (
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-stone-50 p-4">
-              <div className="text-sm">
-                <div className="font-semibold text-stone-800">Convertido em cliente</div>
-                <div className="text-stone-500">{lead.converted_at ? formatDateTime(lead.converted_at) : ''}</div>
-              </div>
-              <div className="flex gap-2">
-                <Link to={`/clientes/${client.id}`}><Button size="sm">Ver cliente</Button></Link>
-                {project && <Link to={`/projetos/${project.id}`}><Button size="sm" variant="dark" icon={<ArrowRight className="h-3.5 w-3.5" />}>Projeto</Button></Link>}
-              </div>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px]">
+              <span className="text-muted">
+                Cliente desde {lead.converted_at ? formatDate(toDateKey(new Date(lead.converted_at))) : '—'}
+              </span>
+              <span className="flex items-center gap-4">
+                <ActionLink to={`/clientes/${client.id}`}>Ver cliente</ActionLink>
+                {project && <ActionLink to={`/projetos/${project.id}`}>Ver projeto</ActionLink>}
+              </span>
             </div>
           )}
           {stage?.kind === 'lost' && lead.lost_reason && (
-            <div className="rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-fg">
-              <span className="font-semibold">Motivo da perda:</span> {lead.lost_reason}
-            </div>
+            <p className="mt-4 text-[13px] text-muted">
+              <span className="text-faint">Motivo da perda:</span> {lead.lost_reason}
+            </p>
           )}
+        </Section>
 
-          {/* Informações */}
-          <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-            {info.map(([icon, label, value]) => (
-              <div key={label} className="flex items-start gap-3">
-                <span className="mt-0.5 text-stone-400">{icon}</span>
-                <div className="min-w-0">
-                  <div className="text-xs text-stone-500">{label}</div>
-                  <div className="truncate text-sm font-medium text-stone-800">{value}</div>
-                </div>
-              </div>
-            ))}
-            <div className="flex items-start gap-3">
-              <Avatar user={owner} size="sm" />
-              <div>
-                <div className="text-xs text-stone-500">Responsável</div>
-                <div className="text-sm font-medium text-stone-800">{owner?.name ?? 'Sem responsável'}</div>
-              </div>
-            </div>
-          </div>
-          {lead.notes && <p className="whitespace-pre-wrap rounded-lg bg-stone-50 p-4 text-sm text-stone-700">{lead.notes}</p>}
-
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" icon={<CalendarPlus className="h-4 w-4" />} onClick={() => setScheduling(true)}>Agendar reunião</Button>
-            <a href={whatsapp} target="_blank" rel="noreferrer">
-              <Button size="sm" icon={<MessageCircle className="h-4 w-4 text-success-fg" />}>WhatsApp</Button>
-            </a>
-            {lead.email && (
-              <a href={`mailto:${lead.email}`}>
-                <Button size="sm" icon={<Mail className="h-4 w-4" />}>E-mail</Button>
-              </a>
-            )}
-            <label className="inline-flex h-8 items-center gap-2 rounded-sm border border-stone-300 bg-surface pl-3 text-sm font-medium text-stone-800">
-              <CalendarClock className="h-4 w-4" />
-              Retorno
+        {/* Próximo retorno */}
+        {open && (
+          <Section title="Próximo retorno" aside={<ActionLink onClick={() => setLogging(true)}>Registrar contato</ActionLink>}>
+            <div className="flex items-center justify-between gap-3">
+              <span className={cn('text-body', retClass)}>{retText}</span>
               <input
                 type="date"
-                value={lead.next_contact_date ?? ''}
+                value={ret ?? ''}
                 onChange={(e) => updateLead(lead.id, { next_contact_date: e.target.value || null }).catch(toast.error)}
-                className="h-full rounded-r-sm border-l border-line bg-stone-50 px-2 text-xs outline-none"
-                aria-label="Data do próximo contato"
+                aria-label="Data do próximo retorno"
+                className="input h-8 w-auto px-2 text-[13px]"
               />
-            </label>
+            </div>
+          </Section>
+        )}
+
+        {/* Dados */}
+        <Section title="Dados">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
+            <Detail label="Proposta">
+              <span className={cn('tabular', !lead.proposal_value && 'text-faint')}>{lead.proposal_value ? formatCurrency(lead.proposal_value) : 'Sem proposta'}</span>
+            </Detail>
+            <Detail label="Previsão de fechamento">
+              {lead.expected_close_date ? formatDate(lead.expected_close_date) : <span className="text-faint">—</span>}
+            </Detail>
+            <Detail label="Tipo de projeto">{type?.name ?? <span className="text-faint">—</span>}</Detail>
+            <Detail label="Origem">
+              {source?.name ?? <span className="text-faint">—</span>}
+              {lead.referred_by && <span className="text-muted"> · {lead.referred_by}</span>}
+            </Detail>
+            <Detail label="Telefone">
+              <a href={whatsapp} target="_blank" rel="noreferrer" className="hover:underline hover:decoration-stone-300 hover:underline-offset-4">
+                {lead.phone}
+              </a>
+            </Detail>
+            <Detail label="E-mail">{lead.email || <span className="text-faint">—</span>}</Detail>
+            <Detail label="Responsável">
+              <span className="inline-flex items-center gap-2">
+                <Avatar user={owner} size="xs" />
+                {owner?.name ?? <span className="text-faint">Sem responsável</span>}
+              </span>
+            </Detail>
+            <Detail label="Entrada">{formatDate(toDateKey(new Date(lead.created_at)))}</Detail>
+          </dl>
+          {lead.notes && <p className="mt-5 whitespace-pre-wrap text-body text-stone-700">{lead.notes}</p>}
+        </Section>
+
+        {/* Histórico */}
+        <Section title={`Histórico${timeline.length ? ` · ${timeline.length}` : ''}`}>
+          <div className="rounded-lg border border-line bg-surface transition-[border-color,box-shadow] focus-within:border-accent focus-within:shadow-[0_0_0_3px_rgb(var(--accent)/0.22)]">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              placeholder="Registrar uma conversa ou anotação…"
+              aria-label="Nova anotação"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitNote();
+              }}
+              className="block w-full resize-none rounded-t-lg bg-transparent px-3 pb-1 pt-2.5 text-body text-ink outline-none placeholder:text-faint focus-visible:shadow-none"
+            />
+            <div className="flex flex-wrap items-center gap-1 px-1.5 pb-1.5">
+              <Listbox
+                value={noteType}
+                onChange={(v) => setNoteType(v as InteractionType)}
+                aria-label="Tipo"
+                options={Object.entries(INTERACTION_TYPES).map(([value, label]) => ({ value, label }))}
+                className="h-7 w-auto gap-1 border-transparent bg-transparent px-2 text-[12.5px] text-muted shadow-none hover:bg-ink/5"
+              />
+              <input
+                type="date"
+                value={noteDate}
+                max={t}
+                onChange={(e) => setNoteDate(e.target.value)}
+                aria-label="Data"
+                className="h-7 rounded-sm bg-transparent px-2 text-[12.5px] text-muted outline-none hover:bg-ink/5"
+              />
+              <Button size="xs" variant="primary" className="ml-auto" loading={sending} onClick={submitNote} disabled={!note.trim()}>
+                Registrar
+              </Button>
+            </div>
           </div>
 
-          {/* Histórico */}
-          <div>
-            <h3 className="mb-3 font-display text-sm font-semibold">Histórico de contatos</h3>
-            <div className="rounded-lg border border-line p-3">
-              <div className="mb-2 flex flex-wrap gap-2">
-                <Select value={noteType} onChange={(e) => setNoteType(e.target.value as InteractionType)} className="h-8 w-auto py-1 text-xs">
-                  {Object.entries(INTERACTION_TYPES).map(([k, label]) => (
-                    <option key={k} value={k}>{label}</option>
-                  ))}
-                </Select>
-                <Input type="date" value={noteDate} onChange={(e) => setNoteDate(e.target.value)} className="h-8 w-auto py-1 text-xs" />
-              </div>
-              <Textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={2}
-                placeholder="O que foi conversado?"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitNote();
-                }}
-              />
-              <div className="mt-2 flex justify-end">
-                <Button size="sm" variant="dark" loading={sending} onClick={submitNote} icon={<Send className="h-3.5 w-3.5" />} disabled={!note.trim()}>
-                  Registrar
-                </Button>
-              </div>
-            </div>
-            <ol className="relative mt-4 space-y-4 border-l border-line pl-5">
-              {timeline.map((i) => {
-                const user = i.user_id ? maps.profiles[i.user_id] : null;
-                return (
-                  <li key={i.id} className="relative">
-                    <span className="absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full border-2 border-surface bg-brand-500 ring-1 ring-brand-200" />
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                      <Badge>{INTERACTION_TYPES[i.type]}</Badge>
-                      <span>{formatDateTime(i.happened_at)}</span>
-                      {user && <span>· {user.name}</span>}
-                    </div>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{i.description}</p>
-                  </li>
-                );
-              })}
-              <li className="relative">
-                <span className="absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full border-2 border-surface bg-stone-300" />
-                <div className="text-xs text-stone-500">Oportunidade criada em {formatDateTime(lead.created_at)}</div>
-              </li>
-            </ol>
-          </div>
-        </div>
+          <ol className="mt-2">
+            {timeline.map((i) => {
+              const user = i.user_id ? maps.profiles[i.user_id] : null;
+              return (
+                <li key={i.id} className="border-b border-hairline-surface py-3.5 last:border-b-0">
+                  <div className="text-[12.5px] text-faint">
+                    <span className="text-stone-700">{INTERACTION_TYPES[i.type]}</span> · {shortDateTime(i.happened_at)}
+                    {user && <> · {user.name.split(' ')[0]}</>}
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-body text-stone-800">{i.description}</p>
+                </li>
+              );
+            })}
+            <li className="py-3.5 text-[12.5px] text-faint">Oportunidade criada em {shortDateTime(lead.created_at)}</li>
+          </ol>
+        </Section>
       </div>
 
       {editing && <LeadFormModal lead={lead} onClose={() => setEditing(false)} />}
       {converting && <ConvertLeadModal lead={lead} onClose={() => setConverting(false)} />}
+      {logging && <ContactLogModal leadId={lead.id} onClose={() => setLogging(false)} />}
       {scheduling && (
         <EventFormModal
           defaults={{ title: `Reunião com ${lead.name}`, lead_id: lead.id, participant_ids: lead.owner_id ? [lead.owner_id] : [] }}
@@ -360,7 +402,11 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
       {confirmDelete && (
         <ConfirmDialog
           title="Excluir oportunidade"
-          message={<>Tem certeza que deseja excluir <b>{lead.name}</b>? O histórico de contatos também será removido.</>}
+          message={
+            <>
+              Tem certeza que deseja excluir <b>{lead.name}</b>? O histórico de contatos também será removido.
+            </>
+          }
           confirmLabel="Excluir"
           danger
           onClose={() => setConfirmDelete(false)}
