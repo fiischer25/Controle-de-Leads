@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, CornerDownLeft, FolderKanban, ListChecks, Search, UsersRound } from 'lucide-react';
+import { Briefcase, CalendarDays, CornerDownLeft, FolderKanban, LayoutGrid, ListChecks, Search, UsersRound } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { cn, matches } from '../../lib/utils';
 
@@ -15,7 +15,7 @@ interface Result {
 }
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
-  const { db, maps } = useData();
+  const { db, maps, me, can } = useData();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
@@ -26,33 +26,39 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const results = useMemo<Result[]>(() => {
     const q = query.trim();
     if (!q) {
-      return [
-        { id: 'go-leads', group: 'Ir para', icon: <FolderKanban className="h-4 w-4" />, title: 'Oportunidades', to: '/oportunidades' },
-        { id: 'go-projects', group: 'Ir para', icon: <Briefcase className="h-4 w-4" />, title: 'Projetos', to: '/projetos' },
+      const go: Array<Result | false> = [
+        { id: 'go-home', group: 'Ir para', icon: <LayoutGrid className="h-4 w-4" />, title: 'Painel de projetos', to: '/' },
+        can('projetos') && { id: 'go-projects', group: 'Ir para', icon: <Briefcase className="h-4 w-4" />, title: 'Projetos', to: '/projetos' },
         { id: 'go-tasks', group: 'Ir para', icon: <ListChecks className="h-4 w-4" />, title: 'Minhas tarefas', to: '/tarefas' },
-        { id: 'go-clients', group: 'Ir para', icon: <UsersRound className="h-4 w-4" />, title: 'Clientes', to: '/clientes' },
+        { id: 'go-agenda', group: 'Ir para', icon: <CalendarDays className="h-4 w-4" />, title: 'Agenda', to: '/?aba=agenda' },
+        can('comercial') && { id: 'go-leads', group: 'Ir para', icon: <FolderKanban className="h-4 w-4" />, title: 'Oportunidades', to: '/oportunidades' },
+        can('comercial') && { id: 'go-clients', group: 'Ir para', icon: <UsersRound className="h-4 w-4" />, title: 'Clientes', to: '/clientes' },
       ];
+      return go.filter((r): r is Result => !!r);
     }
     const out: Result[] = [];
-    db.projects
+    const canProjects = can('projetos');
+    const canCommercial = can('comercial');
+    (canProjects ? db.projects : [])
       .filter((p) => matches(q, p.name, p.code, maps.clients[p.client_id]?.name, p.site_city))
       .slice(0, 6)
       .forEach((p) =>
         out.push({ id: p.id, group: 'Projetos', icon: <Briefcase className="h-4 w-4" />, title: p.name, subtitle: `${p.code} · ${maps.clients[p.client_id]?.name ?? ''}`, to: `/projetos/${p.id}` }),
       );
-    db.leads
+    (canCommercial ? db.leads : [])
       .filter((l) => matches(q, l.name, l.city, l.phone, l.email))
       .slice(0, 6)
       .forEach((l) =>
         out.push({ id: l.id, group: 'Oportunidades', icon: <FolderKanban className="h-4 w-4" />, title: l.name, subtitle: `${l.city} · ${maps.stages[l.stage_id]?.name ?? ''}`, to: `/oportunidades?lead=${l.id}` }),
       );
-    db.clients
+    (canCommercial ? db.clients : [])
       .filter((c) => matches(q, c.name, c.document, c.email, c.phone, c.city))
       .slice(0, 6)
       .forEach((c) =>
         out.push({ id: c.id, group: 'Clientes', icon: <UsersRound className="h-4 w-4" />, title: c.name, subtitle: `${c.city}/${c.state}`, to: `/clientes/${c.id}` }),
       );
     db.tasks
+      .filter((t) => canProjects || t.assignee_id === me.id || t.created_by === me.id)
       .filter((t) => matches(q, t.title, t.phase))
       .slice(0, 8)
       .forEach((t) =>
@@ -63,7 +69,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         }),
       );
     return out;
-  }, [query, db, maps]);
+  }, [query, db, maps, me.id, can]);
 
   useEffect(() => setActive(0), [query]);
 
@@ -82,7 +88,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar projetos, clientes, oportunidades, tarefas…"
+            placeholder={can('comercial') ? 'Buscar projetos, clientes, oportunidades, tarefas…' : can('projetos') ? 'Buscar projetos e tarefas…' : 'Buscar nas minhas tarefas…'}
             className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-stone-400"
             onKeyDown={(e) => {
               if (e.key === 'Escape') onClose();

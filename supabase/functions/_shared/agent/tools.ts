@@ -15,7 +15,32 @@ export interface Profile {
   job_title: string | null;
   phone: string | null;
   active: boolean;
+  /** Módulos liberados pelo administrador (null/ausente: padrão dos membros). */
+  permissions?: ModuleKey[] | null;
 }
+
+// --------------------------------------------------------------------------- acessos por módulo
+// Espelha src/lib/permissions.ts: o assistente usa a chave de serviço (ignora o RLS),
+// então as ferramentas conferem os módulos de quem está falando.
+export type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes';
+const DEFAULT_MODULES: ModuleKey[] = ['projetos', 'comercial', 'relatorios', 'equipe'];
+
+export function hasModule(me: Profile, module: ModuleKey): boolean {
+  return me.role === 'admin' || (me.permissions ?? DEFAULT_MODULES).includes(module);
+}
+
+/** Sem o módulo Projetos, a pessoa só vê e altera as tarefas dela (designadas ou criadas por ela). */
+function canTouchTask(me: Profile, t: Pick<Task, 'assignee_id' | 'created_by'>): boolean {
+  return hasModule(me, 'projetos') || t.assignee_id === me.id || t.created_by === me.id;
+}
+
+const COMMERCIAL_TOOLS = new Set(['create_lead', 'add_lead_note']);
+
+/** Ferramentas oferecidas ao modelo para esta pessoa. */
+export function toolsFor(me: Profile): Anthropic.Beta.BetaTool[] {
+  return TOOLS.filter((t) => !COMMERCIAL_TOOLS.has(t.name) || hasModule(me, 'comercial'));
+}
+
 interface Project {
   id: string;
   code: string;
@@ -351,6 +376,9 @@ export async function executeTool(name: string, rawInput: unknown, ctx: ToolCont
   try {
     const handler = HANDLERS[name];
     if (!handler) throw new ToolError(`Ferramenta desconhecida: ${name}`);
+    if (COMMERCIAL_TOOLS.has(name) && !hasModule(ctx.me, 'comercial')) {
+      throw new ToolError('Você não tem acesso a Oportunidades e clientes. Peça ao administrador para liberar.');
+    }
     const result = await handler(input, ctx, lookup);
     return { ok: true, result: JSON.stringify(result) };
   } catch (e) {
@@ -414,7 +442,7 @@ const HANDLERS: Record<string, Handler> = {
     let tasks = await ctx.store.list<Task>('tasks', filters);
     const projects = await lookup.projectList();
     const dead = new Set(projects.filter((p) => p.status === 'cancelado').map((p) => p.id));
-    tasks = tasks.filter((t) => !t.project_id || !dead.has(t.project_id));
+    tasks = tasks.filter((t) => (!t.project_id || !dead.has(t.project_id)) && canTouchTask(ctx.me, t));
     if (query) tasks = tasks.filter((t) => normalize(t.title).includes(normalize(query)));
     if (scope === 'done_recent') {
       const since = addDaysKey(today, -7);
@@ -477,6 +505,7 @@ const HANDLERS: Record<string, Handler> = {
     const id = str(input, 'task_id', true)!;
     const [task] = await ctx.store.list<Task>('tasks', [eq('id', id)]);
     if (!task) throw new ToolError('Tarefa não encontrada. Use list_tasks ou search para achar o id.');
+    if (!canTouchTask(ctx.me, task)) throw new ToolError('Você só pode alterar as suas tarefas (sem acesso a Projetos e tarefas da equipe).');
     const patch: Record<string, unknown> = {};
     const status = str(input, 'status') as Task['status'] | null;
     if (status) {
@@ -539,6 +568,7 @@ const HANDLERS: Record<string, Handler> = {
     if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 24 * 60) throw new ToolError('Informe os minutos (entre 1 e 1440).');
     const [task] = await ctx.store.list<Task>('tasks', [eq('id', id)]);
     if (!task) throw new ToolError('Tarefa não encontrada.');
+    if (!canTouchTask(ctx.me, task)) throw new ToolError('Você só pode lançar horas nas suas tarefas.');
     const date = dateField(input, 'date') ?? todayIn(ctx.tz, ctx.now);
     const started = zonedToIso(date, '09:00', ctx.tz);
     await ctx.store.insert('time_entries', {
@@ -572,8 +602,9 @@ const HANDLERS: Record<string, Handler> = {
       (p) => p.due_date && p.due_date >= start && p.due_date <= end && !['concluido', 'cancelado'].includes(p.status) &&
         (!who || p.manager_id === who.id || p.member_ids.includes(who.id)),
     );
-    const leads = (await ctx.store.list<Lead>('leads', [gte('next_contact_date', start), lte('next_contact_date', end)]))
-      .filter((l) => !who || l.owner_id === who.id);
+    const leads = hasModule(ctx.me, 'comercial')
+      ? (await ctx.store.list<Lead>('leads', [gte('next_contact_date', start), lte('next_contact_date', end)])).filter((l) => !who || l.owner_id === who.id)
+      : [];
     const team = await lookup.team();
     return {
       periodo: `${formatBr(start)} a ${formatBr(end)}`,
@@ -736,9 +767,11 @@ const HANDLERS: Record<string, Handler> = {
   async search(input, ctx, lookup) {
     const q = normalize(str(input, 'query', true));
     const hit = (...fields: Array<string | null | undefined>) => fields.some((f) => normalize(f).includes(q));
+    const commercial = hasModule(ctx.me, 'comercial');
+    const seesClients = commercial || hasModule(ctx.me, 'projetos');
     const [leads, clients, tasks, events] = await Promise.all([
-      ctx.store.list<Lead & { email: string | null }>('leads'),
-      ctx.store.list<{ id: string; name: string; city: string; phone: string }>('clients'),
+      commercial ? ctx.store.list<Lead & { email: string | null }>('leads') : [],
+      seesClients ? ctx.store.list<{ id: string; name: string; city: string; phone: string }>('clients') : [],
       ctx.store.list<Task>('tasks'),
       ctx.store.list<CalendarEvent>('events', [gte('starts_at', zonedToIso(addDaysKey(todayIn(ctx.tz, ctx.now), -30), '00:00', ctx.tz))]),
     ]);
@@ -749,7 +782,7 @@ const HANDLERS: Record<string, Handler> = {
         .map((l) => ({ id: l.id, nome: l.name, cidade: l.city, etapa: stages.find((s) => s.id === l.stage_id)?.name })),
       clientes: clients.filter((c) => hit(c.name, c.phone, c.city)).slice(0, 5).map((c) => ({ id: c.id, nome: c.name, cidade: c.city })),
       projetos: projects.filter((p) => hit(p.name, p.code)).slice(0, 5).map((p) => ({ id: p.id, nome: p.name, codigo: p.code, status: p.status })),
-      tarefas: await Promise.all(tasks.filter((t) => hit(t.title)).slice(0, 8).map((t) => taskSummary(t, lookup))),
+      tarefas: await Promise.all(tasks.filter((t) => hit(t.title) && canTouchTask(ctx.me, t)).slice(0, 8).map((t) => taskSummary(t, lookup))),
       reunioes: events.filter((e) => hit(e.title)).slice(0, 5).map((e) => {
         const s = isoToZoned(e.starts_at, ctx.tz);
         return { id: e.id, titulo: e.title, dia: formatBr(s.date), horario: e.all_day ? 'dia inteiro' : s.time };

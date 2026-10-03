@@ -43,25 +43,27 @@ import { CommandPalette } from './CommandPalette';
 import { BrandMark } from './Logo';
 import { useRunningTimer } from './useRunningTimer';
 import type { CreateKind } from '../../lib/create';
+import type { ModuleKey } from '../../lib/types';
+import { ProjectFormModal } from '../projects/ProjectFormModal';
 
 interface NavItem {
   to: string;
   label: string;
   icon: typeof LayoutGrid;
   end?: boolean;
-  adminOnly?: boolean;
+  /** Módulo exigido para ver o item; sem módulo, todos veem. */
+  module?: ModuleKey;
   /** Indicador discreto: ponto (retornos pendentes) ou contador. */
   dot?: boolean;
   count?: number;
 }
 
 const PAGE_TITLES: Array<[RegExp, string]> = [
-  [/^\/$/, 'Início'],
+  [/^\/$/, 'Painel'],
   [/^\/oportunidades/, 'Oportunidades'],
   [/^\/clientes/, 'Clientes'],
   [/^\/projetos/, 'Projetos'],
   [/^\/tarefas/, 'Minhas tarefas'],
-  [/^\/agenda/, 'Agenda'],
   [/^\/relatorios/, 'Relatórios'],
   [/^\/equipe/, 'Equipe'],
   [/^\/configuracoes/, 'Configurações'],
@@ -71,7 +73,7 @@ const PAGE_TITLES: Array<[RegExp, string]> = [
 const ICON = 'h-4 w-4';
 
 export function AppLayout() {
-  const { db, me, isAdmin, settings } = useData();
+  const { db, me, settings, can } = useData();
   const { setBranding } = useBranding();
   useEffect(() => {
     setBranding({ office_name: settings.office_name, logo_url: settings.logo_url ?? null });
@@ -102,7 +104,7 @@ export function AppLayout() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Atalhos globais de criação (usados pelo Início e pelo menu "+" do celular).
+  // Atalhos globais de criação (usados pelo Painel e pelo menu "+" do celular).
   useEffect(() => {
     const onCreate = (e: Event) => setCreating((e as CustomEvent<CreateKind>).detail);
     window.addEventListener('airos:create', onCreate);
@@ -120,30 +122,31 @@ export function AppLayout() {
   );
 
   const pendingFollowUps = useMemo(() => {
+    if (!can('comercial')) return 0;
     const t = today();
     const openStages = new Set(db.lead_stages.filter((s) => s.kind === 'open').map((s) => s.id));
     return db.leads.filter((l) => openStages.has(l.stage_id) && l.next_contact_date && l.next_contact_date <= t).length;
-  }, [db.leads, db.lead_stages]);
+  }, [db.leads, db.lead_stages, can]);
 
   // Grupos separados apenas por espaço, sem rótulos. Nomes inalterados.
+  // Projetos é o primeiro bloco: Painel (com a agenda), lista de projetos e tarefas.
   const groups: NavItem[][] = [
-    [{ to: '/', label: 'Início', icon: LayoutGrid, end: true }],
     [
-      { to: '/oportunidades', label: 'Oportunidades', icon: FolderKanban, dot: pendingFollowUps > 0 },
-      { to: '/clientes', label: 'Clientes', icon: Contact },
-    ],
-    [
-      { to: '/projetos', label: 'Projetos', icon: Building2 },
+      { to: '/', label: 'Painel', icon: LayoutGrid, end: true },
+      { to: '/projetos', label: 'Projetos', icon: Building2, module: 'projetos' },
       { to: '/tarefas', label: 'Minhas tarefas', icon: ListChecks, count: myOpenTasks },
-      { to: '/agenda', label: 'Agenda', icon: CalendarDays },
     ],
     [
-      { to: '/relatorios', label: 'Relatórios', icon: BarChart3 },
-      { to: '/equipe', label: 'Equipe', icon: Users },
-      { to: '/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
+      { to: '/oportunidades', label: 'Oportunidades', icon: FolderKanban, dot: pendingFollowUps > 0, module: 'comercial' },
+      { to: '/clientes', label: 'Clientes', icon: Contact, module: 'comercial' },
+    ],
+    [
+      { to: '/relatorios', label: 'Relatórios', icon: BarChart3, module: 'relatorios' },
+      { to: '/equipe', label: 'Equipe', icon: Users, module: 'equipe' },
+      { to: '/configuracoes', label: 'Configurações', icon: Settings, module: 'configuracoes' },
     ],
   ];
-  const visibleGroups = groups.map((g) => g.filter((n) => !n.adminOnly || isAdmin)).filter((g) => g.length > 0);
+  const visibleGroups = groups.map((g) => g.filter((n) => !n.module || can(n.module))).filter((g) => g.length > 0);
   const pageTitle = PAGE_TITLES.find(([re]) => re.test(location.pathname))?.[1] ?? '';
 
   return (
@@ -182,14 +185,14 @@ export function AppLayout() {
       {sheet === 'create' && (
         <Sheet title="Criar" onClose={() => setSheet(null)}>
           <SheetItem icon={<ListChecks />} label="Tarefa" onClick={() => { setSheet(null); setCreating('task'); }} />
-          <SheetItem icon={<FolderKanban />} label="Oportunidade" onClick={() => { setSheet(null); setCreating('lead'); }} />
           <SheetItem icon={<CalendarDays />} label="Reunião" onClick={() => { setSheet(null); setCreating('event'); }} />
+          {can('projetos') && <SheetItem icon={<Building2 />} label="Projeto" onClick={() => { setSheet(null); setCreating('project'); }} />}
+          {can('comercial') && <SheetItem icon={<FolderKanban />} label="Oportunidade" onClick={() => { setSheet(null); setCreating('lead'); }} />}
           <SheetItem icon={<Clock />} label="Lançar horas" onClick={() => { setSheet(null); setCreating('time'); }} />
         </Sheet>
       )}
       {sheet === 'more' && (
         <MoreSheet
-          isAdmin={isAdmin}
           onClose={() => setSheet(null)}
           onAssistant={() => {
             setSheet(null);
@@ -202,7 +205,8 @@ export function AppLayout() {
       {assistantOpen && <AssistantPanel onClose={() => setAssistantOpen(false)} />}
       {openTaskId && <TaskDrawer key={openTaskId} taskId={openTaskId} onClose={closeTask} />}
       {creating === 'task' && <TaskFormModal onClose={() => setCreating(null)} />}
-      {creating === 'lead' && <LeadFormModal onClose={() => setCreating(null)} />}
+      {creating === 'lead' && can('comercial') && <LeadFormModal onClose={() => setCreating(null)} />}
+      {creating === 'project' && can('projetos') && <ProjectFormModal onClose={() => setCreating(null)} />}
       {creating === 'event' && <EventFormModal defaults={{ date: today() }} onClose={() => setCreating(null)} />}
       {creating === 'time' && <LogTimeModal onClose={() => setCreating(null)} />}
       <span className="sr-only">{me.name}</span>
@@ -373,7 +377,7 @@ function MobileAppBar({ title, onSearch, isHome }: { title: string; onSearch: ()
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-  // No Início a barra do cronômetro fica na página; ao rolar, recolhe para texto aqui.
+  // No Painel a barra do cronômetro fica na página; ao rolar, recolhe para texto aqui.
   const compact = scrolled || !isHome;
   return (
     <div
@@ -401,7 +405,15 @@ function MobileAppBar({ title, onSearch, isHome }: { title: string; onSearch: ()
 
 function BottomNav({ onCreate, onMore }: { onCreate: () => void; onMore: () => void }) {
   const location = useLocation();
-  const moreActive = /^\/(clientes|projetos|agenda|relatorios|equipe|configuracoes|perfil)/.test(location.pathname);
+  const { can } = useData();
+  const second = can('projetos')
+    ? { to: '/projetos', label: 'Projetos', icon: Building2 }
+    : can('comercial')
+      ? { to: '/oportunidades', label: 'Oportunidades', icon: FolderKanban }
+      : null;
+  const moreActive =
+    /^\/(clientes|projetos|oportunidades|relatorios|equipe|configuracoes|perfil)/.test(location.pathname) &&
+    !(second && location.pathname.startsWith(second.to));
   const item = (active: boolean) =>
     cn('flex h-[52px] flex-col items-center justify-center gap-1 text-[10.5px] leading-none', active ? 'font-medium text-ink' : 'text-faint');
   return (
@@ -409,14 +421,21 @@ function BottomNav({ onCreate, onMore }: { onCreate: () => void; onMore: () => v
       aria-label="Navegação"
       className="pb-safe fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-canvas/[0.94] px-2 pt-1.5 backdrop-blur-[12px] md:hidden"
     >
-      <NavLink to="/" end className={({ isActive }) => item(isActive)}>
+      <NavLink to="/" end className={({ isActive }) => item(isActive && !location.search.includes('aba=agenda'))}>
         <LayoutGrid className="h-[22px] w-[22px]" strokeWidth={1.6} />
-        Início
+        Painel
       </NavLink>
-      <NavLink to="/oportunidades" className={({ isActive }) => item(isActive)}>
-        <FolderKanban className="h-[22px] w-[22px]" strokeWidth={1.6} />
-        Oportunidades
-      </NavLink>
+      {second ? (
+        <NavLink to={second.to} className={({ isActive }) => item(isActive)}>
+          <second.icon className="h-[22px] w-[22px]" strokeWidth={1.6} />
+          {second.label}
+        </NavLink>
+      ) : (
+        <NavLink to="/?aba=agenda" className={() => item(location.pathname === '/' && location.search.includes('aba=agenda'))}>
+          <CalendarDays className="h-[22px] w-[22px]" strokeWidth={1.6} />
+          Agenda
+        </NavLink>
+      )}
       <div className="flex h-[52px] items-center justify-center">
         <button
           type="button"
@@ -457,16 +476,18 @@ function SheetItem({ icon, label, onClick, to }: { icon: ReactNode; label: strin
   );
 }
 
-function MoreSheet({ isAdmin, onClose, onAssistant }: { isAdmin: boolean; onClose: () => void; onAssistant: () => void }) {
+function MoreSheet({ onClose, onAssistant }: { onClose: () => void; onAssistant: () => void }) {
   const { signOut } = useAuth();
+  const { can } = useData();
+  const comercialInBar = !can('projetos') && can('comercial');
   return (
     <Sheet title="Mais" onClose={onClose}>
-      <SheetItem to="/clientes" icon={<Contact strokeWidth={1.6} />} label="Clientes" />
-      <SheetItem to="/projetos" icon={<Building2 strokeWidth={1.6} />} label="Projetos" />
-      <SheetItem to="/agenda" icon={<CalendarDays strokeWidth={1.6} />} label="Agenda" />
-      <SheetItem to="/relatorios" icon={<BarChart3 strokeWidth={1.6} />} label="Relatórios" />
-      <SheetItem to="/equipe" icon={<Users strokeWidth={1.6} />} label="Equipe" />
-      {isAdmin && <SheetItem to="/configuracoes" icon={<Settings strokeWidth={1.6} />} label="Configurações" />}
+      <SheetItem to="/?aba=agenda" icon={<CalendarDays strokeWidth={1.6} />} label="Agenda" />
+      {can('comercial') && !comercialInBar && <SheetItem to="/oportunidades" icon={<FolderKanban strokeWidth={1.6} />} label="Oportunidades" />}
+      {can('comercial') && <SheetItem to="/clientes" icon={<Contact strokeWidth={1.6} />} label="Clientes" />}
+      {can('relatorios') && <SheetItem to="/relatorios" icon={<BarChart3 strokeWidth={1.6} />} label="Relatórios" />}
+      {can('equipe') && <SheetItem to="/equipe" icon={<Users strokeWidth={1.6} />} label="Equipe" />}
+      {can('configuracoes') && <SheetItem to="/configuracoes" icon={<Settings strokeWidth={1.6} />} label="Configurações" />}
       <div className="mx-3 my-2 border-t border-line" />
       <SheetItem icon={<Sparkles strokeWidth={1.6} />} label="Assistente" onClick={onAssistant} />
       <SheetItem to="/perfil" icon={<UserCircle strokeWidth={1.6} />} label="Meu perfil" />
@@ -566,7 +587,7 @@ function NotificationsMenu({ touch }: { touch?: boolean }) {
 
 /** Rodapé da sidebar: avatar + nome + papel, abre o menu da conta. */
 function UserMenu() {
-  const { me, isAdmin } = useData();
+  const { me, isAdmin, can } = useData();
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const role = isAdmin ? 'Administrador' : me.job_title || 'Membro';
@@ -600,7 +621,7 @@ function UserMenu() {
           <MenuItem icon={<UserCircle className="h-4 w-4" />} onClick={() => { close(); navigate('/perfil'); }}>
             Meu perfil
           </MenuItem>
-          {isAdmin && (
+          {can('configuracoes') && (
             <MenuItem icon={<Settings className="h-4 w-4" />} onClick={() => { close(); navigate('/configuracoes'); }}>
               Configurações
             </MenuItem>

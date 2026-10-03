@@ -10,7 +10,7 @@ import { cn, formatClock, formatDate, formatDateTime, formatMinutes, formatRelat
 import { Avatar, Button, Checkbox, ConfirmDialog, Drawer, DueBadge, Field, IconButton, Input, Select, Textarea, UserSelect } from '../ui';
 
 export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () => void }) {
-  const { db, maps, me, isAdmin, settings, updateTask, deleteTask, addComment, startTimer, stopTimer, runningEntry, addTimeEntry, deleteTimeEntry } =
+  const { db, maps, me, isAdmin, can, settings, updateTask, deleteTask, addComment, startTimer, stopTimer, runningEntry, addTimeEntry, deleteTimeEntry } =
     useData();
   const toast = useToast();
   const task = maps.tasks[taskId];
@@ -85,7 +85,9 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
       <div className="px-6 pb-4 pt-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-faint">
-            {project ? (
+            {project && !can('projetos') ? (
+              <span className="truncate text-stone-700">{project.name}</span>
+            ) : project ? (
               <Link to={`/projetos/${project.id}`} onClick={onClose} className="truncate text-stone-700 hover:underline hover:decoration-stone-300 hover:underline-offset-4">
                 {project.name}
               </Link>

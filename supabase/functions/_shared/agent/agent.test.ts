@@ -2,7 +2,7 @@
 // Usam um banco em memória e um cliente do Claude simulado (não chamam APIs externas).
 import { assert, assertEquals, assertMatch } from 'jsr:@std/assert@1';
 import type { Filter, ListOptions, Store } from './store.ts';
-import { executeTool, type Profile, type ToolContext } from './tools.ts';
+import { executeTool, toolsFor, type Profile, type ToolContext } from './tools.ts';
 import { runAgent } from './run.ts';
 import { zonedToIso, isoToZoned } from './time.ts';
 import { phoneKey, samePhone } from '../phone.ts';
@@ -227,6 +227,29 @@ Deno.test('create_lead entra na primeira etapa e reconhece tipo e origem', async
   assertEquals(lead.project_type_id, 't2');
   assertEquals(lead.source_id, 'src1');
   assertEquals(lead.owner_id, 'u-ana');
+});
+
+Deno.test('acessos por módulo: sem Comercial e sem Projetos, só as próprias tarefas', async () => {
+  const store = seed();
+  const bruno: Profile = { ...BRUNO, permissions: ['relatorios'] };
+  const names = toolsFor(bruno).map((t) => t.name);
+  assert(!names.includes('create_lead') && !names.includes('add_lead_note'));
+  assert(toolsFor(ADMIN).some((t) => t.name === 'create_lead'));
+
+  const lead = await executeTool('create_lead', { name: 'X', phone: '41 90000-0000', city: 'Curitiba' }, ctxFor(store, bruno));
+  assertEquals(lead.ok, false);
+  assertEquals(store.tables.leads.length, 1);
+
+  const all = JSON.parse((await executeTool('list_tasks', { assignee_id: 'all' }, ctxFor(store, bruno))).result);
+  assertEquals(all.total, 0);
+  const upd = await executeTool('update_task', { task_id: 't-late', status: 'done' }, ctxFor(store, bruno));
+  assertEquals(upd.ok, false);
+  assertEquals(store.tables.tasks.find((t) => t.id === 't-late')?.status, 'todo');
+
+  const found = JSON.parse((await executeTool('search', { query: 'Rodrigo' }, ctxFor(store, bruno))).result);
+  assertEquals(found.oportunidades.length, 0);
+  const foundAdmin = JSON.parse((await executeTool('search', { query: 'Rodrigo' }, ctxFor(store, ADMIN))).result);
+  assertEquals(foundAdmin.oportunidades.length, 1);
 });
 
 Deno.test('runAgent executa as ferramentas pedidas pelo modelo e devolve a resposta final', async () => {

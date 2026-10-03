@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { useData } from '../context/DataContext';
-import { CSS_COLOR, personColor } from '../lib/status';
-import { isProjectActive } from '../lib/domain';
-import { addDays, cn, formatDate, isoToLocalTime, MONTHS_FULL, parseDate, toDateKey, today, WEEKDAYS_SHORT } from '../lib/utils';
-import { EventFormModal } from '../components/events/EventFormModal';
-import type { CalendarEvent } from '../lib/types';
-import { ActionLink, Avatar, Button, Checkbox, FilterPick, IconButton, PageHeader, SectionHeader, Tabs, Toolbar } from '../components/ui';
-import { CalendarEmbed } from '../components/dashboard/CalendarEmbed';
-import { useOpenTask } from '../components/tasks/useOpenTask';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useData } from '../../context/DataContext';
+import { CSS_COLOR, personColor } from '../../lib/status';
+import { isProjectActive } from '../../lib/domain';
+import { addDays, cn, formatDate, isoToLocalTime, MONTHS_FULL, parseDate, toDateKey, today, WEEKDAYS_SHORT } from '../../lib/utils';
+import { EventFormModal } from '../events/EventFormModal';
+import type { CalendarEvent } from '../../lib/types';
+import { ActionLink, Avatar, Button, Checkbox, FilterPick, IconButton, SectionHeader, Tabs, Toolbar } from '../ui';
+import { CalendarEmbed } from '../dashboard/CalendarEmbed';
+import { useOpenTask } from '../tasks/useOpenTask';
 
 type Kind = 'meeting' | 'delivery' | 'start' | 'task' | 'lead';
 interface CalEvent {
@@ -31,9 +31,12 @@ const KIND_META: Record<Kind, { label: string; one: string }> = {
   lead: { label: 'Retornos de leads', one: 'Retorno de lead' },
 };
 
-export default function AgendaPage() {
-  const { db, maps, me } = useData();
+/** Agenda do escritório (calendário do sistema + Google Agenda). Fica dentro do Painel de Projetos. */
+export function AgendaView() {
+  const { db, maps, me, can } = useData();
   const navigate = useNavigate();
+  const canProjects = can('projetos');
+  const canCommercial = can('comercial');
   const openTask = useOpenTask();
   const [tab, setTab] = useState<'internal' | 'google'>('internal');
   const [cursor, setCursor] = useState(() => {
@@ -70,8 +73,8 @@ export default function AgendaPage() {
       const include = person === 'all' || p.manager_id === person || p.member_ids.includes(person);
       if (!include || p.status === 'cancelado') return;
       const color = maps.types[p.project_type_id]?.color ?? CSS_COLOR.brand(500);
-      if (p.due_date) out.push({ id: `d${p.id}`, date: p.due_date, kind: 'delivery', title: `Entrega · ${p.name}`, color, done: p.status === 'concluido', onClick: () => navigate(`/projetos/${p.id}`) });
-      out.push({ id: `s${p.id}`, date: p.start_date, kind: 'start', title: `Início · ${p.name}`, color, onClick: () => navigate(`/projetos/${p.id}`) });
+      if (p.due_date) out.push({ id: `d${p.id}`, date: p.due_date, kind: 'delivery', title: `Entrega · ${p.name}`, color, done: p.status === 'concluido', onClick: () => canProjects && navigate(`/projetos/${p.id}`) });
+      out.push({ id: `s${p.id}`, date: p.start_date, kind: 'start', title: `Início · ${p.name}`, color, onClick: () => canProjects && navigate(`/projetos/${p.id}`) });
     });
     db.tasks.forEach((t) => {
       if (!t.due_date) return;
@@ -86,10 +89,10 @@ export default function AgendaPage() {
     db.leads.forEach((l) => {
       if (!l.next_contact_date || maps.stages[l.stage_id]?.kind !== 'open') return;
       if (person !== 'all' && l.owner_id !== person) return;
-      out.push({ id: `l${l.id}`, date: l.next_contact_date, kind: 'lead', title: `Retorno · ${l.name}`, color: CSS_COLOR.brand(500), onClick: () => navigate(`/oportunidades?lead=${l.id}`) });
+      out.push({ id: `l${l.id}`, date: l.next_contact_date, kind: 'lead', title: `Retorno · ${l.name}`, color: CSS_COLOR.brand(500), onClick: () => canCommercial && navigate(`/oportunidades?lead=${l.id}`) });
     });
     return out.filter((e) => kinds[e.kind]).sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'));
-  }, [db, maps, person, kinds, navigate, openTask]);
+  }, [db, maps, person, kinds, navigate, openTask, canProjects, canCommercial]);
 
   const byDate = useMemo(() => {
     const map: Record<string, CalEvent[]> = {};
@@ -106,38 +109,10 @@ export default function AgendaPage() {
     return { y: d.getFullYear(), m: d.getMonth() };
   });
   const dayEvents = byDate[selected] ?? [];
-  const weekEnd = addDays(t, 7);
-  const weekMeetings = db.events.filter((e) => {
-    const d = toDateKey(new Date(e.starts_at));
-    return d >= t && d <= weekEnd && (e.participant_ids.includes(me.id) || e.created_by === me.id);
-  }).length;
-  const weekDeliveries = db.projects.filter((p) => isProjectActive(p) && p.due_date && p.due_date >= t && p.due_date <= weekEnd).length;
   const selectedDate = parseDate(selected);
 
   return (
     <div>
-      <PageHeader
-        title="Agenda"
-        description={
-          <>
-            {weekMeetings} {weekMeetings === 1 ? 'reunião sua' : 'reuniões suas'} nos próximos 7 dias
-            {weekDeliveries > 0 && (
-              <>
-                {' · '}
-                <span className="text-warning-fg">
-                  {weekDeliveries} {weekDeliveries === 1 ? 'entrega de projeto' : 'entregas de projeto'}
-                </span>
-              </>
-            )}
-          </>
-        }
-        actions={
-          <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setCreatingOn(selected)}>
-            Reunião
-          </Button>
-        }
-      />
-
       <Toolbar
         filters={
           tab === 'internal' && (
@@ -294,7 +269,7 @@ export default function AgendaPage() {
               <section aria-labelledby="mostrar">
                 <SectionHeader id="mostrar" title="Mostrar" />
                 <div className="flex flex-col gap-2.5 border-t border-hairline pt-3">
-                  {(Object.keys(KIND_META) as Kind[]).map((k) => (
+                  {(Object.keys(KIND_META) as Kind[]).filter((k) => k !== 'lead' || canCommercial).map((k) => (
                     <Checkbox key={k} checked={kinds[k]} onChange={(v) => setKinds((st) => ({ ...st, [k]: v }))} label={<span className="text-[13.5px]">{KIND_META[k].label}</span>} />
                   ))}
                 </div>

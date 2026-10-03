@@ -53,6 +53,10 @@ Deno.serve(async (req) => {
     const color = String(body.color ?? '#57534e');
     const job_title = body.job_title ? String(body.job_title) : null;
     const phone = body.phone ? String(body.phone) : null;
+    const MODULES = ['projetos', 'comercial', 'relatorios', 'equipe', 'configuracoes'];
+    const permissions = Array.isArray(body.permissions)
+      ? [...new Set(body.permissions.map(String).filter((m) => MODULES.includes(m)))]
+      : ['projetos', 'comercial', 'relatorios', 'equipe'];
 
     if (!name) return json({ error: 'Informe o nome.' }, 400);
     if (!EMAIL_RE.test(email)) return json({ error: 'E-mail inválido.' }, 400);
@@ -70,7 +74,7 @@ Deno.serve(async (req) => {
     // O gatilho handle_new_user cria o perfil; garantimos os dados finais.
     const { data: profile, error: pErr } = await admin
       .from('profiles')
-      .upsert({ id: data.user.id, name, email, role, color, job_title, phone, active: true })
+      .upsert({ id: data.user.id, name, email, role, color, job_title, phone, active: true, permissions })
       .select('*')
       .single();
     if (pErr) return json({ error: pErr.message }, 400);

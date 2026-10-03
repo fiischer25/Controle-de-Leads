@@ -10,7 +10,11 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Login com e-mail e senha. No primeiro acesso, cria-se a conta de **administrador**.
 - O administrador cadastra os membros (nome, cargo, cor, nível de acesso), redefine senhas e
   desativa quem sai do escritório. Cada membro pode editar o próprio perfil e trocar a senha.
-- Membros veem tudo do escritório; configurações e exclusões críticas são exclusivas do admin.
+- **Acessos por módulo:** no cadastro do membro, o administrador marca o que ele pode ver e usar:
+  *Projetos e tarefas* (lista e detalhe dos projetos, tarefas da equipe), *Oportunidades e clientes*,
+  *Relatórios*, *Equipe* e *Configurações*. O **Painel de projetos** (com a agenda) e as tarefas da
+  própria pessoa ficam sempre disponíveis. Administradores têm acesso a tudo; exclusões críticas e
+  o backup continuam exclusivos deles. O banco aplica as mesmas regras (RLS), e o assistente também.
 
 **Oportunidades (funil comercial)**
 - Cadastro do lead: nome, telefone, e-mail, cidade/UF do projeto, tamanho (m²), categoria,
@@ -40,14 +44,16 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   aparece em “Minhas tarefas” da pessoa e gera notificação.
 - “Minhas tarefas” agrupa atrasadas, hoje, próximos 7 dias…; também em quadro kanban.
 
-**Início (visão 360°)**
-- **Pede sua atenção**: uma fila única com o que está atrasado, o que vence hoje e o que pede ação
-  nesta semana (tarefas, retornos de leads, prazos de projeto, leads parados e oportunidades fechadas
-  aguardando cadastro), com filtro por Tarefas / Comercial / Projetos e ação direta em cada linha.
-- Agenda de hoje e dos próximos dias, visão geral em números, projetos com o trilho de etapas,
-  funil com valores e a carga da equipe na semana.
-- No celular: navegação inferior com botão **+** (tarefa, oportunidade, reunião, lançar horas) e
-  arrastar a linha para a esquerda para **Adiar** ou **Concluir**.
+**Painel de projetos (primeira tela, para toda a equipe)**
+- Andamento de todos os projetos: em andamento, prazos vencidos e a vencer, tarefas atrasadas,
+  percentual de tarefas concluídas e horas da semana; projetos com o trilho de etapas.
+- Gráficos: projetos por etapa, tarefas dos projetos por status e entregas previstas por mês.
+- Hoje e próximos dias, carga da equipe na semana e a aba **Agenda** (calendário do escritório).
+- **Pede sua atenção** (em *Minhas tarefas*): fila única com o que está atrasado, vence hoje ou pede
+  ação nesta semana (tarefas, retornos de leads, prazos de projeto, leads parados e oportunidades
+  fechadas aguardando cadastro), com ação direta em cada linha.
+- No celular: navegação inferior com botão **+** (tarefa, reunião, projeto, oportunidade, lançar
+  horas) e arrastar a linha para a esquerda para **Adiar** ou **Concluir**.
 
 **Assistente no WhatsApp (e dentro do sistema)**
 - A equipe conversa com o número do escritório no WhatsApp — ou pelo botão **Assistente** no topo — em
@@ -64,13 +70,14 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Logo do escritório em **Configurações → Escritório e logo**: substitui o nome no menu, no login e na aba.
 
 **Mais**
-- Agenda mensal com entregas, inícios, prazos de tarefas e retornos de leads + Google Agenda.
+- Agenda mensal (no Painel) com reuniões, entregas, inícios, prazos de tarefas e retornos de leads
+  + Google Agenda.
 - Relatórios: conversão por origem, motivos de perda, tempo médio de fechamento, entregas no
   prazo, horas por pessoa/projeto/tipo, horas por m² e exportação de horas (timesheet).
 - Busca global (**Ctrl + K**), notificações, atualização em tempo real entre usuários,
   backup em JSON, layout responsivo (celular) e **modo escuro** (menu da conta → Tema).
 
-**Configurações (administrador)**
+**Configurações (administrador ou quem tiver o módulo)**
 - Tipos de projeto e suas **tarefas-modelo** (etapa, nome, duração em dias), etapas do funil,
   origens de leads, Google Agenda do escritório, dias de alerta de prazo e prefixo dos códigos.
 
@@ -91,9 +98,11 @@ Para uso real pela equipe, configure o Supabase.
 
 1. **Crie um projeto** gratuito em [supabase.com](https://supabase.com).
 2. **Banco de dados:** abra *SQL Editor* e execute, nesta ordem, o conteúdo de
-   `supabase/migrations/20260929000000_airos_schema.sql` e
-   `supabase/migrations/20260930000000_meetings_logo_agent.sql`
-   (ou use `supabase db push` com a CLI).
+   `supabase/migrations/20260929000000_airos_schema.sql`,
+   `supabase/migrations/20260930000000_meetings_logo_agent.sql` e
+   `supabase/migrations/20261004000000_module_permissions.sql`
+   (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só o arquivo novo
+   (pode rodar mais de uma vez sem problema) e depois publica de novo a função `admin-users`.
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):
    ```bash
    npx supabase login
@@ -152,8 +161,9 @@ compartilhe essa agenda com as contas Google da equipe. Cada membro também pode
 agenda em **Meu perfil**.
 
 ### Segurança
-- Todas as tabelas usam *Row Level Security*: só membros ativos acessam dados; somente
-  administradores alteram configurações, excluem leads/clientes/projetos e gerenciam a equipe.
+- Todas as tabelas usam *Row Level Security*: só membros ativos acessam dados; oportunidades,
+  clientes, edição de projetos e configurações seguem os módulos de cada pessoa; somente
+  administradores excluem leads/clientes/projetos e gerenciam a equipe e os acessos.
 - A chave de serviço do Supabase fica apenas na Edge Function, nunca no navegador.
 
 ## Design system

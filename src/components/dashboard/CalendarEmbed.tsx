@@ -14,7 +14,7 @@ const GOOGLE_CALENDAR = 'https://calendar.google.com/calendar/r';
  * acontece no próprio Google Agenda, aberto em outra aba.
  */
 export function CalendarEmbed({ height = 560 }: { height?: number }) {
-  const { settings, me, isAdmin } = useData();
+  const { settings, me, can } = useData();
   const office = toCalendarEmbedUrl(settings.calendar_embed_url);
   const mine = toCalendarEmbedUrl(me.calendar_embed_url);
   const [which, setWhich] = useState<'office' | 'mine'>(mine && !office ? 'mine' : 'office');
@@ -27,7 +27,7 @@ export function CalendarEmbed({ height = 560 }: { height?: number }) {
         description={
           <>
             Cole o código de incorporação da agenda em{' '}
-            {isAdmin ? (
+            {can('configuracoes') ? (
               <Link className="text-accent-fg hover:underline" to="/configuracoes?aba=agenda">
                 Configurações → Google Agenda
               </Link>

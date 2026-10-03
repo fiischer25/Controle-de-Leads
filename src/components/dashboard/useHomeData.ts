@@ -95,7 +95,9 @@ function plural(n: number, one: string, many: string) {
 }
 
 export function useHomeData() {
-  const { db, maps, me, settings } = useData();
+  const { db, maps, me, settings, can } = useData();
+  const canProjects = can('projetos');
+  const canCommercial = can('comercial');
   const summaries = useProjectSummaries();
 
   return useMemo(() => {
@@ -231,6 +233,15 @@ export function useHomeData() {
       });
     }
 
+    // Só o que a pessoa pode acessar: sem "Projetos", apenas as próprias tarefas; comercial só com "Comercial".
+    const allowed = items.filter((i) => {
+      if (i.kind === 'task') return canProjects || i.assigneeId === me.id || maps.tasks[i.taskId ?? '']?.created_by === me.id;
+      if (i.kind === 'deadline') return canProjects;
+      return canCommercial;
+    });
+    items.length = 0;
+    items.push(...allowed);
+
     // Por grupo, depois do mais atrasado (data mais antiga) para o mais recente.
     items.sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group) || a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 
@@ -250,7 +261,7 @@ export function useHomeData() {
         title: ev.title,
         context: ev.location || project?.name || plural(ev.participant_ids.length, 'participante', 'participantes'),
         past: !ev.all_day && end < now,
-        href: `/agenda?evento=${ev.id}`,
+        href: `/?aba=agenda&evento=${ev.id}`,
       });
     }
     for (const s of activeSummaries) {
@@ -334,5 +345,5 @@ export function useHomeData() {
       .sort((a, b) => b.minutes - a.minutes || b.open - a.open || a.user.name.localeCompare(b.user.name));
 
     return { items, todayEvents, upcomingEvents, kpis, projects, funnel, funnelTotal, team, soonDays };
-  }, [summaries, db, maps, me.id, settings.due_soon_days, settings.lead_stale_days]);
+  }, [summaries, db, maps, me.id, settings.due_soon_days, settings.lead_stale_days, canProjects, canCommercial]);
 }

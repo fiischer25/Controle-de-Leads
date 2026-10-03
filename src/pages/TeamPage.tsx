@@ -5,9 +5,10 @@ import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { SWATCHES } from '../lib/constants';
 import { isProjectActive, totalMinutes } from '../lib/domain';
-import type { Profile, Role } from '../lib/types';
+import type { ModuleKey, Profile, Role } from '../lib/types';
+import { DEFAULT_PERMISSIONS, MODULES, modulesOf } from '../lib/permissions';
 import { cn, formatMinutes, isValidEmail, maskPhone, startOfWeek, today, toDateKey } from '../lib/utils';
-import { ActionLink, Avatar, Button, ConfirmDialog, Field, IconButton, Input, Modal, PageHeader, SectionHeader, Select } from '../components/ui';
+import { ActionLink, Avatar, Button, Checkbox, ConfirmDialog, Field, IconButton, Input, Modal, PageHeader, SectionHeader, Select } from '../components/ui';
 import { TaskRow } from '../components/tasks/TaskRow';
 import { useOpenTask } from '../components/tasks/useOpenTask';
 
@@ -115,6 +116,15 @@ export default function TeamPage() {
                       {p.job_title || (p.role === 'admin' ? 'Administrador' : 'Membro')}
                       {!p.active && ' · desativado'}
                     </div>
+                    {isAdmin && (
+                      <div className="truncate text-[12px] text-faint" title="Acessos">
+                        {p.role === 'admin'
+                          ? 'Acesso total'
+                          : modulesOf(p).length
+                            ? MODULES.filter((m) => modulesOf(p).includes(m.key)).map((m) => m.short).join(' · ')
+                            : 'Só Painel e próprias tarefas'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="hidden min-w-0 md:block">
@@ -230,7 +240,11 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
     job_title: member?.job_title ?? '',
     phone: member?.phone ?? '',
     color: member?.color ?? SWATCHES.find((c) => !used.has(c)) ?? SWATCHES[1],
+    permissions: member ? modulesOf({ role: 'member', permissions: member.permissions }) : DEFAULT_PERMISSIONS,
   });
+  const isAdminRole = v.role === 'admin';
+  const toggleModule = (m: ModuleKey, on: boolean) =>
+    setV((prev) => ({ ...prev, permissions: on ? [...new Set([...prev.permissions, m])] : prev.permissions.filter((x) => x !== m) }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -247,12 +261,28 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
       if (member) {
         await updateUser(
           member.id,
-          { name: v.name.trim(), role: member.id === me.id ? member.role : v.role, job_title: v.job_title || null, phone: v.phone || null, color: v.color },
+          {
+            name: v.name.trim(),
+            role: member.id === me.id ? member.role : v.role,
+            job_title: v.job_title || null,
+            phone: v.phone || null,
+            color: v.color,
+            ...(member.id === me.id ? {} : { permissions: v.permissions }),
+          },
           { email: v.email.trim().toLowerCase(), password: v.password || undefined },
         );
         toast.success('Membro atualizado.');
       } else {
-        await createUser({ name: v.name.trim(), email: v.email.trim(), password: v.password, role: v.role, job_title: v.job_title || null, phone: v.phone || null, color: v.color });
+        await createUser({
+          name: v.name.trim(),
+          email: v.email.trim(),
+          password: v.password,
+          role: v.role,
+          job_title: v.job_title || null,
+          phone: v.phone || null,
+          color: v.color,
+          permissions: v.permissions,
+        });
         toast.success(`${v.name.split(' ')[0]} foi cadastrado(a). Envie o e-mail e a senha para o primeiro acesso.`);
       }
       onClose();
@@ -288,6 +318,45 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
           </Select>
         </Field>
       </div>
+
+      <fieldset className="mt-6 border-t border-line pt-5">
+        <legend className="sr-only">Acessos</legend>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="text-body font-medium text-ink">O que esta pessoa pode ver e usar</h3>
+          {!isAdminRole && member?.id !== me.id && (
+            <button
+              type="button"
+              className="text-[12.5px] text-faint hover:text-ink"
+              onClick={() => setV((prev) => ({ ...prev, permissions: prev.permissions.length === MODULES.length ? [] : MODULES.map((m) => m.key) }))}
+            >
+              {v.permissions.length === MODULES.length ? 'Desmarcar todos' : 'Marcar todos'}
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-[12.5px] text-muted">
+          {isAdminRole
+            ? 'Administradores têm acesso a tudo, inclusive à gestão da equipe.'
+            : 'O Painel de Projetos, a agenda e as tarefas atribuídas a ela ficam sempre disponíveis.'}
+        </p>
+        <ul className="mt-3 divide-y divide-hairline-surface">
+          {MODULES.map((m) => (
+            <li key={m.key} className="py-2.5">
+              <Checkbox
+                checked={isAdminRole || v.permissions.includes(m.key)}
+                disabled={isAdminRole || member?.id === me.id}
+                onChange={(on) => toggleModule(m.key, on)}
+                label={
+                  <span>
+                    <span className="block text-body text-ink">{m.label}</span>
+                    <span className="block text-[12.5px] text-faint">{m.description}</span>
+                  </span>
+                }
+                className="!items-start [&>span:first-child]:mt-0.5"
+              />
+            </li>
+          ))}
+        </ul>
+      </fieldset>
     </Modal>
   );
 }

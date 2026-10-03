@@ -2,6 +2,7 @@ import type { Profile, TableName, Tables } from '../types';
 import { TABLES } from '../types';
 import { nowIso, uid } from '../utils';
 import type { Backend, Branding, NewUserInput, UpdateUserAuthInput } from './types';
+import { DEFAULT_PERMISSIONS } from '../permissions';
 
 /**
  * Backend de demonstração: todos os dados ficam no localStorage deste navegador.
@@ -157,6 +158,7 @@ export class LocalBackend implements Backend {
       color: input.color,
       active: true,
       calendar_embed_url: null,
+      permissions: input.permissions ?? DEFAULT_PERMISSIONS,
       created_at: nowIso(),
     };
     const salt = uid();

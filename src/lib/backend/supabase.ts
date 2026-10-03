@@ -15,6 +15,9 @@ function translateError(message: string): string {
   if (/failed to send a request to the edge function|requested function was not found/i.test(message)) {
     return 'Não foi possível falar com a função do servidor. Confira no Supabase, em Edge Functions, se ela foi publicada com o nome exato indicado no guia.';
   }
+  if (/permissions/i.test(message) && /column|schema cache/i.test(message)) {
+    return 'O banco ainda não tem os acessos por módulo. No Supabase, abra o SQL Editor e execute a migração 20261004000000_module_permissions.sql.';
+  }
   if (/invalid path specified in request url/i.test(message)) {
     return 'Endereço do Supabase inválido. Em VITE_SUPABASE_URL use só https://SEU-PROJETO.supabase.co, sem nada depois.';
   }
