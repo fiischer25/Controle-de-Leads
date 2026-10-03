@@ -1,14 +1,11 @@
-/** AIROS · Tailwind
- *  Tema do design system (design_handoff_airos_inicio/tailwind.config.js) mesclado com o
- *  config do projeto. Cores vêm de src/styles/tokens.css e src/styles/theme.css
- *  (variáveis RGB), o que permite o modo escuro pela classe `.dark` no <html>.
- *  @type {import('tailwindcss').Config} */
+/** tailwind.config.js · AIROS Design System v1
+ *  Mesclar com o config existente do projeto (manter plugins/content já configurados).
+ *  Depende de tokens.css (variáveis RGB). */
 const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
-const scale = (name, steps) => Object.fromEntries(steps.map((s) => [s, v(`${name}-${s}`)]));
 
-export default {
+module.exports = {
   darkMode: 'class',
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   theme: {
     extend: {
       colors: {
@@ -16,23 +13,25 @@ export default {
         surface: v('surface'),
         subtle: v('subtle'),
         line: { DEFAULT: v('line'), strong: v('line-strong') },
-        hairline: { DEFAULT: v('hairline'), surface: v('hairline-surface') },
         ink: v('ink'),
         muted: v('muted'),
         faint: v('faint'),
-        overlay: v('overlay'),
         accent: { DEFAULT: v('accent'), fg: v('accent-fg') },
-        brand: scale('brand', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]),
-        stone: scale('stone', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]),
-        danger: { bg: v('danger-bg'), line: v('danger-line'), solid: v('danger-solid'), fg: v('danger-fg') },
+        brand: {
+          50: '#f8f6f3', 100: '#efebe4', 200: '#e0d7ca', 300: '#c9baa4', 400: '#ad9a7e',
+          500: '#8f7c61', 600: '#76654e', 700: '#5f513f', 800: '#4a3f32', 900: '#3a3128',
+        },
+        stone: {
+          50: '#faf9f7', 100: '#f3f1ed', 200: '#e9e6e1', 300: '#d9d4cc', 400: '#b3aca2',
+          500: '#8a8379', 600: '#6b655c', 700: '#4f4a44', 800: '#34312d', 900: '#1f1d1b', 950: '#121110',
+        },
+        danger:  { bg: v('danger-bg'),  line: v('danger-line'),  solid: v('danger-solid'),  fg: v('danger-fg') },
         warning: { bg: v('warning-bg'), line: v('warning-line'), solid: v('warning-solid'), fg: v('warning-fg') },
-        info: { bg: v('info-bg'), line: v('info-line'), solid: v('info-solid'), fg: v('info-fg') },
+        info:    { bg: v('info-bg'),    line: v('info-line'),    solid: v('info-solid'),    fg: v('info-fg') },
         success: { bg: v('success-bg'), line: v('success-line'), solid: v('success-solid'), fg: v('success-fg') },
         avatar: {
-          slate: { bg: '#dfe7ec', fg: '#3b5566' },
-          sage: { bg: '#dde8de', fg: '#3f5d45' },
-          clay: { bg: '#efe2d6', fg: '#7a4a30' },
-          plum: { bg: '#e8e2ee', fg: '#5a4a6b' },
+          slate: { bg: '#dfe7ec', fg: '#3b5566' }, sage: { bg: '#dde8de', fg: '#3f5d45' },
+          clay: { bg: '#efe2d6', fg: '#7a4a30' }, plum: { bg: '#e8e2ee', fg: '#5a4a6b' },
           stone: { bg: '#e9e6e1', fg: '#4f4a44' },
         },
       },
@@ -56,12 +55,7 @@ export default {
         eyebrow: ['11px', { lineHeight: '16px', letterSpacing: '0.14em', fontWeight: '600' }],
       },
       borderRadius: {
-        xs: '6px',
-        sm: '8px',
-        md: '10px',
-        lg: '14px',
-        xl: '18px',
-        '2xl': '24px',
+        xs: '6px', sm: '8px', md: '10px', lg: '14px', xl: '18px', '2xl': '24px',
       },
       boxShadow: {
         xs: '0 1px 0 rgb(18 17 16 / 0.04)',
@@ -74,22 +68,8 @@ export default {
       },
       height: { control: '36px', 'control-sm': '32px', 'control-touch': '44px' },
       width: { sidebar: '232px', drawer: '520px', modal: '560px' },
-      maxWidth: { drawer: '520px', modal: '560px' },
-      keyframes: {
-        pulse2: { '50%': { opacity: '0.3' } },
-        'fade-in': { from: { opacity: '0', transform: 'translateY(4px)' }, to: { opacity: '1', transform: 'none' } },
-        'slide-in': { from: { transform: 'translateX(24px)', opacity: '0' }, to: { transform: 'none', opacity: '1' } },
-        'slide-up': { from: { transform: 'translateY(24px)', opacity: '0' }, to: { transform: 'none', opacity: '1' } },
-        shimmer: { '50%': { opacity: '0.55' } },
-      },
-      animation: {
-        'timer-dot': 'pulse2 1.6s ease-in-out infinite',
-        'fade-in': 'fade-in 180ms ease-out',
-        'slide-in': 'slide-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-        'slide-up': 'slide-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-        shimmer: 'shimmer 1.4s ease-in-out infinite',
-      },
+      keyframes: { pulse2: { '50%': { opacity: '0.3' } } },
+      animation: { 'timer-dot': 'pulse2 1.6s ease-in-out infinite' },
     },
   },
-  plugins: [],
 };

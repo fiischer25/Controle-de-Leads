@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { WhatsAppSettings } from './settings/WhatsAppSettings';
 import { useData } from '../context/DataContext';
+import { stageColor } from '../lib/status';
 import { useToast } from '../context/ToastContext';
 import { STAGE_KIND, SWATCHES } from '../lib/constants';
 import type { LeadSource, LeadStage, ProjectType, StageKind, TableName, TaskTemplate } from '../lib/types';
@@ -154,7 +155,7 @@ function ProjectTypesSettings() {
               <Checkbox checked={selected.active} onChange={(v) => patch('project_types', selected.id, { active: v }).catch(toast.error)} label="Disponível para novos projetos e leads" />
               <div className="flex gap-2">
                 <Button size="sm" icon={<Copy className="h-3.5 w-3.5" />} onClick={() => duplicate(selected)}>Duplicar</Button>
-                <Button size="sm" variant="ghost" className="text-rose-600 hover:bg-rose-50" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => setConfirmDelete(selected)}>Excluir</Button>
+                <Button size="sm" variant="ghost" className="text-danger-fg hover:bg-danger-bg" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => setConfirmDelete(selected)}>Excluir</Button>
               </div>
             </div>
           </Card>
@@ -248,7 +249,7 @@ function TemplatesEditor({ type }: { type: ProjectType }) {
                       defaultValue={t.title}
                       key={`t${t.id}${t.title}`}
                       onBlur={(e) => e.target.value.trim() && e.target.value !== t.title && patch('task_templates', t.id, { title: e.target.value.trim() }).catch(toast.error)}
-                      className="rounded-md bg-transparent px-2 py-1 text-sm outline-none hover:bg-stone-50 focus:bg-white focus:ring-2 focus:ring-brand-500/20"
+                      className="rounded-xs bg-transparent px-2 py-1 text-sm outline-none hover:bg-stone-50 focus:bg-surface focus:ring-2 focus:ring-brand-500/20"
                       aria-label="Título"
                     />
                     <input
@@ -256,7 +257,7 @@ function TemplatesEditor({ type }: { type: ProjectType }) {
                       defaultValue={t.phase}
                       key={`p${t.id}${t.phase}`}
                       onBlur={(e) => e.target.value.trim() && e.target.value !== t.phase && patch('task_templates', t.id, { phase: e.target.value.trim() }).catch(toast.error)}
-                      className="rounded-md bg-transparent px-2 py-1 text-xs text-stone-600 outline-none hover:bg-stone-50 focus:bg-white focus:ring-2 focus:ring-brand-500/20"
+                      className="rounded-xs bg-transparent px-2 py-1 text-xs text-stone-600 outline-none hover:bg-stone-50 focus:bg-surface focus:ring-2 focus:ring-brand-500/20"
                       aria-label="Etapa"
                     />
                     <div className="flex items-center gap-1">
@@ -266,7 +267,7 @@ function TemplatesEditor({ type }: { type: ProjectType }) {
                         defaultValue={t.duration_days}
                         key={`d${t.id}${t.duration_days}`}
                         onBlur={(e) => Number(e.target.value) !== t.duration_days && patch('task_templates', t.id, { duration_days: Math.max(1, Number(e.target.value) || 1) }).catch(toast.error)}
-                        className="w-12 rounded-md bg-transparent px-2 py-1 text-right text-sm outline-none hover:bg-stone-50 focus:bg-white focus:ring-2 focus:ring-brand-500/20"
+                        className="w-12 rounded-xs bg-transparent px-2 py-1 text-right text-sm outline-none hover:bg-stone-50 focus:bg-surface focus:ring-2 focus:ring-brand-500/20"
                         aria-label="Duração em dias"
                       />
                       <span className="text-xs text-stone-400">dias</span>
@@ -274,7 +275,7 @@ function TemplatesEditor({ type }: { type: ProjectType }) {
                     <div className="flex opacity-40 group-hover:opacity-100">
                       <IconButton label="Subir" className="h-6 w-6" onClick={() => reorder(templates, i, -1)} disabled={i === 0}><ArrowUp className="h-3.5 w-3.5" /></IconButton>
                       <IconButton label="Descer" className="h-6 w-6" onClick={() => reorder(templates, i, 1)} disabled={i === templates.length - 1}><ArrowDown className="h-3.5 w-3.5" /></IconButton>
-                      <IconButton label="Remover" className="h-6 w-6 hover:text-rose-600" onClick={() => removeRows('task_templates', [t.id]).catch(toast.error)}><Trash2 className="h-3.5 w-3.5" /></IconButton>
+                      <IconButton label="Remover" className="h-6 w-6 hover:text-danger-fg" onClick={() => removeRows('task_templates', [t.id]).catch(toast.error)}><Trash2 className="h-3.5 w-3.5" /></IconButton>
                     </div>
                   </li>
                 );
@@ -323,9 +324,9 @@ function StagesSettings() {
           const count = db.leads.filter((l) => l.stage_id === s.id).length;
           return (
             <li key={s.id} className="grid grid-cols-[auto_1fr_170px_auto] items-center gap-3 px-5 py-2.5">
-              <input type="color" value={s.color} onChange={(e) => patch('lead_stages', s.id, { color: e.target.value }).catch(toast.error)} className="h-7 w-7 cursor-pointer rounded-full border-0 bg-transparent p-0" aria-label="Cor" />
+              <span className="ml-1 h-2 w-2 rounded-full" style={{ backgroundColor: stageColor(s, stages) }} title="A cor segue a ordem do funil" aria-hidden />
               <div>
-                <input key={s.name} defaultValue={s.name} onBlur={(e) => e.target.value.trim() && e.target.value !== s.name && patch('lead_stages', s.id, { name: e.target.value.trim() }).catch(toast.error)} className="w-full rounded-md bg-transparent px-2 py-1 text-sm font-medium outline-none hover:bg-stone-50 focus:ring-2 focus:ring-brand-500/20" aria-label="Nome" />
+                <input key={s.name} defaultValue={s.name} onBlur={(e) => e.target.value.trim() && e.target.value !== s.name && patch('lead_stages', s.id, { name: e.target.value.trim() }).catch(toast.error)} className="w-full rounded-xs bg-transparent px-2 py-1 text-sm font-medium outline-none hover:bg-stone-50 focus:ring-2 focus:ring-brand-500/20" aria-label="Nome" />
                 <div className="px-2 text-xs text-stone-500">{count} oportunidade{count !== 1 ? 's' : ''}</div>
               </div>
               <Select value={s.kind} onChange={(e) => patch('lead_stages', s.id, { kind: e.target.value as StageKind }).catch(toast.error)} className="h-8 py-1 text-xs">
@@ -337,7 +338,7 @@ function StagesSettings() {
                 <IconButton
                   label={count ? 'Mova as oportunidades antes de excluir' : 'Excluir'}
                   disabled={count > 0}
-                  className="hover:text-rose-600"
+                  className="hover:text-danger-fg"
                   onClick={() => removeRows('lead_stages', [s.id]).catch(toast.error)}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -376,12 +377,12 @@ function SourcesSettings() {
           const count = db.leads.filter((l) => l.source_id === s.id).length;
           return (
             <li key={s.id} className="flex items-center gap-3 px-5 py-2">
-              <input key={s.name} defaultValue={s.name} onBlur={(e) => e.target.value.trim() && e.target.value !== s.name && patch('lead_sources', s.id, { name: e.target.value.trim() }).catch(toast.error)} className={cn('flex-1 rounded-md bg-transparent px-2 py-1 text-sm outline-none hover:bg-stone-50 focus:ring-2 focus:ring-brand-500/20', !s.active && 'text-stone-400')} aria-label="Nome" />
+              <input key={s.name} defaultValue={s.name} onBlur={(e) => e.target.value.trim() && e.target.value !== s.name && patch('lead_sources', s.id, { name: e.target.value.trim() }).catch(toast.error)} className={cn('flex-1 rounded-xs bg-transparent px-2 py-1 text-sm outline-none hover:bg-stone-50 focus:ring-2 focus:ring-brand-500/20', !s.active && 'text-stone-400')} aria-label="Nome" />
               <span className="w-20 text-right text-xs text-stone-500">{count} lead{count !== 1 ? 's' : ''}</span>
               <Checkbox checked={s.active} onChange={(v) => patch('lead_sources', s.id, { active: v }).catch(toast.error)} label="Ativa" />
               <IconButton label="Subir" onClick={() => reorder(sources, i, -1)} disabled={i === 0}><ArrowUp className="h-4 w-4" /></IconButton>
               <IconButton label="Descer" onClick={() => reorder(sources, i, 1)} disabled={i === sources.length - 1}><ArrowDown className="h-4 w-4" /></IconButton>
-              <IconButton label={count ? 'Em uso — desative em vez de excluir' : 'Excluir'} disabled={count > 0} className="hover:text-rose-600" onClick={() => removeRows('lead_sources', [s.id]).catch(toast.error)}><Trash2 className="h-4 w-4" /></IconButton>
+              <IconButton label={count ? 'Em uso — desative em vez de excluir' : 'Excluir'} disabled={count > 0} className="hover:text-danger-fg" onClick={() => removeRows('lead_sources', [s.id]).catch(toast.error)}><Trash2 className="h-4 w-4" /></IconButton>
             </li>
           );
         })}
@@ -421,14 +422,14 @@ function CalendarSettings() {
           <li>Em <b>Integrar agenda</b>, copie o <b>Código de incorporação</b> (ou o ID da agenda).</li>
           <li>Cole abaixo e salve.</li>
         </ol>
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <p className="mt-3 rounded-sm bg-warning-bg px-3 py-2 text-xs text-warning-fg">
           O Google só exibe os eventos para quem tem acesso à agenda: compartilhe a agenda com os e-mails Google da equipe
           (ou deixe-a pública, se preferir). Cada membro também pode configurar a própria agenda em <b>Meu perfil</b>.
         </p>
         <Field label="Código de incorporação, link ou ID da agenda" className="mt-4">
           <Textarea value={value} onChange={(e) => setValue(e.target.value)} rows={4} placeholder='<iframe src="https://calendar.google.com/calendar/embed?src=..." ...></iframe>' />
         </Field>
-        {value && !preview && <p className="mt-1 text-xs text-rose-600">Não reconheci este formato. Cole o código de incorporação do Google Agenda.</p>}
+        {value && !preview && <p className="mt-1 text-xs text-danger-fg">Não reconheci este formato. Cole o código de incorporação do Google Agenda.</p>}
         <div className="mt-3 flex justify-end">
           <Button variant="primary" onClick={save} disabled={!!value && !preview}>Salvar agenda</Button>
         </div>
@@ -528,8 +529,8 @@ function OfficeSettings() {
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); onLogo(e.dataTransfer.files?.[0]); }}
           className={cn(
-            'mt-5 flex min-h-[168px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-8 text-center transition-colors',
-            dragging ? 'border-ink-900/40 bg-canvas' : 'border-line hover:border-stone-300 hover:bg-canvas/50',
+            'mt-5 flex min-h-[168px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-8 text-center transition-colors',
+            dragging ? 'border-ink/40 bg-canvas' : 'border-line hover:border-stone-300 hover:bg-canvas/50',
           )}
         >
           {v.logo_url ? (
@@ -545,7 +546,7 @@ function OfficeSettings() {
         </label>
         {v.logo_url && (
           <div className="mt-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3">
+            <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
               <span className="text-[11px] uppercase tracking-[0.08em] text-stone-400">Prévia no menu</span>
               <img src={v.logo_url} alt="" className="h-9 max-w-[168px] object-contain" />
             </div>
@@ -618,7 +619,7 @@ function DataSettings() {
         {mode === 'local' ? (
           <>
             <p className="mt-1 text-sm text-stone-600">Substitui os dados deste navegador pelos do arquivo. Usuários e senhas não são alterados.</p>
-            <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium hover:bg-stone-50">
+            <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-sm border border-stone-300 bg-surface px-4 py-2 text-sm font-medium hover:bg-stone-50">
               <Upload className="h-4 w-4" /> Selecionar arquivo
               <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
             </label>

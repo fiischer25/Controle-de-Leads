@@ -9,13 +9,13 @@ import { nowIso, uid } from './utils';
 
 export function defaultStages(): LeadStage[] {
   const stages: Array<[string, LeadStage['kind'], string]> = [
-    ['Novo lead', 'open', '#7c6f64'],
-    ['Primeiro contato', 'open', '#2a78d6'],
-    ['Reunião agendada', 'open', '#4a3aa7'],
-    ['Proposta enviada', 'open', '#c98500'],
-    ['Negociação', 'open', '#eb6834'],
-    ['Fechado', 'won', '#008300'],
-    ['Perdido', 'lost', '#e34948'],
+    ['Novo lead', 'open', '#e0d7ca'],
+    ['Primeiro contato', 'open', '#c9baa4'],
+    ['Reunião agendada', 'open', '#ad9a7e'],
+    ['Proposta enviada', 'open', '#8f7c61'],
+    ['Negociação', 'open', '#76654e'],
+    ['Fechado', 'won', '#5d8263'],
+    ['Perdido', 'lost', '#b3aca2'],
   ];
   return stages.map(([name, kind, color], position) => ({ id: uid(), name, kind, color, position }));
 }
@@ -112,9 +112,9 @@ const ARQ_INT: PhaseSpec[] = [
 
 export function defaultProjectTypes(): { types: ProjectType[]; templates: TaskTemplate[] } {
   const specs: Array<[string, string, string, PhaseSpec[]]> = [
-    ['Arquitetura', 'Projeto arquitetônico completo, do estudo ao executivo.', '#9a5b3f', ARQ],
-    ['Interiores', 'Projeto de interiores, do conceito ao detalhamento.', '#2a78d6', INT],
-    ['Arquitetura e Interiores', 'Projeto completo de arquitetura com interiores.', '#1baf7a', ARQ_INT],
+    ['Arquitetura', 'Projeto arquitetônico completo, do estudo ao executivo.', '#8f7c61', ARQ],
+    ['Interiores', 'Projeto de interiores, do conceito ao detalhamento.', '#557589', INT],
+    ['Arquitetura e Interiores', 'Projeto completo de arquitetura com interiores.', '#5d8263', ARQ_INT],
   ];
   const types: ProjectType[] = [];
   const templates: TaskTemplate[] = [];

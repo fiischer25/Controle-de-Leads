@@ -1,48 +1,51 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import {
-  Activity,
-  AlertTriangle,
-  ArrowRight,
-  Briefcase,
-  CalendarClock,
-  CheckCircle2,
-  Clock,
-  FolderKanban,
-  Layers,
-  ListChecks,
-  Plus,
-  Target,
-  TrendingUp,
-  Users,
-} from 'lucide-react';
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { AlarmClock, Check, CheckCircle2, MoreHorizontal, Phone, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
-import { isProjectActive, totalMinutes } from '../lib/domain';
+import { useToast } from '../context/ToastContext';
+import { openCreate } from '../lib/create';
+import { CSS_COLOR } from '../lib/status';
+import { addDays, cn, deadlineState, diffDays, digitsOnly, formatCurrency, formatDateShort, today } from '../lib/utils';
+import { ActionLink, Avatar, AvatarStack, Button, EmptyState, IconButton, Sheet, Tabs } from '../components/ui';
+import { MobileTimerBar } from '../components/layout/MobileTimerBar';
+import { LeadDrawer } from '../components/leads/LeadDrawer';
+import { ContactLogModal } from '../components/leads/ContactLogModal';
 import {
-  addDays,
-  byPosition,
-  cn,
-  diffDays,
-  formatDate,
-  formatDateShort,
-  formatMinutes,
-  formatRelative,
-  MONTHS_FULL,
-  startOfWeek,
-  today,
-  toDateKey,
-  WEEKDAYS_SHORT,
-  isoToLocalTime,
-  parseDate,
-} from '../lib/utils';
-import { Avatar, AvatarStack, BarRow, Button, Card, CardHeader, ColorDot, DueBadge, EmptyState, ProgressBar } from '../components/ui';
-import { CalendarEmbed } from '../components/dashboard/CalendarEmbed';
-import { useProjectSummaries } from '../components/projects/useProjectSummaries';
-import { TaskRow } from '../components/tasks/TaskRow';
-import { useOpenTask } from '../components/tasks/useOpenTask';
-import { LeadFormModal } from '../components/leads/LeadFormModal';
-import { TaskFormModal } from '../components/tasks/TaskFormModal';
+  GROUP_LABEL,
+  GROUP_ORDER,
+  useHomeData,
+  weekdayDate,
+  weekdayDay,
+  type AgendaItem,
+  type AttentionCategory,
+  type AttentionDot,
+  type AttentionGroup,
+  type AttentionItem,
+  type HomeProject,
+} from '../components/dashboard/useHomeData';
+
+type Filter = 'all' | AttentionCategory;
+
+const GROUP_COLOR: Record<AttentionGroup, string> = {
+  overdue: 'text-danger-fg',
+  today: 'text-warning-fg',
+  week: 'text-stone-700',
+};
+const DOT_COLOR: Record<AttentionDot, string> = {
+  danger: 'bg-danger-solid',
+  warning: 'bg-warning-solid',
+  neutral: 'bg-stone-400',
+  brand: 'bg-brand-500',
+};
+/** Itens por grupo antes do "mostrar mais". */
+const GROUP_LIMIT = 5;
+const WEEK_HOURS = 40;
+
+/** Horas da semana: "12h", "7,5h", "45min". */
+function formatHours(minutes: number) {
+  if (minutes > 0 && minutes < 60) return `${Math.round(minutes)}min`;
+  return `${(Math.round((minutes / 60) * 2) / 2).toLocaleString('pt-BR')}h`;
+}
 
 function greeting() {
   const h = new Date().getHours();
@@ -51,354 +54,772 @@ function greeting() {
   return 'Boa noite';
 }
 
+function longDate() {
+  const s = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function DashboardPage() {
-  const { db, maps, me, settings } = useData();
-  const summaries = useProjectSummaries();
+  const { me, settings, updateTask, updateLead } = useData();
+  const toast = useToast();
   const navigate = useNavigate();
-  const openTask = useOpenTask();
-  const [newLead, setNewLead] = useState(false);
-  const [newTask, setNewTask] = useState(false);
-  const t = today();
+  const [, setParams] = useSearchParams();
+  const home = useHomeData();
+  const [filter, setFilter] = useState<Filter>('all');
+  const [leadOpen, setLeadOpen] = useState<string | null>(null);
+  const [contactFor, setContactFor] = useState<string | null>(null);
 
-  const data = useMemo(() => {
-    const active = summaries.filter((s) => isProjectActive(s.project));
-    const overdueProjects = active.filter((s) => s.deadline === 'overdue').sort((a, b) => (a.project.due_date ?? '').localeCompare(b.project.due_date ?? ''));
-    const soonProjects = active.filter((s) => s.deadline === 'soon' || s.deadline === 'today').sort((a, b) => (a.project.due_date ?? '').localeCompare(b.project.due_date ?? ''));
-
-    const openTasks = db.tasks.filter((x) => {
-      if (x.status === 'done') return false;
-      if (!x.project_id) return true;
-      const project = maps.projects[x.project_id];
-      return !!project && isProjectActive(project);
+  const openTask = (id: string) =>
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      next.set('tarefa', id);
+      return next;
     });
-    const overdueTasks = openTasks.filter((x) => x.due_date && x.due_date < t);
 
-    const stageKind = (stageId: string) => maps.stages[stageId]?.kind;
-    const openLeads = db.leads.filter((l) => stageKind(l.stage_id) === 'open');
-    const since = addDays(t, -90);
-    const recent = db.leads.filter((l) => (l.closed_at ?? '').slice(0, 10) >= since);
-    const won90 = recent.filter((l) => stageKind(l.stage_id) === 'won').length;
-    const lost90 = recent.filter((l) => stageKind(l.stage_id) === 'lost').length;
+  /** Clique na linha: abre o item (gaveta da tarefa, gaveta do lead ou página do projeto). */
+  const openItem = (item: AttentionItem) => {
+    if (item.taskId) return openTask(item.taskId);
+    if (item.kind === 'deadline' && item.projectId) return navigate(`/projetos/${item.projectId}`);
+    if (item.leadId) return setLeadOpen(item.leadId);
+    navigate('/oportunidades');
+  };
 
-    // Projetos por etapa (fase atual)
-    const byPhase: Record<string, number> = {};
-    active.forEach((s) => (byPhase[s.phase] = (byPhase[s.phase] ?? 0) + 1));
-    const phaseRows = Object.entries(byPhase).sort((a, b) => b[1] - a[1]);
+  /** Link de ação: executa a ação direta. */
+  const runAction = (item: AttentionItem) => {
+    switch (item.kind) {
+      case 'followup':
+        return item.leadId && setContactFor(item.leadId);
+      case 'stale_leads':
+        return navigate('/oportunidades');
+      default:
+        return openItem(item);
+    }
+  };
 
-    const byStatus = PROJECT_STATUS_ORDER.map((st) => ({ status: st, count: summaries.filter((s) => s.project.status === st).length }));
+  const tomorrow = addDays(today(), 1);
+  const snooze = async (item: AttentionItem) => {
+    try {
+      if (item.taskId) await updateTask(item.taskId, { due_date: tomorrow });
+      else if (item.leadId) await updateLead(item.leadId, { next_contact_date: tomorrow });
+      toast.success('Adiado para amanhã.');
+    } catch (e) {
+      toast.error(e);
+    }
+  };
+  const complete = async (item: AttentionItem) => {
+    if (item.kind === 'followup' && item.leadId) return setContactFor(item.leadId);
+    if (!item.taskId) return;
+    try {
+      await updateTask(item.taskId, { status: 'done' });
+      toast.success('Tarefa concluída.');
+    } catch (e) {
+      toast.error(e);
+    }
+  };
 
-    // Funil e origens
-    const funnel = [...db.lead_stages].sort(byPosition).map((s) => ({ stage: s, count: db.leads.filter((l) => l.stage_id === s.id).length }));
-    const sourceCounts: Record<string, { total: number; won: number }> = {};
-    db.leads.forEach((l) => {
-      const key = l.source_id ?? 'none';
-      sourceCounts[key] ||= { total: 0, won: 0 };
-      sourceCounts[key].total++;
-      if (stageKind(l.stage_id) === 'won') sourceCounts[key].won++;
-    });
-    const sources = Object.entries(sourceCounts)
-      .map(([id, v]) => ({ name: id === 'none' ? 'Não informado' : maps.sources[id]?.name ?? '—', ...v }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 7);
-
-    // Carga da equipe
-    const ws = startOfWeek(t);
-    const team = db.profiles
-      .filter((p) => p.active)
-      .map((p) => {
-        const mine = openTasks.filter((x) => x.assignee_id === p.id);
-        return {
-          user: p,
-          open: mine.length,
-          overdue: mine.filter((x) => x.due_date && x.due_date < t).length,
-          week: totalMinutes(db.time_entries.filter((e) => e.user_id === p.id && toDateKey(new Date(e.started_at)) >= ws)),
-          projects: active.filter((s) => s.people.some((x) => x.id === p.id)).length,
-        };
-      })
-      .sort((a, b) => b.open - a.open);
-
-    const followUps = openLeads
-      .filter((l) => l.next_contact_date && l.next_contact_date <= addDays(t, 2))
-      .sort((a, b) => (a.next_contact_date ?? '').localeCompare(b.next_contact_date ?? ''));
-
-    const myTasks = openTasks
-      .filter((x) => x.assignee_id === me.id && (!x.due_date || x.due_date <= addDays(t, 3)))
-      .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
-      .slice(0, 8);
-
-    return {
-      active, overdueProjects, soonProjects, openTasks, overdueTasks, openLeads, won90, lost90, phaseRows, byStatus,
-      funnel, sources, team, followUps, myTasks,
-      conversion: won90 + lost90 ? Math.round((won90 / (won90 + lost90)) * 100) : null,
-      pendingConversion: db.leads.filter((l) => stageKind(l.stage_id) === 'won' && !l.client_id),
-    };
-  }, [summaries, db, maps, me.id, t]);
-
-  // Próximos 14 dias: prazos de projetos, tarefas e retornos de leads
-  const upcoming = useMemo(() => {
-    const end = addDays(t, 14);
-    type Ev = { date: string; time?: string; kind: 'meeting' | 'project' | 'task' | 'lead'; title: string; sub: string; onClick: () => void; color: string };
-    const evs: Ev[] = [];
-    db.events.forEach((ev) => {
-      const day = toDateKey(new Date(ev.starts_at));
-      if (day < t || day > end) return;
-      if (!ev.participant_ids.includes(me.id) && ev.created_by !== me.id) return;
-      evs.push({
-        date: day, time: ev.all_day ? undefined : isoToLocalTime(ev.starts_at), kind: 'meeting', title: ev.title,
-        sub: ev.location ?? `${ev.participant_ids.length} participante${ev.participant_ids.length === 1 ? '' : 's'}`,
-        onClick: () => navigate(`/agenda?evento=${ev.id}`), color: '#121110',
-      });
-    });
-    data.active.forEach((s) => {
-      if (s.project.due_date && s.project.due_date >= t && s.project.due_date <= end)
-        evs.push({ date: s.project.due_date, kind: 'project', title: `Entrega ${s.project.name}`, sub: s.client?.name ?? '', onClick: () => navigate(`/projetos/${s.project.id}`), color: s.type?.color ?? '#9a5b3f' });
-    });
-    data.openTasks.forEach((x) => {
-      if (x.due_date && x.due_date >= t && x.due_date <= end && (x.assignee_id === me.id || !x.project_id))
-        evs.push({ date: x.due_date, kind: 'task', title: x.title, sub: x.project_id ? maps.projects[x.project_id]?.name ?? '' : 'Tarefa avulsa', onClick: () => openTask(x.id), color: maps.profiles[x.assignee_id ?? '']?.color ?? '#a8a29e' });
-    });
-    data.openLeads.forEach((l) => {
-      if (l.next_contact_date && l.next_contact_date >= t && l.next_contact_date <= end)
-        evs.push({ date: l.next_contact_date, kind: 'lead', title: `Retorno: ${l.name}`, sub: maps.stages[l.stage_id]?.name ?? '', onClick: () => navigate(`/oportunidades?lead=${l.id}`), color: '#4a3aa7' });
-    });
-    return evs.sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '99').localeCompare(b.time ?? '99')).slice(0, 14);
-  }, [data, db.events, t, me.id, maps, navigate, openTask]);
-
-  const activity = useMemo(() => [...db.activity_log].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 12), [db.activity_log]);
-  const now = new Date();
-  const maxPhase = Math.max(1, ...data.phaseRows.map(([, c]) => c));
-  const maxFunnel = Math.max(1, ...data.funnel.map((f) => f.count));
-  const maxSource = Math.max(1, ...data.sources.map((s) => s.total));
+  const counts = useMemo(() => {
+    const c = { all: home.items.length, tarefas: 0, comercial: 0, projetos: 0 };
+    home.items.forEach((i) => c[i.category]++);
+    return c;
+  }, [home.items]);
+  const visible = filter === 'all' ? home.items : home.items.filter((i) => i.category === filter);
+  const overdueCount = home.items.filter((i) => i.group === 'overdue').length;
+  const tabs = [
+    { id: 'all' as Filter, label: 'Tudo', count: counts.all },
+    { id: 'tarefas' as Filter, label: 'Tarefas', count: counts.tarefas },
+    { id: 'comercial' as Filter, label: 'Comercial', count: counts.comercial },
+    { id: 'projetos' as Filter, label: 'Projetos', count: counts.projetos },
+  ];
+  const calendarConnected = !!(settings.calendar_embed_url || me.calendar_embed_url);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-brand-600">
-            {WEEKDAYS_SHORT[now.getDay()]}, {now.getDate()} de {MONTHS_FULL[now.getMonth()].toLowerCase()} de {now.getFullYear()}
-          </p>
-          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight sm:text-[28px]">
+    <div className="max-w-[1080px] pt-2 md:pt-6">
+      {/* Cabeçalho da página */}
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[13px] text-faint">{longDate()}</p>
+          <h1 className="mt-1.5 font-display text-[30px] font-medium leading-9 tracking-[-0.03em] text-ink md:text-hero">
             {greeting()}, {me.name.split(' ')[0]}.
           </h1>
-          <p className="mt-1 text-sm text-stone-500">Visão geral de tudo o que está acontecendo no escritório.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button icon={<Plus className="h-4 w-4" />} onClick={() => setNewTask(true)}>Tarefa</Button>
-          <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setNewLead(true)}>Oportunidade</Button>
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Kpi to="/projetos" icon={<Briefcase className="h-4 w-4" />} label="Projetos ativos" value={data.active.length} />
-        <Kpi to="/projetos" icon={<AlertTriangle className="h-4 w-4" />} label="Projetos vencidos" value={data.overdueProjects.length} tone={data.overdueProjects.length ? 'bad' : 'good'} />
-        <Kpi to="/projetos" icon={<CalendarClock className="h-4 w-4" />} label={`A vencer (${settings.due_soon_days} dias)`} value={data.soonProjects.length} tone={data.soonProjects.length ? 'warn' : undefined} />
-        <Kpi to="/tarefas" icon={<ListChecks className="h-4 w-4" />} label="Tarefas atrasadas" value={data.overdueTasks.length} tone={data.overdueTasks.length ? 'bad' : 'good'} sub={`${data.openTasks.length} em aberto`} />
-        <Kpi to="/oportunidades" icon={<Target className="h-4 w-4" />} label="Oportunidades abertas" value={data.openLeads.length} />
-        <Kpi to="/relatorios" icon={<TrendingUp className="h-4 w-4" />} label="Conversão (90 dias)" value={data.conversion === null ? '—' : `${data.conversion}%`} sub={`${data.won90} ganhos · ${data.lost90} perdidos`} />
-      </div>
-
-      {data.pendingConversion.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white px-5 py-3.5 text-sm text-stone-600">
-          <CheckCircle2 className="h-5 w-5 text-ink-900" strokeWidth={1.6} />
-          <span className="flex-1">
-            <b>{data.pendingConversion.length}</b> oportunidade{data.pendingConversion.length > 1 ? 's fechadas aguardam' : ' fechada aguarda'} o cadastro completo para virar cliente:{' '}
-            {data.pendingConversion.slice(0, 3).map((l) => l.name).join(', ')}
-          </span>
-          <Link to="/oportunidades"><Button size="sm" variant="secondary">Ver no funil</Button></Link>
-        </div>
-      )}
-
-      {/* Prazos + etapas */}
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
-        <Card>
-          <CardHeader icon={<AlertTriangle className="h-4 w-4" />} title="Prazos dos projetos" subtitle="Vencidos e próximos de vencer" action={<Link to="/projetos" className="text-xs font-medium text-brand-700 hover:underline">Todos os projetos</Link>} />
-          {data.overdueProjects.length + data.soonProjects.length === 0 ? (
-            <EmptyState icon={<CheckCircle2 className="h-6 w-6" />} title="Nenhum prazo crítico" description={`Nenhum projeto vencido ou vencendo nos próximos ${settings.due_soon_days} dias.`} className="py-8" />
-          ) : (
-            <div className="divide-y divide-line/70 border-t border-line/70">
-              {[...data.overdueProjects, ...data.soonProjects].slice(0, 8).map((s) => (
-                <Link key={s.project.id} to={`/projetos/${s.project.id}`} className="flex items-center gap-4 px-5 py-3 hover:bg-stone-50">
-                  <span className="h-9 w-1 shrink-0 rounded-full" style={{ backgroundColor: s.type?.color }} />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold text-ink-900">{s.project.name} <span className="font-normal text-stone-500">· {s.client?.name}</span></div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-stone-500">
-                      <span className="truncate">Etapa: {s.phase}</span>
-                      <ProgressBar value={s.progress} className="w-20" />
-                      <span className="tabular">{s.progress}%</span>
-                    </div>
-                  </div>
-                  <AvatarStack users={s.people} size="xs" />
-                  <div className="w-36 shrink-0 text-right"><DueBadge due={s.project.due_date} done={false} soonDays={settings.due_soon_days} /></div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </Card>
-        <Card>
-          <CardHeader icon={<Layers className="h-4 w-4" />} title="Projetos por etapa" subtitle="Etapa atual dos projetos ativos" />
-          <div className="space-y-3 px-5 pb-5">
-            {data.phaseRows.length === 0 && <p className="py-6 text-center text-sm text-stone-500">Sem projetos ativos.</p>}
-            {data.phaseRows.map(([phase, count]) => (
-              <BarRow key={phase} label={phase} value={count} max={maxPhase} title={`${count} projeto(s) em ${phase}`} onClick={() => navigate('/projetos')} />
-            ))}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line/70 pt-3 text-xs text-stone-600">
-              {data.byStatus.filter((b) => b.count > 0).map((b) => (
-                <span key={b.status} className="inline-flex items-center gap-1.5">
-                  <span className={cn('h-2 w-2 rounded-full', PROJECT_STATUS[b.status].dot)} />
-                  {PROJECT_STATUS[b.status].label} <b className="tabular">{b.count}</b>
-                </span>
-              ))}
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Agenda + minhas tarefas */}
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
-        <CalendarEmbed height={520} />
-        <div className="space-y-5">
-          <Card>
-            <CardHeader icon={<ListChecks className="h-4 w-4" />} title="Minhas tarefas" subtitle="Atrasadas e dos próximos 3 dias" action={<Link to="/tarefas" className="text-xs font-medium text-brand-700 hover:underline">Ver todas</Link>} />
-            {data.myTasks.length === 0 ? (
-              <EmptyState icon={<CheckCircle2 className="h-6 w-6" />} title="Tudo em dia!" className="py-8" />
+          <p className="mt-2 text-[14.5px] leading-[21px] text-muted md:text-body-lg">
+            {home.items.length === 0 ? (
+              'Nada pede sua atenção agora.'
             ) : (
-              <div className="divide-y divide-line/70 border-t border-line/70">
-                {data.myTasks.map((x) => <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject showDates={false} />)}
-              </div>
+              <>
+                {home.items.length} {home.items.length === 1 ? 'item pede' : 'itens pedem'} atenção
+                {overdueCount > 0 && (
+                  <>
+                    , <span className="text-danger-fg">{overdueCount} {overdueCount === 1 ? 'atrasado' : 'atrasados'}</span>
+                  </>
+                )}
+                .
+              </>
             )}
-          </Card>
-          <Card>
-            <CardHeader icon={<CalendarClock className="h-4 w-4" />} title="Próximos 14 dias" subtitle="Reuniões, entregas, tarefas e retornos" action={<Link to="/agenda" className="text-xs font-medium text-brand-700 hover:underline">Agenda</Link>} />
-            {upcoming.length === 0 ? (
-              <p className="px-5 pb-5 text-sm text-stone-500">Nada agendado.</p>
-            ) : (
-              <ul className="space-y-1 px-3 pb-3">
-                {upcoming.map((e, i) => {
-                  const d = parseDate(e.date);
-                  const dd = diffDays(t, e.date);
-                  return (
-                    <li key={i}>
-                      <button onClick={e.onClick} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-stone-50">
-                        <div className="w-11 shrink-0 text-center leading-tight">
-                          <div className="text-[10px] uppercase text-stone-400">{WEEKDAYS_SHORT[d.getDay()]}</div>
-                          <div className={cn('font-display text-base font-bold', dd === 0 ? 'text-brand-700' : 'text-stone-800')}>{d.getDate()}</div>
-                        </div>
-                        <span className="h-7 w-1 shrink-0 rounded-full" style={{ backgroundColor: e.color }} />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-stone-800">{e.time && <span className="mr-1.5 tabular text-stone-400">{e.time}</span>}{e.title}</div>
-                          <div className="truncate text-xs text-stone-500">{e.sub}</div>
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Card>
+          </p>
+        </div>
+        <div className="hidden shrink-0 items-center gap-2 md:flex">
+          <Button variant="ghost" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => openCreate('task')}>
+            Tarefa
+          </Button>
+          <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => openCreate('lead')}>
+            Oportunidade
+          </Button>
         </div>
       </div>
 
-      {/* Comercial + equipe */}
-      <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
-        <Card>
-          <CardHeader icon={<FolderKanban className="h-4 w-4" />} title="Funil de oportunidades" subtitle="Quantidade por etapa" action={<Link to="/oportunidades" className="text-xs font-medium text-brand-700 hover:underline">Abrir funil</Link>} />
-          <div className="space-y-3 px-5 pb-5">
-            {data.funnel.map((f) => (
-              <BarRow key={f.stage.id} label={<span className="inline-flex items-center gap-2"><ColorDot color={f.stage.color} />{f.stage.name}</span>} value={f.count} max={maxFunnel} color={f.stage.color} onClick={() => navigate('/oportunidades')} />
-            ))}
-          </div>
-          {data.followUps.length > 0 && (
-            <div className="border-t border-line/70 px-5 py-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Retornos pendentes</div>
-              <ul className="space-y-1.5">
-                {data.followUps.slice(0, 5).map((l) => (
-                  <li key={l.id}>
-                    <Link to={`/oportunidades?lead=${l.id}`} className="flex items-center justify-between gap-2 text-sm hover:text-brand-700">
-                      <span className="truncate">{l.name}</span>
-                      <span className={cn('shrink-0 text-xs', l.next_contact_date! < t ? 'font-medium text-rose-600' : 'text-stone-500')}>
-                        {l.next_contact_date === t ? 'hoje' : l.next_contact_date! < t ? `atrasado · ${formatDateShort(l.next_contact_date)}` : formatDateShort(l.next_contact_date)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+      <MobileTimerBar className="mt-5" />
+
+      <div className="mt-8 flex flex-col gap-12 md:mt-14 md:gap-14">
+        {/* Linha 1 — fila de atenção + hoje */}
+        {/* No celular a ordem é: fila → visão geral → hoje/próximos dias → projetos. */}
+        <div className="contents lg:order-1 lg:grid lg:grid-cols-[1fr_300px] lg:gap-16">
+          <section aria-labelledby="atencao" className="order-1 lg:order-none">
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <h2 id="atencao" className="font-display text-section text-ink">Pede sua atenção</h2>
+              <Tabs
+                tabs={tabs}
+                value={filter}
+                onChange={setFilter}
+                size="sm"
+                underline={1}
+                bordered={false}
+                className="hidden md:flex"
+              />
+              <Tabs tabs={tabs} value={filter} onChange={setFilter} underline={1} className="border-hairline md:hidden [&>button]:py-2.5 [&>button]:text-body" />
             </div>
-          )}
-        </Card>
-        <Card>
-          <CardHeader icon={<Target className="h-4 w-4" />} title="Como os clientes chegam" subtitle="Leads por origem (fechados entre parênteses)" />
-          <div className="space-y-3 px-5 pb-5">
-            {data.sources.length === 0 && <p className="py-6 text-center text-sm text-stone-500">Sem oportunidades ainda.</p>}
-            {data.sources.map((s) => (
-              <BarRow key={s.name} label={s.name} value={s.total} max={maxSource} suffix={`(${s.won})`} title={`${s.total} leads, ${s.won} fechados`} />
-            ))}
-          </div>
-        </Card>
-        <Card className="lg:col-span-2 2xl:col-span-1">
-          <CardHeader icon={<Users className="h-4 w-4" />} title="Carga da equipe" subtitle="Tarefas abertas e horas nesta semana" action={<Link to="/equipe" className="text-xs font-medium text-brand-700 hover:underline">Equipe</Link>} />
-          <div className="divide-y divide-line/70 border-t border-line/70">
-            {data.team.map((m) => (
-              <Link key={m.user.id} to={`/equipe?membro=${m.user.id}`} className="flex items-center gap-3 px-5 py-2.5 hover:bg-stone-50">
-                <Avatar user={m.user} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{m.user.name}</div>
-                  <div className="text-xs text-stone-500">{m.projects} projeto{m.projects !== 1 ? 's' : ''}</div>
-                </div>
-                <div className="text-right text-xs">
-                  <div className="font-semibold tabular text-ink-900">{m.open} abertas</div>
-                  {m.overdue > 0 ? <div className="font-medium text-rose-600">{m.overdue} atrasada{m.overdue > 1 ? 's' : ''}</div> : <div className="text-stone-400">em dia</div>}
-                </div>
-                <div className="w-16 text-right text-xs text-stone-600">
-                  <Clock className="mr-1 inline h-3 w-3" />{formatMinutes(m.week)}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </Card>
+            <AttentionQueue
+              items={visible}
+              onOpen={openItem}
+              onAction={runAction}
+              onSnooze={snooze}
+              onComplete={complete}
+            />
+          </section>
+
+          <TodayColumn className="order-3 lg:order-none" todayEvents={home.todayEvents} upcoming={home.upcomingEvents} calendarConnected={calendarConnected} onTask={openTask} onLead={setLeadOpen} />
+        </div>
+
+        {/* Linha 2 — visão geral */}
+        <Overview className="order-2" kpis={home.kpis} soonDays={home.soonDays} />
+
+        {/* Linha 3 — projetos + funil */}
+        <div className="order-4 grid gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
+          <ProjectsSection projects={home.projects} soonDays={home.soonDays} />
+          <FunnelSection rows={home.funnel} total={home.funnelTotal} conversion={home.kpis.conversion} />
+        </div>
+
+        {/* Linha 4 — equipe */}
+        <div className="order-5">
+          <TeamSection team={home.team} />
+        </div>
       </div>
 
-      {/* Atividade */}
-      <Card>
-        <CardHeader icon={<Activity className="h-4 w-4" />} title="Atividade recente" />
-        {activity.length === 0 ? (
-          <p className="px-5 pb-5 text-sm text-stone-500">Nenhuma atividade ainda.</p>
-        ) : (
-          <ol className="grid gap-x-8 gap-y-3 px-5 pb-5 md:grid-cols-2">
-            {activity.map((a) => {
-              const u = a.user_id ? maps.profiles[a.user_id] : null;
-              return (
-                <li key={a.id} className="flex items-start gap-3 text-sm">
-                  <Avatar user={u} size="sm" />
-                  <div className="min-w-0">
-                    <span className="font-medium text-ink-900">{u?.name.split(' ')[0] ?? 'Sistema'}</span> <span className="text-stone-600">{a.description}</span>
-                    <div className="text-xs text-stone-400" title={formatDate(toDateKey(new Date(a.created_at)))}>{formatRelative(a.created_at)}</div>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </Card>
-
-      {newLead && <LeadFormModal onClose={() => setNewLead(false)} />}
-      {newTask && <TaskFormModal onClose={() => setNewTask(false)} />}
+      {leadOpen && <LeadDrawer leadId={leadOpen} onClose={() => setLeadOpen(null)} />}
+      {contactFor && <ContactLogModal leadId={contactFor} onClose={() => setContactFor(null)} />}
     </div>
   );
 }
 
-function Kpi({ to, icon, label, value, tone, sub }: { to: string; icon: ReactNode; label: string; value: ReactNode; tone?: 'bad' | 'warn' | 'good'; sub?: string }) {
-  return (
-    <Link to={to} className="card group px-4 py-3.5 transition-all hover:-translate-y-0.5 hover:border-stone-300">
-      <div className="flex items-center justify-between text-xs text-stone-500">
-        <span className="flex items-center gap-1.5">
-          <span className="text-stone-300">{icon}</span>
-          {label}
-        </span>
-        <ArrowRight className="h-3.5 w-3.5 text-stone-300 opacity-0 transition-opacity group-hover:opacity-100" />
+// ---------------------------------------------------------------- Fila de atenção
+function AttentionQueue({
+  items,
+  onOpen,
+  onAction,
+  onSnooze,
+  onComplete,
+}: {
+  items: AttentionItem[];
+  onOpen: (i: AttentionItem) => void;
+  onAction: (i: AttentionItem) => void;
+  onSnooze: (i: AttentionItem) => void;
+  onComplete: (i: AttentionItem) => void;
+}) {
+  const [expanded, setExpanded] = useState<Partial<Record<AttentionGroup, boolean>>>({});
+  const [swiped, setSwiped] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<AttentionItem | null>(null);
+
+  if (items.length === 0) {
+    return (
+      <div className="rounded-[16px] bg-surface shadow-surface">
+        <EmptyState
+          tone="success"
+          icon={<CheckCircle2 strokeWidth={1.6} />}
+          title="Nada atrasado"
+          description="Quando uma tarefa ou retorno passar do prazo, ele aparece aqui."
+          action={<ActionLink to="/agenda">Ver próximos 7 dias</ActionLink>}
+          className="py-14"
+        />
       </div>
-      <div className={cn('mt-1.5 font-display text-[26px] font-bold leading-none', tone === 'bad' && value !== 0 ? 'text-rose-700' : 'text-ink-900')}>{value}</div>
-      {sub && <div className="mt-1 text-[11px] text-stone-500">{sub}</div>}
-    </Link>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[16px] bg-surface pb-1.5 shadow-surface">
+      {GROUP_ORDER.map((group) => {
+        const list = items.filter((i) => i.group === group);
+        if (list.length === 0) return null;
+        const shown = expanded[group] ? list : list.slice(0, GROUP_LIMIT);
+        return (
+          <div key={group} role="group" aria-label={GROUP_LABEL[group]}>
+            <div className={cn('px-[18px] pb-2 pt-[18px] text-[12.5px] font-medium md:px-6', GROUP_COLOR[group])}>
+              {GROUP_LABEL[group]} <span className="ml-1 font-normal text-faint">{list.length}</span>
+            </div>
+            {shown.map((item) => (
+              <QueueRow
+                key={item.id}
+                item={item}
+                swiped={swiped === item.id}
+                onSwipe={(open) => setSwiped(open ? item.id : null)}
+                onOpen={() => onOpen(item)}
+                onAction={() => onAction(item)}
+                onSnooze={() => onSnooze(item)}
+                onComplete={() => onComplete(item)}
+                onMenu={() => setMenuFor(item)}
+              />
+            ))}
+            {list.length > GROUP_LIMIT && (
+              <button
+                type="button"
+                onClick={() => setExpanded((e) => ({ ...e, [group]: !e[group] }))}
+                className="w-full border-t border-hairline-surface px-[18px] py-2.5 text-left text-[13px] text-faint transition-colors hover:bg-subtle hover:text-ink md:px-6"
+              >
+                {expanded[group] ? 'Mostrar menos' : `Mostrar mais ${list.length - GROUP_LIMIT}`}
+              </button>
+            )}
+          </div>
+        );
+      })}
+      {menuFor && (
+        <Sheet title={menuFor.title} onClose={() => setMenuFor(null)}>
+          <RowMenu
+            item={menuFor}
+            close={() => setMenuFor(null)}
+            onOpen={onOpen}
+            onAction={onAction}
+            onSnooze={onSnooze}
+            onComplete={onComplete}
+          />
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+const canSwipe = (item: AttentionItem) => item.kind === 'task' || item.kind === 'followup';
+const SWIPE_WIDTH = 144; // duas ações de 72px
+
+/** Linha da fila. No celular: arrastar para a esquerda revela "Adiar" e "Concluir". */
+function QueueRow({
+  item,
+  swiped,
+  onSwipe,
+  onOpen,
+  onAction,
+  onSnooze,
+  onComplete,
+  onMenu,
+}: {
+  item: AttentionItem;
+  swiped: boolean;
+  onSwipe: (open: boolean) => void;
+  onOpen: () => void;
+  onAction: () => void;
+  onSnooze: () => void;
+  onComplete: () => void;
+  onMenu: () => void;
+}) {
+  const drag = useRef<{ x: number; y: number; dx: number; active: boolean } | null>(null);
+  const dragged = useRef(false);
+  const [offset, setOffset] = useState<number | null>(null);
+  const swipeable = canSwipe(item);
+  const x = offset ?? (swiped ? -SWIPE_WIDTH : 0);
+  const callNow = item.kind === 'followup' && item.group === 'today' && item.phone;
+
+  const onPointerDown = (e: ReactPointerEvent) => {
+    if (!swipeable || e.pointerType !== 'touch') return;
+    drag.current = { x: e.clientX, y: e.clientY, dx: 0, active: false };
+  };
+  const onPointerMove = (e: ReactPointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.active) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
+        drag.current = null; // rolagem vertical
+        return;
+      }
+      if (Math.abs(dx) < 8) return;
+      d.active = true;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    }
+    d.dx = dx;
+    const base = swiped ? -SWIPE_WIDTH : 0;
+    setOffset(Math.max(-SWIPE_WIDTH - 24, Math.min(0, base + dx)));
+  };
+  const onPointerUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d?.active) return;
+    const final = (swiped ? -SWIPE_WIDTH : 0) + d.dx;
+    onSwipe(final < -SWIPE_WIDTH / 2);
+    setOffset(null);
+    // Evita que o "click" do fim do gesto abra o item.
+    dragged.current = true;
+    setTimeout(() => (dragged.current = false), 80);
+  };
+
+  const click = () => {
+    if (dragged.current) return;
+    if (swiped) return onSwipe(false);
+    onOpen();
+  };
+
+  return (
+    <div className="relative overflow-hidden border-t border-hairline-surface">
+      {swipeable && (
+        <div className="absolute inset-y-0 right-0 flex md:hidden" aria-hidden={!swiped}>
+          <button
+            type="button"
+            tabIndex={swiped ? 0 : -1}
+            onClick={() => {
+              onSwipe(false);
+              onSnooze();
+            }}
+            className="flex w-[72px] flex-col items-center justify-center gap-1 bg-stone-100 text-[11px] font-medium text-stone-800"
+          >
+            <AlarmClock className="h-[18px] w-[18px]" strokeWidth={1.6} />
+            Adiar
+          </button>
+          <button
+            type="button"
+            tabIndex={swiped ? 0 : -1}
+            onClick={() => {
+              onSwipe(false);
+              onComplete();
+            }}
+            className="flex w-[72px] flex-col items-center justify-center gap-1 bg-ink text-[11px] font-medium text-surface"
+          >
+            <Check className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            Concluir
+          </button>
+        </div>
+      )}
+      <div
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onClick={click}
+        style={{ transform: x ? `translateX(${x}px)` : undefined, touchAction: swipeable ? 'pan-y' : undefined }}
+        className={cn(
+          'relative grid min-h-16 cursor-pointer grid-cols-[6px_minmax(0,1fr)_auto] items-center gap-x-3.5 bg-surface py-2.5 pl-[18px] pr-2 transition-[background-color] duration-[120ms] hover:bg-subtle md:min-h-0 md:grid-cols-[6px_minmax(0,1fr)_auto_128px] md:gap-x-4 md:px-6 md:py-[13px]',
+          offset === null && 'transition-transform duration-200',
+        )}
+      >
+        <span className={cn('h-1.5 w-1.5 rounded-full', DOT_COLOR[item.dot])} aria-hidden />
+        <div className="min-w-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              click();
+            }}
+            className="block max-w-full truncate rounded-xs text-left text-[15px] font-medium leading-5 text-ink md:text-[14.5px]"
+          >
+            {item.title}
+          </button>
+          <div className="mt-0.5 truncate text-[13px] leading-[18px] text-faint md:text-muted">{item.context}</div>
+        </div>
+        <div className="flex items-center gap-0.5">
+          <span className={cn('whitespace-nowrap pr-1 text-[13px] md:pr-0', GROUP_COLOR[item.group])}>{item.meta}</span>
+          {callNow && (
+            <a
+              href={`tel:${digitsOnly(item.phone!)}`}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Ligar para ${item.title}`}
+              className="flex h-11 w-11 items-center justify-center rounded-[12px] text-stone-700 hover:bg-ink/5 md:hidden"
+            >
+              <Phone className="h-[18px] w-[18px]" strokeWidth={1.6} />
+            </a>
+          )}
+          <IconButton
+            label="Mais ações"
+            className="h-11 w-10 rounded-[12px] md:hidden"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMenu();
+            }}
+          >
+            <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={1.6} />
+          </IconButton>
+        </div>
+        <div className="hidden justify-end md:flex">
+          <ActionLink onClick={onAction}>{item.action}</ActionLink>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Alternativa acessível ao gesto de arrastar: as mesmas ações em uma folha. */
+function RowMenu({
+  item,
+  close,
+  onOpen,
+  onAction,
+  onSnooze,
+  onComplete,
+}: {
+  item: AttentionItem;
+  close: () => void;
+  onOpen: (i: AttentionItem) => void;
+  onAction: (i: AttentionItem) => void;
+  onSnooze: (i: AttentionItem) => void;
+  onComplete: (i: AttentionItem) => void;
+}) {
+  const run = (fn: (i: AttentionItem) => void) => () => {
+    close();
+    fn(item);
+  };
+  const row = 'flex h-12 w-full items-center gap-3.5 rounded-[12px] px-3 text-left text-[15px] text-ink hover:bg-canvas [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-muted';
+  return (
+    <div className="pb-2">
+      <p className="px-3 pb-2 text-[13px] text-faint">{item.context}</p>
+      <button type="button" className={row} onClick={run(onAction)}>
+        <Check strokeWidth={1.6} className="opacity-0" />
+        {item.action}
+      </button>
+      {canSwipe(item) && (
+        <>
+          <button type="button" className={row} onClick={run(onSnooze)}>
+            <AlarmClock strokeWidth={1.6} />
+            Adiar para amanhã
+          </button>
+          <button type="button" className={row} onClick={run(onComplete)}>
+            <Check strokeWidth={1.6} />
+            {item.kind === 'task' ? 'Concluir tarefa' : 'Concluir retorno'}
+          </button>
+        </>
+      )}
+      {item.kind !== 'stale_leads' && item.action !== 'Abrir tarefa' && (
+        <button type="button" className={row} onClick={run(onOpen)}>
+          <MoreHorizontal strokeWidth={1.6} />
+          Abrir
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- Hoje / próximos dias
+function TodayColumn({
+  className,
+  todayEvents,
+  upcoming,
+  calendarConnected,
+  onTask,
+  onLead,
+}: {
+  className?: string;
+  todayEvents: AgendaItem[];
+  upcoming: AgendaItem[];
+  calendarConnected: boolean;
+  onTask: (id: string) => void;
+  onLead: (id: string) => void;
+}) {
+  const { isAdmin } = useData();
+  const navigate = useNavigate();
+  const open = (a: AgendaItem) => {
+    if (a.taskId) return onTask(a.taskId);
+    if (a.leadId) return onLead(a.leadId);
+    if (a.href) navigate(a.href);
+  };
+  return (
+    <section aria-labelledby="hoje" className={className}>
+      <div className="mb-4 flex items-baseline justify-between">
+        <h2 id="hoje" className="font-display text-section text-ink">Hoje</h2>
+        <ActionLink to="/agenda" muted>Agenda</ActionLink>
+      </div>
+      {todayEvents.length === 0 ? (
+        <p className="border-t border-hairline py-3 text-[13px] text-faint">Nada na sua agenda hoje.</p>
+      ) : (
+        <ul>
+          {todayEvents.map((a) => (
+            <li key={a.id}>
+              <button
+                type="button"
+                onClick={() => open(a)}
+                className="grid w-full grid-cols-[44px_minmax(0,1fr)] gap-3 border-t border-hairline py-3 text-left transition-colors hover:bg-ink/[0.025]"
+              >
+                {a.time ? (
+                  <span className={cn('pt-px font-mono text-xs tabular', a.past ? 'text-stone-400' : 'text-ink')}>{a.time}</span>
+                ) : (
+                  <span className="pt-px text-xs text-warning-fg">hoje</span>
+                )}
+                <span className="min-w-0">
+                  <span className={cn('block truncate text-[13.5px] leading-5', a.past ? 'text-faint' : 'text-ink')}>{a.title}</span>
+                  <span className={cn('block truncate text-[12.5px]', a.deadline ? 'text-warning-fg' : 'text-faint')}>{a.context}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="px-0 pb-2 pt-6 text-[12.5px] text-faint">Próximos dias</div>
+      {upcoming.length === 0 ? (
+        <p className="border-t border-hairline py-3 text-[13px] text-faint">Nada agendado.</p>
+      ) : (
+        <ul>
+          {upcoming.map((a) => (
+            <li key={a.id}>
+              <button
+                type="button"
+                onClick={() => open(a)}
+                className="grid min-h-14 w-full grid-cols-[44px_minmax(0,1fr)] gap-3 border-t border-hairline py-3 text-left transition-colors hover:bg-ink/[0.025] md:min-h-0"
+              >
+                <span className="pt-px text-xs text-faint">{weekdayDay(a.date)}</span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[13.5px] leading-5 text-ink">{a.title}</span>
+                  <span className="flex min-w-0 items-baseline gap-1.5">
+                    {a.time && <span className="shrink-0 font-mono text-[11.5px] tabular text-muted">{a.time}</span>}
+                    <span className={cn('truncate text-[12.5px]', a.deadline ? 'text-warning-fg' : 'text-faint')}>{a.context}</span>
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 border-t border-hairline pt-3 text-[13px] text-faint">
+        Google Agenda ·{' '}
+        {calendarConnected ? (
+          <Link to="/agenda" className="font-medium text-accent-fg hover:text-brand-900">Abrir</Link>
+        ) : (
+          <Link to={isAdmin ? '/configuracoes?aba=agenda' : '/perfil'} className="font-medium text-accent-fg hover:text-brand-900">
+            Conectar
+          </Link>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- Visão geral
+function Overview({
+  className,
+  kpis,
+  soonDays,
+}: {
+  className?: string;
+  kpis: ReturnType<typeof useHomeData>['kpis'];
+  soonDays: number;
+}) {
+  const items: Array<{ label: string; mobileLabel?: string; value: ReactNode; tone?: string; to: string; mobile?: number }> = [
+    { label: 'Projetos ativos', value: kpis.activeProjects, to: '/projetos', mobile: 3 },
+    { label: 'Prazo vencido', value: kpis.overdueProjects, tone: kpis.overdueProjects ? 'text-danger-fg' : undefined, to: '/projetos' },
+    { label: `Vencem em ${soonDays} dias`, value: kpis.dueSoon, tone: kpis.dueSoon ? 'text-warning-fg' : undefined, to: '/projetos', mobile: 2 },
+    { label: 'Tarefas atrasadas', value: kpis.overdueTasks, tone: kpis.overdueTasks ? 'text-danger-fg' : undefined, to: '/tarefas', mobile: 1 },
+    { label: 'Oportunidades abertas', value: kpis.openLeads, to: '/oportunidades' },
+    {
+      label: 'Conversão · 90 dias',
+      mobileLabel: 'Conversão 90d',
+      value: kpis.conversion === null ? '—' : `${kpis.conversion}%`,
+      to: '/relatorios',
+      mobile: 4,
+    },
+  ];
+  return (
+    <section aria-label="Visão geral" className={className}>
+      <div className="mb-3 text-[12.5px] text-faint">Visão geral</div>
+      {/* Desktop: 6 colunas, sem caixas */}
+      <div className="hidden grid-cols-3 gap-8 border-t border-hairline pt-5 md:grid xl:grid-cols-6">
+        {items.map((k) => (
+          <Link key={k.label} to={k.to} className="group min-w-0">
+            <div className="truncate text-[12.5px] text-faint group-hover:text-muted">{k.label}</div>
+            <div className={cn('mt-1.5 font-display text-metric tabular', k.tone ?? 'text-ink')}>{k.value}</div>
+          </Link>
+        ))}
+      </div>
+      {/* Celular: grade 2×2 */}
+      <div className="grid grid-cols-2 border-t border-hairline md:hidden">
+        {items
+          .filter((k) => k.mobile)
+          .sort((a, b) => a.mobile! - b.mobile!)
+          .map((k, i) => (
+            <Link key={k.label} to={k.to} className={cn('min-h-[88px] py-4', i % 2 === 1 && 'pl-5', i > 1 && 'border-t border-hairline')}>
+              <div className="text-[12.5px] text-faint">{k.mobileLabel ?? k.label}</div>
+              <div className={cn('mt-1 font-display text-[28px] font-normal leading-[34px] tracking-[-0.025em] tabular', k.tone ?? 'text-ink')}>{k.value}</div>
+            </Link>
+          ))}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- Projetos
+function StageRail({ phases, current }: { phases: string[]; current: number }) {
+  if (phases.length === 0) return <div className="h-0.5 rounded-full bg-line-strong" />;
+  return (
+    <div className="flex gap-[3px]" aria-hidden>
+      {phases.map((p, i) => (
+        <span
+          key={p}
+          className="h-0.5 flex-1 rounded-full"
+          style={{ backgroundColor: i < current ? CSS_COLOR.stone(800) : i === current ? CSS_COLOR.accent : CSS_COLOR.lineStrong }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ProjectDeadline({ due, soonDays }: { due: string | null; soonDays: number }) {
+  if (!due) return <div className="text-[13px] text-faint">Sem prazo</div>;
+  const state = deadlineState(due, false, soonDays);
+  const d = diffDays(today(), due);
+  const main =
+    state === 'overdue' ? `venceu ${formatDateShort(due)}` : state === 'today' ? 'hoje' : state === 'soon' ? (d === 1 ? 'amanhã' : `em ${d} dias`) : formatDateShort(due);
+  const sub = state === 'ok' ? `${d} dias` : state === 'overdue' ? `há ${-d} ${d === -1 ? 'dia' : 'dias'}` : weekdayDate(due);
+  return (
+    <div className="leading-tight">
+      <div className={cn('text-[13px]', state === 'overdue' ? 'text-danger-fg' : state === 'ok' ? 'text-stone-700' : 'text-warning-fg')}>{main}</div>
+      <div className="mt-0.5 text-xs text-faint">{sub}</div>
+    </div>
+  );
+}
+
+function ProjectsSection({ projects, soonDays }: { projects: HomeProject[]; soonDays: number }) {
+  const shown = projects.slice(0, 6);
+  return (
+    <section aria-labelledby="projetos">
+      <div className="mb-4 flex items-baseline justify-between">
+        <h2 id="projetos" className="font-display text-section text-ink">Projetos</h2>
+        <ActionLink to="/projetos" muted>Ver todos</ActionLink>
+      </div>
+      {shown.length === 0 ? (
+        <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhum projeto ativo.</p>
+      ) : (
+        <ul>
+          {shown.map(({ summary: s, phases, current }) => {
+            const phaseLabel = current >= 0 && current < phases.length ? `${phases[current]} · ${current + 1}/${phases.length}` : s.phase;
+            return (
+              <li key={s.project.id}>
+                <Link
+                  to={`/projetos/${s.project.id}`}
+                  className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2.5 border-t border-hairline py-4 transition-colors hover:bg-ink/[0.025] md:grid-cols-[180px_minmax(0,1fr)_44px_130px_56px] md:gap-x-6"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-display text-[14.5px] font-semibold tracking-[0.01em] text-ink">{s.project.name}</div>
+                    <div className="truncate text-[12.5px] text-faint">{s.client?.name ?? '—'}</div>
+                  </div>
+                  <div className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:row-start-auto">
+                    <StageRail phases={phases} current={current} />
+                    <div className="mt-2 truncate text-[12.5px] text-muted">{phaseLabel}</div>
+                  </div>
+                  <div className="hidden text-right text-[13px] tabular text-muted md:block">{s.progress}%</div>
+                  <div className="col-start-2 row-start-1 text-right md:col-start-auto md:row-start-auto md:text-left">
+                    <ProjectDeadline due={s.project.due_date} soonDays={soonDays} />
+                  </div>
+                  <div className="hidden justify-end md:flex">
+                    <AvatarStack users={s.people} max={3} size={22} ring="ring-canvas" />
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- Funil
+function FunnelSection({
+  rows,
+  total,
+  conversion,
+}: {
+  rows: ReturnType<typeof useHomeData>['funnel'];
+  total: number;
+  conversion: number | null;
+}) {
+  const count = rows.reduce((acc, r) => acc + r.count, 0);
+  return (
+    <section aria-labelledby="funil" className="hidden md:block">
+      <div className="mb-4 flex items-baseline justify-between">
+        <h2 id="funil" className="font-display text-section text-ink">Funil</h2>
+        <ActionLink to="/oportunidades" muted>Abrir</ActionLink>
+      </div>
+      <div className="border-t border-hairline pt-4">
+        <div className="font-display text-metric tabular text-ink">{formatCurrency(total)}</div>
+        <div className="mt-1 text-[12.5px] text-faint">
+          em {count} {count === 1 ? 'oportunidade aberta' : 'oportunidades abertas'}
+        </div>
+        <div className="mt-4 flex h-1 gap-0.5 overflow-hidden rounded-[2px]" aria-hidden>
+          {count === 0 ? (
+            <span className="flex-1 bg-line-strong" />
+          ) : (
+            rows.filter((r) => r.count > 0).map((r) => <span key={r.stage.id} style={{ flex: r.count, backgroundColor: r.color }} />)
+          )}
+        </div>
+        <ul className="mt-4 space-y-2.5">
+          {rows.map((r) => (
+            <li key={r.stage.id} className="grid grid-cols-[minmax(0,1fr)_24px_auto] items-baseline gap-3">
+              <span className="flex min-w-0 items-center gap-2 text-[13px] text-stone-700">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} aria-hidden />
+                <span className="truncate">{r.stage.name}</span>
+              </span>
+              <span className="text-right text-[13px] tabular text-ink">{r.count}</span>
+              <span className="text-right text-[12.5px] tabular text-faint">{r.value ? formatCurrency(r.value) : r.count ? 'sem proposta' : '—'}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 border-t border-hairline pt-3 text-[12.5px] text-faint">
+          90 dias · {conversion === null ? 'sem fechamentos' : `${conversion}% de conversão`}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- Equipe
+function TeamSection({ team }: { team: ReturnType<typeof useHomeData>['team'] }) {
+  if (team.length === 0) return null;
+  return (
+    <section aria-labelledby="equipe" className="hidden md:block">
+      <div className="mb-4 flex items-baseline justify-between">
+        <h2 id="equipe" className="font-display text-section text-ink">Equipe esta semana</h2>
+        <span className="text-[13px] text-faint">de {WEEK_HOURS}h</span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-8 gap-y-8 border-t border-hairline pt-5 xl:grid-cols-4">
+        {team.map((m) => (
+          <Link key={m.user.id} to={`/equipe?membro=${m.user.id}`} className="group min-w-0">
+            <div className="flex items-center gap-2.5">
+              <Avatar user={m.user} size="sm" />
+              <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink group-hover:underline group-hover:decoration-stone-300 group-hover:underline-offset-4">
+                {m.user.name}
+              </span>
+              <span className="shrink-0 text-[13px] tabular text-muted">{formatHours(m.minutes)}</span>
+            </div>
+            <div className="mt-3 h-0.5 overflow-hidden rounded-full bg-hairline">
+              <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.min(100, (m.minutes / 60 / WEEK_HOURS) * 100)}%` }} />
+            </div>
+            <div className="mt-2 text-xs text-faint">
+              {m.open} {m.open === 1 ? 'aberta' : 'abertas'}
+              {m.overdue > 0 && (
+                <>
+                  {' · '}
+                  <span className="text-danger-fg">
+                    {m.overdue} {m.overdue === 1 ? 'atrasada' : 'atrasadas'}
+                  </span>
+                </>
+              )}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }

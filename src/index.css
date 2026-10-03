@@ -1,3 +1,6 @@
+@import './styles/tokens.css';
+@import './styles/theme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,36 +8,66 @@
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-canvas text-ink-900;
+    @apply bg-canvas text-body text-ink;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
-    letter-spacing: -0.003em;
   }
+  /* Foco visível em tudo: anel bronze, só para navegação por teclado. */
   :focus-visible {
-    @apply outline-none ring-2 ring-ink-900/15 ring-offset-1;
+    outline: none;
+    @apply shadow-focus;
   }
   ::selection {
     @apply bg-brand-200/70;
   }
+  ::placeholder {
+    @apply text-faint;
+  }
 }
 
 @layer components {
+  /* Campo de texto: h 36, radius 10, borda line-strong. */
   .input {
-    @apply block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-stone-400 transition-colors hover:border-stone-300 focus:border-ink-900/40 focus:outline-none focus:ring-4 focus:ring-ink-900/5 disabled:bg-stone-50 disabled:text-stone-500;
+    @apply block h-9 w-full rounded-md border border-line-strong bg-surface px-3 text-body text-ink transition-[border-color,box-shadow] duration-150;
+  }
+  .input:hover:not(:disabled):not(:focus) {
+    @apply border-stone-400/70;
+  }
+  .input:focus,
+  .input:focus-visible {
+    @apply border-accent shadow-[0_0_0_3px_rgb(var(--accent)/0.22)];
+  }
+  .input:disabled {
+    @apply cursor-not-allowed border-line bg-canvas text-faint;
+  }
+  .input[aria-invalid='true'] {
+    @apply border-danger-solid shadow-[0_0_0_3px_rgb(var(--danger-solid)/0.12)];
+  }
+  textarea.input {
+    @apply h-auto py-2;
   }
   .card {
-    @apply rounded-2xl border border-line bg-white;
+    @apply rounded-xl border border-line bg-surface;
   }
   .label {
-    @apply mb-1.5 block text-[12px] font-medium text-stone-500;
+    @apply mb-1.5 block text-[12.5px] font-medium leading-4 text-stone-800;
   }
   .eyebrow {
-    @apply text-[11px] font-medium uppercase tracking-[0.16em] text-stone-400;
+    @apply text-eyebrow uppercase text-faint;
   }
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+  /* Spinner dos botões: 14px, borda 1.6, 0.8s linear. */
+  .spinner {
+    @apply inline-block h-3.5 w-3.5 shrink-0 rounded-full border-[1.6px] border-current border-t-transparent animate-spin;
+    animation-duration: 0.8s;
+  }
+  .skeleton {
+    @apply animate-shimmer rounded bg-stone-100;
   }
 }
 
@@ -44,11 +77,30 @@
   }
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #dcd8d2 transparent;
+    scrollbar-color: rgb(var(--line-strong)) transparent;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .pb-safe {
+    padding-bottom: max(26px, env(safe-area-inset-bottom));
   }
 }
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-timer-dot,
+  .animate-shimmer {
+    animation: none !important;
+  }
+  .drag-tilt {
+    transform: none !important;
+  }
 }

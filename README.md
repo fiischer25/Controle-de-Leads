@@ -40,10 +40,14 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   aparece em “Minhas tarefas” da pessoa e gera notificação.
 - “Minhas tarefas” agrupa atrasadas, hoje, próximos 7 dias…; também em quadro kanban.
 
-**Painel inicial (visão 360°)**
-- Projetos ativos, vencidos e a vencer; tarefas atrasadas; oportunidades abertas; conversão.
-- Projetos por etapa, prazos críticos, **Google Agenda espelhado**, minhas tarefas, próximos
-  14 dias, funil, origem dos clientes, carga da equipe e atividade recente.
+**Início (visão 360°)**
+- **Pede sua atenção**: uma fila única com o que está atrasado, o que vence hoje e o que pede ação
+  nesta semana (tarefas, retornos de leads, prazos de projeto, leads parados e oportunidades fechadas
+  aguardando cadastro), com filtro por Tarefas / Comercial / Projetos e ação direta em cada linha.
+- Agenda de hoje e dos próximos dias, visão geral em números, projetos com o trilho de etapas,
+  funil com valores e a carga da equipe na semana.
+- No celular: navegação inferior com botão **+** (tarefa, oportunidade, reunião, lançar horas) e
+  arrastar a linha para a esquerda para **Adiar** ou **Concluir**.
 
 **Assistente no WhatsApp (e dentro do sistema)**
 - A equipe conversa com o número do escritório no WhatsApp — ou pelo botão **Assistente** no topo — em
@@ -64,7 +68,7 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Relatórios: conversão por origem, motivos de perda, tempo médio de fechamento, entregas no
   prazo, horas por pessoa/projeto/tipo, horas por m² e exportação de horas (timesheet).
 - Busca global (**Ctrl + K**), notificações, atualização em tempo real entre usuários,
-  backup em JSON, layout responsivo (celular).
+  backup em JSON, layout responsivo (celular) e **modo escuro** (menu da conta → Tema).
 
 **Configurações (administrador)**
 - Tipos de projeto e suas **tarefas-modelo** (etapa, nome, duração em dias), etapas do funil,
@@ -151,6 +155,12 @@ agenda em **Meu perfil**.
 - Todas as tabelas usam *Row Level Security*: só membros ativos acessam dados; somente
   administradores alteram configurações, excluem leads/clientes/projetos e gerenciam a equipe.
 - A chave de serviço do Supabase fica apenas na Edge Function, nunca no navegador.
+
+## Design system
+Tokens de cor (claro e escuro), tipografia, raios e sombras ficam em `src/styles/tokens.css`,
+`src/styles/theme.css` e `tailwind.config.js`; o mapa semântico de status (atrasado, a vencer, em
+andamento, concluído, funil, prioridade e avatares) fica em `src/lib/status.ts`. A especificação
+original está em `design_handoff_airos_inicio/`. Regra-mãe: só ganha cor o que pede ação.
 
 ## Tecnologias
 

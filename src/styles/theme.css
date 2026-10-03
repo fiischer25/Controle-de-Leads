@@ -1,0 +1,66 @@
+/* AIROS · extensões dos tokens do design system (src/styles/tokens.css).
+   - A escala "stone" e a "brand" viram variáveis para o modo escuro funcionar em todas
+     as telas que ainda usam a escala diretamente. Os valores do tema claro são
+     exatamente os do handoff; no escuro a escala neutra é invertida.
+   - Hairlines do Início v2: divisórias sobre o canvas e dentro da superfície branca. */
+:root {
+  color-scheme: light;
+
+  --stone-50: 250 249 247;   /* #faf9f7 */
+  --stone-100: 243 241 237;  /* #f3f1ed */
+  --stone-200: 233 230 225;  /* #e9e6e1 */
+  --stone-300: 217 212 204;  /* #d9d4cc */
+  --stone-400: 179 172 162;  /* #b3aca2 */
+  --stone-500: 138 131 121;  /* #8a8379 */
+  --stone-600: 107 101 92;   /* #6b655c */
+  --stone-700: 79 74 68;     /* #4f4a44 */
+  --stone-800: 52 49 45;     /* #34312d */
+  --stone-900: 31 29 27;     /* #1f1d1b */
+  --stone-950: 18 17 16;     /* #121110 */
+
+  --brand-50: 248 246 243;   /* #f8f6f3 */
+  --brand-100: 239 235 228;  /* #efebe4 */
+  --brand-200: 224 215 202;  /* #e0d7ca */
+  --brand-300: 201 186 164;  /* #c9baa4 */
+  --brand-400: 173 154 126;  /* #ad9a7e */
+  --brand-500: 143 124 97;   /* #8f7c61 */
+  --brand-600: 118 101 78;   /* #76654e */
+  --brand-700: 95 81 63;     /* #5f513f */
+  --brand-800: 74 63 50;     /* #4a3f32 */
+  --brand-900: 58 49 40;     /* #3a3128 */
+
+  --hairline: 230 226 220;          /* #e6e2dc — divisórias sobre o canvas */
+  --hairline-surface: 241 238 233;  /* #f1eee9 — divisórias dentro da superfície */
+  --overlay: 18 17 16;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --stone-50: 33 31 28;
+  --stone-100: 38 36 33;
+  --stone-200: 44 41 38;
+  --stone-300: 58 54 49;
+  --stone-400: 95 90 83;
+  --stone-500: 125 119 110;
+  --stone-600: 168 161 152;
+  --stone-700: 196 189 179;
+  --stone-800: 221 215 205;
+  --stone-900: 235 231 224;
+  --stone-950: 242 239 234;
+
+  --brand-50: 31 27 22;
+  --brand-100: 42 36 28;
+  --brand-200: 58 50 38;
+  --brand-300: 79 69 53;
+  --brand-400: 122 106 82;
+  --brand-500: 185 166 138;
+  --brand-600: 201 184 158;
+  --brand-700: 214 199 175;
+  --brand-800: 227 215 195;
+  --brand-900: 239 231 218;
+
+  --hairline: 44 41 38;
+  --hairline-surface: 38 36 33;
+  --overlay: 0 0 0;
+}

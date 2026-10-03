@@ -26,6 +26,7 @@ import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
 import { orderedPhases, totalMinutes } from '../lib/domain';
 import type { Project, ProjectStatus, Task } from '../lib/types';
 import { byPosition, cn, diffDays, formatDate, formatDateTime, formatMinutes, formatNumber, formatRelative, today, uid } from '../lib/utils';
+import { CSS_COLOR } from '../lib/status';
 import {
   Avatar,
   AvatarStack,
@@ -38,6 +39,7 @@ import {
   Field,
   IconButton,
   Input,
+  Listbox,
   Modal,
   ProgressBar,
   Select,
@@ -121,33 +123,38 @@ export default function ProjectDetailPage() {
 
       {/* Cabeçalho */}
       <div className="card relative mb-5 overflow-hidden">
-        <div className="h-1.5" style={{ backgroundColor: type?.color ?? '#d6d3d1' }} />
+        <div className="h-1.5" style={{ backgroundColor: type?.color ?? CSS_COLOR.stone(300) }} />
         <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
               <span className="font-semibold uppercase tracking-wider">{project.code}</span>
-              {type && <span className="rounded-md px-1.5 py-0.5 font-medium" style={{ backgroundColor: `${type.color}14`, color: type.color }}>{type.name}</span>}
+              {type && <span className="rounded-xs px-1.5 py-0.5 font-medium" style={{ backgroundColor: `${type.color}14`, color: type.color }}>{type.name}</span>}
               {project.site_city && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{project.site_city}</span>}
             </div>
-            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink-900">{project.name}</h1>
+            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">{project.name}</h1>
             <div className="mt-1 text-sm text-stone-500">
               Cliente: {client ? <Link to={`/clientes/${client.id}`} className="font-medium text-brand-700 hover:underline">{client.name}</Link> : '—'}
               {manager && <> · Responsável: <span className="font-medium text-stone-700">{manager.name}</span></>}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={project.status}
-              onChange={(e) => updateProject(project.id, { status: e.target.value as ProjectStatus }).catch(toast.error)}
-              className={cn('h-9 cursor-pointer rounded-lg border-0 px-3 text-sm font-medium ring-1 ring-inset', st.badge)}
-              aria-label="Status do projeto"
-            >
-              {PROJECT_STATUS_ORDER.map((s) => <option key={s} value={s}>{PROJECT_STATUS[s].label}</option>)}
-            </select>
+            <div className="w-44">
+              <Listbox
+                value={project.status}
+                onChange={(v) => updateProject(project.id, { status: v as ProjectStatus }).catch(toast.error)}
+                options={PROJECT_STATUS_ORDER.map((s) => ({
+                  value: s,
+                  label: PROJECT_STATUS[s].label,
+                  icon: <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PROJECT_STATUS[s].dot)} />,
+                }))}
+                aria-label="Status do projeto"
+                className={cn('border-transparent font-medium', st.badge)}
+              />
+            </div>
             <Button icon={<Pencil className="h-4 w-4" />} onClick={() => setEditing(true)}>Editar</Button>
             <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setNewTask({ phase: null })}>Tarefa</Button>
             {isAdmin && (
-              <IconButton label="Excluir projeto" onClick={() => setConfirmDelete(true)} className="text-stone-400 hover:text-rose-600">
+              <IconButton label="Excluir projeto" onClick={() => setConfirmDelete(true)} className="text-stone-400 hover:text-danger-fg">
                 <Trash2 className="h-4 w-4" />
               </IconButton>
             )}
@@ -160,7 +167,7 @@ export default function ProjectDetailPage() {
               <span className="font-display text-2xl font-medium tracking-tight tabular">{progress}%</span>
               <span className="truncate text-xs text-stone-500">Etapa: {phase}</span>
             </div>
-            <ProgressBar value={progress} className="mt-2" color={project.status === 'concluido' ? '#10b981' : undefined} />
+            <ProgressBar value={progress} className="mt-2" color={project.status === 'concluido' ? CSS_COLOR.success : undefined} />
           </Metric>
           <Metric label="Prazo de entrega" icon={<CalendarRange className="h-4 w-4" />}>
             <div className="font-display text-lg font-semibold tracking-tight">{formatDate(project.due_date)}</div>
@@ -173,7 +180,7 @@ export default function ProjectDetailPage() {
             <div className="font-display text-2xl font-medium tracking-tight tabular">
               {tasks.length - open.length}<span className="text-base font-medium text-stone-400">/{tasks.length}</span>
             </div>
-            <div className={cn('mt-1 text-xs', overdue.length ? 'font-medium text-rose-600' : 'text-stone-500')}>
+            <div className={cn('mt-1 text-xs', overdue.length ? 'font-medium text-danger-fg' : 'text-stone-500')}>
               {overdue.length ? `${overdue.length} atrasada${overdue.length > 1 ? 's' : ''}` : `${open.length} em aberto`}
             </div>
           </Metric>
@@ -196,11 +203,11 @@ export default function ProjectDetailPage() {
               const current = p === phase;
               return (
                 <div key={p} className="min-w-[120px] flex-1">
-                  <div className={cn('h-1.5 rounded-full', complete ? 'bg-emerald-500' : current ? 'bg-brand-500' : 'bg-stone-200')}>
+                  <div className={cn('h-1.5 rounded-full', complete ? 'bg-stone-800' : current ? 'bg-brand-500' : 'bg-stone-200')}>
                     {!complete && done > 0 && <div className="h-full rounded-full bg-brand-300" style={{ width: `${(done / pt.length) * 100}%` }} />}
                   </div>
-                  <div className={cn('mt-1.5 flex items-center gap-1 text-[11px]', current ? 'font-semibold text-ink-900' : 'text-stone-500')}>
-                    {complete ? <Check className="h-3 w-3 text-emerald-600" /> : <span className="text-stone-400">{i + 1}.</span>}
+                  <div className={cn('mt-1.5 flex items-center gap-1 text-[11px]', current ? 'font-semibold text-ink' : 'text-stone-500')}>
+                    {complete ? <Check className="h-3 w-3 text-success-fg" /> : <span className="text-stone-400">{i + 1}.</span>}
                     <span className="truncate">{p}</span>
                   </div>
                 </div>
@@ -249,9 +256,9 @@ export default function ProjectDetailPage() {
             return (
               <div key={p} className="card overflow-hidden">
                 <div className="flex flex-wrap items-center gap-3 border-b border-line/70 bg-stone-50/60 px-4 py-2.5">
-                  <h3 className="font-display text-sm font-semibold text-ink-900">{p}</h3>
+                  <h3 className="font-display text-sm font-semibold text-ink">{p}</h3>
                   <span className="text-xs text-stone-500 tabular">{done}/{pt.length}</span>
-                  <ProgressBar value={(done / pt.length) * 100} className="w-24" color={done === pt.length ? '#10b981' : undefined} />
+                  <ProgressBar value={(done / pt.length) * 100} className="w-24" color={done === pt.length ? CSS_COLOR.success : undefined} />
                   <span className="ml-auto text-xs text-stone-500">{pMinutes > 0 && formatMinutes(pMinutes)}</span>
                 </div>
                 <div className="divide-y divide-line/70">
@@ -301,7 +308,7 @@ export default function ProjectDetailPage() {
                   <li key={a.id} className="flex items-start gap-3 text-sm">
                     <Avatar user={u} size="sm" />
                     <div>
-                      <span className="font-medium text-ink-900">{u?.name ?? 'Sistema'}</span>{' '}
+                      <span className="font-medium text-ink">{u?.name ?? 'Sistema'}</span>{' '}
                       <span className="text-stone-600">{a.description}</span>
                       <div className="text-xs text-stone-400" title={formatDateTime(a.created_at)}>{formatRelative(a.created_at)}</div>
                     </div>
@@ -402,7 +409,7 @@ function TeamTab({ project, tasks }: { project: Project; tasks: Task[] }) {
                 </td>
                 <td className="px-4 py-3 text-right tabular">{r.open}</td>
                 <td className="px-4 py-3 text-right tabular">{r.done}</td>
-                <td className={cn('px-4 py-3 text-right tabular', r.overdue && 'font-semibold text-rose-600')}>{r.overdue}</td>
+                <td className={cn('px-4 py-3 text-right tabular', r.overdue && 'font-semibold text-danger-fg')}>{r.overdue}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-100">
@@ -476,7 +483,7 @@ function InfoTab({ project }: { project: Project }) {
             <li key={l.id} className="group flex items-center gap-2 text-sm">
               <ExternalLink className="h-3.5 w-3.5 shrink-0 text-stone-400" />
               <a href={l.url} target="_blank" rel="noreferrer" className="flex-1 truncate text-brand-700 hover:underline">{l.label}</a>
-              <button onClick={() => updateProject(project.id, { links: project.links.filter((x) => x.id !== l.id) }).catch(toast.error)} className="text-stone-300 opacity-0 hover:text-rose-600 group-hover:opacity-100" aria-label="Remover link">
+              <button onClick={() => updateProject(project.id, { links: project.links.filter((x) => x.id !== l.id) }).catch(toast.error)} className="text-stone-300 opacity-0 hover:text-danger-fg group-hover:opacity-100" aria-label="Remover link">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </li>

@@ -31,7 +31,7 @@ export function CalendarEmbed({ height = 560 }: { height?: number }) {
                 ]}
               />
             )}
-            <a href="https://calendar.google.com" target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800">
+            <a href="https://calendar.google.com" target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 rounded-sm px-2 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800">
               Abrir <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
