@@ -5,7 +5,7 @@
 export type Role = 'admin' | 'member';
 
 /**
- * Módulos que o administrador libera para cada pessoa. O Painel de Projetos (com a
+ * Módulos que o administrador libera para cada pessoa. O Meu painel (com a
  * agenda) e as próprias tarefas são de todos; administradores têm acesso a tudo.
  */
 export type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes';
@@ -22,6 +22,8 @@ export interface Profile {
   calendar_embed_url: string | null;
   /** Módulos liberados (ignorado para administradores). Ausente = acessos padrão. */
   permissions?: ModuleKey[] | null;
+  /** Recebe o resumo diário no WhatsApp (padrão: sim). */
+  wa_alerts?: boolean;
   created_at: string;
 }
 
@@ -256,6 +258,13 @@ export interface AppSettings {
   due_soon_days: number;
   lead_stale_days: number;
   project_code_prefix: string;
+  /** Resumo diário no WhatsApp (migração 20261005000000). */
+  wa_alerts_enabled?: boolean;
+  wa_alerts_hour?: number;
+  wa_alerts_tasks?: boolean;
+  wa_alerts_projects?: boolean;
+  wa_alerts_leads?: boolean;
+  wa_alerts_weekends?: boolean;
   updated_at: string;
 }
 

@@ -1,18 +1,18 @@
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { openCreate } from '../lib/create';
 import { isProjectActive, totalMinutes } from '../lib/domain';
 import { TASK_STATUS_ORDER } from '../lib/constants';
 import { CSS_COLOR, TASK_STATUS_STYLE } from '../lib/status';
-import { addDays, formatMinutes, MONTHS_FULL, startOfWeek, today, toDateKey } from '../lib/utils';
+import { addDays, cn, diffDays, formatCurrency, formatDateShort, formatMinutes, MONTHS_FULL, startOfWeek, today, toDateKey } from '../lib/utils';
 import { ActionLink, BarRow, Button, MetricRow, PageHeader, SectionHeader, Tabs } from '../components/ui';
 import { MobileTimerBar } from '../components/layout/MobileTimerBar';
 import { AgendaView } from '../components/agenda/AgendaView';
 import { MonthBars } from '../components/charts/MonthBars';
 import { useHomeData } from '../components/dashboard/useHomeData';
-import { ProjectsSection, TeamSection, TodayColumn } from '../components/dashboard/HomeSections';
+import { FunnelSection, ProjectsSection, TeamSection, TodayColumn } from '../components/dashboard/HomeSections';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
 
 type Tab = 'geral' | 'agenda';
@@ -23,12 +23,12 @@ function longDate() {
 }
 
 /**
- * Painel de Projetos: primeira tela do sistema, visível para toda a equipe.
- * Visão geral do andamento de todos os projetos (números, etapas, tarefas, entregas
- * e carga da equipe) e a agenda do escritório.
+ * Dashboard do escritório: tela inicial do administrador, com todas as informações do
+ * escritório: andamento de todos os projetos (números, etapas, tarefas, entregas),
+ * comercial (funil, retornos, conversão), carga da equipe e a agenda do escritório.
  */
-export default function DashboardPage() {
-  const { db, me, settings, can } = useData();
+export default function OfficeDashboardPage() {
+  const { db, maps, me, settings, can } = useData();
   const [params, setParams] = useSearchParams();
   const tab: Tab = params.get('aba') === 'agenda' ? 'agenda' : 'geral';
   const setTab = (t: Tab) =>
@@ -45,7 +45,7 @@ export default function DashboardPage() {
       { replace: true },
     );
 
-  const home = useHomeData();
+  const home = useHomeData('office');
   const summaries = useProjectSummaries();
 
   const charts = useMemo(() => {
@@ -93,6 +93,23 @@ export default function DashboardPage() {
     };
   }, [summaries, db.tasks, db.time_entries]);
 
+  // Comercial do escritório
+  const commercial = useMemo(() => {
+    const t = today();
+    const month = t.slice(0, 7);
+    const staleDays = settings.lead_stale_days || 7;
+    const open = db.leads.filter((l) => maps.stages[l.stage_id]?.kind === 'open');
+    const followups = open
+      .filter((l) => l.next_contact_date && l.next_contact_date <= t)
+      .sort((a, b) => (a.next_contact_date ?? '').localeCompare(b.next_contact_date ?? ''));
+    return {
+      followups,
+      newThisMonth: db.leads.filter((l) => l.created_at.slice(0, 7) === month).length,
+      stale: open.filter((l) => diffDays(t, (l.stage_changed_at ?? l.created_at).slice(0, 10)) >= staleDays).length,
+      staleDays,
+    };
+  }, [db.leads, maps.stages, settings.lead_stale_days]);
+
   const calendarConnected = !!(settings.calendar_embed_url || me.calendar_embed_url);
   const attention = home.items.length;
   const maxPhase = Math.max(1, ...charts.phases.map(([, n]) => n));
@@ -102,7 +119,7 @@ export default function DashboardPage() {
     <div>
       <PageHeader
         eyebrow={longDate()}
-        title="Painel de projetos"
+        title="Dashboard do escritório"
         description={
           <>
             {charts.active} em andamento
@@ -126,6 +143,12 @@ export default function DashboardPage() {
                 <span className="text-danger-fg">
                   {charts.lateTasks} {charts.lateTasks === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}
                 </span>
+              </>
+            )}
+            {commercial.followups.length > 0 && (
+              <>
+                {' · '}
+                {commercial.followups.length} {commercial.followups.length === 1 ? 'retorno de lead pendente' : 'retornos de leads pendentes'}
               </>
             )}
             {attention > 0 && (
@@ -176,6 +199,7 @@ export default function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-12 md:gap-14">
             <MetricRow
+              label="Projetos"
               items={[
                 { label: 'Em andamento', value: charts.active, to: can('projetos') ? '/projetos' : undefined },
                 { label: 'Prazo vencido', value: charts.overdue, tone: charts.overdue ? 'text-danger-fg' : undefined },
@@ -233,6 +257,63 @@ export default function DashboardPage() {
                     </p>
                   )}
                 </div>
+              </section>
+            </div>
+
+            <MetricRow
+              label="Comercial"
+              items={[
+                { label: 'Oportunidades abertas', value: home.kpis.openLeads, to: '/oportunidades' },
+                { label: 'Valor no funil', value: formatCurrency(home.funnelTotal), sub: 'propostas em aberto' },
+                { label: 'Retornos pendentes', value: commercial.followups.length, tone: commercial.followups.length ? 'text-warning-fg' : undefined },
+                { label: 'Novos leads no mês', value: commercial.newThisMonth },
+                { label: 'Conversão', value: home.kpis.conversion === null ? '—' : `${home.kpis.conversion}%`, sub: `90 dias · ${home.kpis.won90} ganhos` },
+                { label: `Parados há +${commercial.staleDays} dias`, value: commercial.stale, tone: commercial.stale ? 'text-danger-fg' : undefined },
+              ]}
+            />
+
+            <div className="grid gap-12 lg:grid-cols-[340px_1fr] lg:gap-16">
+              <FunnelSection rows={home.funnel} total={home.funnelTotal} conversion={home.kpis.conversion} />
+              <section aria-labelledby="retornos-equipe">
+                <SectionHeader
+                  id="retornos-equipe"
+                  title="Retornos pendentes"
+                  aside={<span className="text-[12.5px] text-faint">atrasados e de hoje, de toda a equipe</span>}
+                />
+                {commercial.followups.length === 0 ? (
+                  <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhum retorno pendente.</p>
+                ) : (
+                  <ul>
+                    {commercial.followups.slice(0, 8).map((l) => {
+                      const late = l.next_contact_date! < today();
+                      const owner = l.owner_id ? maps.profiles[l.owner_id] : null;
+                      return (
+                        <li key={l.id}>
+                          <Link
+                            to={`/oportunidades?lead=${l.id}`}
+                            className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-hairline py-3 transition-colors hover:bg-ink/[0.025] md:grid-cols-[minmax(0,1fr)_140px_110px]"
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate text-[13.5px] text-ink">{l.name}</span>
+                              <span className="block truncate text-[12.5px] text-faint">
+                                {maps.stages[l.stage_id]?.name} · {l.city}
+                              </span>
+                            </span>
+                            <span className="hidden truncate text-[13px] text-muted md:block">{owner?.name ?? 'Sem responsável'}</span>
+                            <span className={cn('text-right text-[12.5px]', late ? 'text-danger-fg' : 'text-warning-fg')}>
+                              {late ? `desde ${formatDateShort(l.next_contact_date!)}` : 'hoje'}
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                    {commercial.followups.length > 8 && (
+                      <li className="border-t border-hairline pt-3 text-[12.5px] text-faint">
+                        e mais {commercial.followups.length - 8} · <ActionLink to="/oportunidades" muted>ver no funil</ActionLink>
+                      </li>
+                    )}
+                  </ul>
+                )}
               </section>
             </div>
 

@@ -9,6 +9,7 @@ import {
   Clock,
   Contact,
   FolderKanban,
+  LayoutDashboard,
   LayoutGrid,
   ListChecks,
   LogOut,
@@ -60,6 +61,7 @@ interface NavItem {
 
 const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/$/, 'Painel'],
+  [/^\/meu-painel/, 'Meu painel'],
   [/^\/oportunidades/, 'Oportunidades'],
   [/^\/clientes/, 'Clientes'],
   [/^\/projetos/, 'Projetos'],
@@ -73,7 +75,7 @@ const PAGE_TITLES: Array<[RegExp, string]> = [
 const ICON = 'h-4 w-4';
 
 export function AppLayout() {
-  const { db, me, settings, can } = useData();
+  const { db, me, settings, can, isAdmin } = useData();
   const { setBranding } = useBranding();
   useEffect(() => {
     setBranding({ office_name: settings.office_name, logo_url: settings.logo_url ?? null });
@@ -129,10 +131,16 @@ export function AppLayout() {
   }, [db.leads, db.lead_stages, can]);
 
   // Grupos separados apenas por espaço, sem rótulos. Nomes inalterados.
-  // Projetos é o primeiro bloco: Painel (com a agenda), lista de projetos e tarefas.
+  // Primeiro bloco: telas iniciais, projetos e tarefas. O administrador abre no dashboard
+  // do escritório e tem o próprio painel ao lado; os demais abrem no próprio painel.
   const groups: NavItem[][] = [
     [
-      { to: '/', label: 'Painel', icon: LayoutGrid, end: true },
+      ...(isAdmin
+        ? [
+            { to: '/', label: 'Escritório', icon: LayoutDashboard, end: true },
+            { to: '/meu-painel', label: 'Meu painel', icon: LayoutGrid },
+          ]
+        : [{ to: '/', label: 'Meu painel', icon: LayoutGrid, end: true }]),
       { to: '/projetos', label: 'Projetos', icon: Building2, module: 'projetos' },
       { to: '/tarefas', label: 'Minhas tarefas', icon: ListChecks, count: myOpenTasks },
     ],
@@ -478,10 +486,11 @@ function SheetItem({ icon, label, onClick, to }: { icon: ReactNode; label: strin
 
 function MoreSheet({ onClose, onAssistant }: { onClose: () => void; onAssistant: () => void }) {
   const { signOut } = useAuth();
-  const { can } = useData();
+  const { can, isAdmin } = useData();
   const comercialInBar = !can('projetos') && can('comercial');
   return (
     <Sheet title="Mais" onClose={onClose}>
+      {isAdmin && <SheetItem to="/meu-painel" icon={<LayoutGrid strokeWidth={1.6} />} label="Meu painel" />}
       <SheetItem to="/?aba=agenda" icon={<CalendarDays strokeWidth={1.6} />} label="Agenda" />
       {can('comercial') && !comercialInBar && <SheetItem to="/oportunidades" icon={<FolderKanban strokeWidth={1.6} />} label="Oportunidades" />}
       {can('comercial') && <SheetItem to="/clientes" icon={<Contact strokeWidth={1.6} />} label="Clientes" />}

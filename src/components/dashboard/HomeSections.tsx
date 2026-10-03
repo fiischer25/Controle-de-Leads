@@ -1,10 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
-import { cn, weekdayDay } from '../../lib/utils';
+import { cn, formatCurrency, weekdayDay } from '../../lib/utils';
 import { ActionLink, Avatar, AvatarStack } from '../ui';
 import { ProjectDeadline, StageRail } from '../projects/StageRail';
 import { useOpenTask } from '../tasks/useOpenTask';
-import type { AgendaItem, HomeProject, TeamRow } from './useHomeData';
+import type { AgendaItem, FunnelRow, HomeProject, TeamRow } from './useHomeData';
 
 const WEEK_HOURS = 40;
 
@@ -120,11 +120,13 @@ export function ProjectsSection({
   soonDays,
   title = 'Projetos',
   limit = 6,
+  empty = 'Nenhum projeto ativo.',
 }: {
   projects: HomeProject[];
   soonDays: number;
   title?: string;
   limit?: number;
+  empty?: string;
 }) {
   const { can } = useData();
   const linkable = can('projetos');
@@ -146,7 +148,7 @@ export function ProjectsSection({
         )}
       </div>
       {shown.length === 0 ? (
-        <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhum projeto ativo.</p>
+        <p className="border-t border-hairline py-4 text-[13px] text-faint">{empty}</p>
       ) : (
         <ul>
           {shown.map(({ summary: s, phases, current }) => {
@@ -243,6 +245,47 @@ export function TeamSection({ team }: { team: TeamRow[] }) {
             </div>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- Funil
+export function FunnelSection({ rows, total, conversion }: { rows: FunnelRow[]; total: number; conversion: number | null }) {
+  const count = rows.reduce((acc, r) => acc + r.count, 0);
+  return (
+    <section aria-labelledby="funil">
+      <div className="mb-4 flex items-baseline justify-between">
+        <h2 id="funil" className="font-display text-section text-ink">Funil</h2>
+        <ActionLink to="/oportunidades" muted>Abrir</ActionLink>
+      </div>
+      <div className="border-t border-hairline pt-4">
+        <div className="font-display text-metric tabular text-ink">{formatCurrency(total)}</div>
+        <div className="mt-1 text-[12.5px] text-faint">
+          em {count} {count === 1 ? 'oportunidade aberta' : 'oportunidades abertas'}
+        </div>
+        <div className="mt-4 flex h-1 gap-0.5 overflow-hidden rounded-[2px]" aria-hidden>
+          {count === 0 ? (
+            <span className="flex-1 bg-line-strong" />
+          ) : (
+            rows.filter((r) => r.count > 0).map((r) => <span key={r.stage.id} style={{ flex: r.count, backgroundColor: r.color }} />)
+          )}
+        </div>
+        <ul className="mt-4 space-y-2.5">
+          {rows.map((r) => (
+            <li key={r.stage.id} className="grid grid-cols-[minmax(0,1fr)_24px_auto] items-baseline gap-3">
+              <span className="flex min-w-0 items-center gap-2 text-[13px] text-stone-700">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} aria-hidden />
+                <span className="truncate">{r.stage.name}</span>
+              </span>
+              <span className="text-right text-[13px] tabular text-ink">{r.count}</span>
+              <span className="text-right text-[12.5px] tabular text-faint">{r.value ? formatCurrency(r.value) : r.count ? 'sem proposta' : '—'}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 border-t border-hairline pt-3 text-[12.5px] text-faint">
+          90 dias · {conversion === null ? 'sem fechamentos' : `${conversion}% de conversão`}
+        </div>
       </div>
     </section>
   );

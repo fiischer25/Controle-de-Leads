@@ -94,7 +94,11 @@ function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-export function useHomeData() {
+/**
+ * Dados das telas iniciais. `scope = 'me'` (padrão): agenda com as entregas dos meus projetos;
+ * `'office'`: entregas de todos os projetos (dashboard do escritório).
+ */
+export function useHomeData(scope: 'me' | 'office' = 'me') {
   const { db, maps, me, settings, can } = useData();
   const canProjects = can('projetos');
   const canCommercial = can('comercial');
@@ -114,6 +118,13 @@ export function useHomeData() {
       return !!p && isProjectActive(p);
     });
     const openLeads: Lead[] = db.leads.filter((l) => stageKind(l.stage_id) === 'open');
+
+    // Meus projetos: sou responsável, faço parte da equipe ou tenho tarefa aberta nele.
+    const myProjectIds = new Set<string>();
+    for (const s of activeSummaries) {
+      if (s.project.manager_id === me.id || s.project.member_ids.includes(me.id)) myProjectIds.add(s.project.id);
+    }
+    for (const x of openTasks) if (x.assignee_id === me.id && x.project_id) myProjectIds.add(x.project_id);
 
     // ------------------------------------------------------------ fila de atenção
     const items: AttentionItem[] = [];
@@ -267,6 +278,7 @@ export function useHomeData() {
     for (const s of activeSummaries) {
       const due = s.project.due_date;
       if (!due || due < t || due > addDays(t, 30)) continue;
+      if (scope === 'me' && !myProjectIds.has(s.project.id)) continue;
       agenda.push({
         id: `due-${s.project.id}`,
         date: due,
@@ -344,6 +356,8 @@ export function useHomeData() {
       })
       .sort((a, b) => b.minutes - a.minutes || b.open - a.open || a.user.name.localeCompare(b.user.name));
 
-    return { items, todayEvents, upcomingEvents, kpis, projects, funnel, funnelTotal, team, soonDays };
-  }, [summaries, db, maps, me.id, settings.due_soon_days, settings.lead_stale_days, canProjects, canCommercial]);
+    const myProjects = projects.filter((p) => myProjectIds.has(p.summary.project.id));
+
+    return { items, todayEvents, upcomingEvents, kpis, projects, myProjects, funnel, funnelTotal, team, soonDays };
+  }, [summaries, db, maps, me.id, settings.due_soon_days, settings.lead_stale_days, canProjects, canCommercial, scope]);
 }

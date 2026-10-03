@@ -336,7 +336,7 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
         <p className="mt-1 text-[12.5px] text-muted">
           {isAdminRole
             ? 'Administradores têm acesso a tudo, inclusive à gestão da equipe.'
-            : 'O Painel de Projetos, a agenda e as tarefas atribuídas a ela ficam sempre disponíveis.'}
+            : 'O Meu painel (com a agenda) e as tarefas atribuídas a ela ficam sempre disponíveis. O dashboard do escritório é só dos administradores.'}
         </p>
         <ul className="mt-3 divide-y divide-hairline-surface">
           {MODULES.map((m) => (
