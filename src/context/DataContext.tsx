@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { backend, type NewUserInput } from '../lib/backend';
-import { defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from '../lib/defaults';
+import { defaultFinanceAccount, defaultFinanceCategories, defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from '../lib/defaults';
 import { buildProjectTasks, nextProjectCode } from '../lib/domain';
 import {
   TABLES,
@@ -178,6 +178,11 @@ export function DataProvider({ userId, children }: { userId: string; children: R
             seeds.push(backend.insert('project_types', types).then(() => backend.insert('task_templates', templates)));
           }
           if (current.app_settings.length === 0) seeds.push(backend.insert('app_settings', [defaultSettings()]));
+          // No Supabase, as categorias e a conta inicial do Financeiro vêm da migração.
+          if (backend.mode === 'local' && current.finance_categories.length === 0) {
+            seeds.push(backend.insert('finance_categories', defaultFinanceCategories()));
+            if (current.finance_accounts.length === 0) seeds.push(backend.insert('finance_accounts', [defaultFinanceAccount()]));
+          }
           if (seeds.length) {
             await Promise.all(seeds);
             await refresh();
@@ -230,17 +235,22 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   // no modo demonstração o filtro é só este).
   const canCommercial = can('comercial');
   const canClients = canCommercial || can('projetos');
+  const canFinance = can('financeiro');
   const visibleDb = useMemo<Db>(
     () =>
-      canCommercial && canClients
+      canCommercial && canClients && canFinance
         ? db
         : {
             ...db,
             leads: canCommercial ? db.leads : [],
             lead_interactions: canCommercial ? db.lead_interactions : [],
             clients: canClients ? db.clients : [],
+            finance_accounts: canFinance ? db.finance_accounts : [],
+            finance_categories: canFinance ? db.finance_categories : [],
+            finance_entries: canFinance ? db.finance_entries : [],
+            finance_member_costs: canFinance ? db.finance_member_costs : [],
           },
-    [db, canCommercial, canClients],
+    [db, canCommercial, canClients, canFinance],
   );
 
   const maps = useMemo(

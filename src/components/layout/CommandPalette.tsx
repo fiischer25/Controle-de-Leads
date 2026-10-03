@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, CalendarDays, CornerDownLeft, FolderKanban, LayoutGrid, ListChecks, Search, UsersRound } from 'lucide-react';
+import { Briefcase, CalendarDays, Wallet, CornerDownLeft, FolderKanban, LayoutGrid, ListChecks, Search, UsersRound } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { cn, matches } from '../../lib/utils';
 
@@ -33,6 +33,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         { id: 'go-tasks', group: 'Ir para', icon: <ListChecks className="h-4 w-4" />, title: 'Minhas tarefas', to: '/tarefas' },
         { id: 'go-agenda', group: 'Ir para', icon: <CalendarDays className="h-4 w-4" />, title: 'Agenda', to: '/?aba=agenda' },
         can('comercial') && { id: 'go-leads', group: 'Ir para', icon: <FolderKanban className="h-4 w-4" />, title: 'Oportunidades', to: '/oportunidades' },
+        can('financeiro') && { id: 'go-finance', group: 'Ir para', icon: <Wallet className="h-4 w-4" />, title: 'Financeiro', to: '/financeiro' },
         can('comercial') && { id: 'go-clients', group: 'Ir para', icon: <UsersRound className="h-4 w-4" />, title: 'Clientes', to: '/clientes' },
       ];
       return go.filter((r): r is Result => !!r);

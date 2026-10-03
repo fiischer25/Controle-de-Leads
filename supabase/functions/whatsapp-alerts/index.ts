@@ -35,7 +35,7 @@ const TIMEZONE = Deno.env.get('AGENT_TIMEZONE') || 'America/Sao_Paulo';
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
 // --------------------------------------------------------------------------- tipos
-type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes';
+type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes' | 'financeiro';
 
 export interface AlertProfile {
   id: string;

@@ -22,7 +22,7 @@ export interface Profile {
 // --------------------------------------------------------------------------- acessos por módulo
 // Espelha src/lib/permissions.ts: o assistente usa a chave de serviço (ignora o RLS),
 // então as ferramentas conferem os módulos de quem está falando.
-export type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes';
+export type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes' | 'financeiro';
 const DEFAULT_MODULES: ModuleKey[] = ['projetos', 'comercial', 'relatorios', 'equipe'];
 
 export function hasModule(me: Profile, module: ModuleKey): boolean {

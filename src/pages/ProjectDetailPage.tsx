@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { ProjectFinanceTab } from '../components/finance/ProjectFinanceTab';
 import { useToast } from '../context/ToastContext';
 import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
 import { orderedPhases, totalMinutes } from '../lib/domain';
@@ -50,16 +51,18 @@ import { GanttChart } from '../components/projects/GanttChart';
 import { MemberPicker } from '../components/projects/ProjectFields';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
 
-type Tab = 'tasks' | 'timeline' | 'team' | 'info' | 'activity';
+type Tab = 'tasks' | 'timeline' | 'team' | 'info' | 'finance' | 'activity';
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
-  const { db, maps, isAdmin, settings, updateProject, deleteProject, applyTemplates, createTask } = useData();
+  const { db, maps, isAdmin, settings, updateProject, deleteProject, applyTemplates, createTask, can } = useData();
   const summary = useProjectSummaries().find((s) => s.project.id === id);
   const toast = useToast();
   const navigate = useNavigate();
   const openTask = useOpenTask();
-  const [tab, setTab] = useState<Tab>('tasks');
+  const [params] = useSearchParams();
+  // ?aba=financeiro abre direto no Financeiro (link da Rentabilidade)
+  const [tab, setTab] = useState<Tab>(() => (params.get('aba') === 'financeiro' && can('financeiro') ? 'finance' : 'tasks'));
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [newTask, setNewTask] = useState<{ phase: string | null } | null>(null);
@@ -218,6 +221,7 @@ export default function ProjectDetailPage() {
           { id: 'timeline', label: 'Cronograma' },
           { id: 'team', label: 'Equipe e horas', count: people.length },
           { id: 'info', label: 'Informações' },
+          ...(can('financeiro') ? [{ id: 'finance' as const, label: 'Financeiro' }] : []),
           { id: 'activity', label: 'Atividade' },
         ]}
       />
@@ -291,6 +295,8 @@ export default function ProjectDetailPage() {
         {tab === 'team' && <TeamTab project={project} tasks={tasks} />}
 
         {tab === 'info' && <InfoTab project={project} />}
+
+        {tab === 'finance' && can('financeiro') && <ProjectFinanceTab project={project} />}
 
         {tab === 'activity' &&
           (activity.length === 0 ? (

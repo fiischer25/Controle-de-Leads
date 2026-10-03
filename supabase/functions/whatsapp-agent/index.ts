@@ -19,13 +19,12 @@ async function process(payload: unknown) {
   const db = adminClient();
   for (const msg of parseWebhook(payload)) {
     try {
-      await markRead(wa, msg.id);
+      // O número pode ser o mesmo que o escritório usa com clientes (WhatsApp Business app +
+      // API). Mensagens de quem não é da equipe ficam intocadas: sem resposta automática e
+      // sem marcar como lida, para a equipe atender pelo aplicativo normalmente.
       const me = await findProfileByPhone(db, msg.from);
-      if (!me) {
-        await sendText(wa, msg.from,
-          'Olá! Este número não está cadastrado na equipe. Peça ao administrador para colocar seu WhatsApp no seu cadastro (Equipe → editar membro → Telefone).');
-        continue;
-      }
+      if (!me) continue;
+      await markRead(wa, msg.id);
       if (!msg.text?.trim()) {
         await sendText(wa, msg.from, 'Por enquanto eu entendo apenas mensagens de texto. Pode escrever o seu pedido? 🙂');
         continue;

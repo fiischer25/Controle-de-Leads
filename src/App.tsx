@@ -19,6 +19,7 @@ const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const FinancePage = lazy(() => import('./pages/FinancePage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -68,6 +69,7 @@ function AuthenticatedApp() {
           <Route path="oportunidades" element={<RequireModule module="comercial"><LeadsPage /></RequireModule>} />
           <Route path="clientes" element={<RequireModule module="comercial"><ClientsPage /></RequireModule>} />
           <Route path="clientes/:id" element={<RequireModule module="comercial"><ClientDetailPage /></RequireModule>} />
+          <Route path="financeiro" element={<RequireModule module="financeiro"><FinancePage /></RequireModule>} />
           <Route path="relatorios" element={<RequireModule module="relatorios"><ReportsPage /></RequireModule>} />
           <Route path="equipe" element={<RequireModule module="equipe"><TeamPage /></RequireModule>} />
           <Route path="configuracoes" element={<RequireModule module="configuracoes"><SettingsPage /></RequireModule>} />

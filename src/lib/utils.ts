@@ -157,6 +157,13 @@ export function formatCurrency(v: number | null | undefined): string {
   return currencyFmt.format(v);
 }
 
+const moneyFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Valor com centavos (Financeiro): "R$ 1.234,56". */
+export function formatMoney(v: number | null | undefined): string {
+  if (v == null) return '—';
+  return moneyFmt.format(v);
+}
+
 export function formatNumber(v: number | null | undefined, digits = 0): string {
   if (v == null) return '—';
   return v.toLocaleString('pt-BR', { maximumFractionDigits: digits });

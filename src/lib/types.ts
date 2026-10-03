@@ -8,7 +8,7 @@ export type Role = 'admin' | 'member';
  * Módulos que o administrador libera para cada pessoa. O Meu painel (com a
  * agenda) e as próprias tarefas são de todos; administradores têm acesso a tudo.
  */
-export type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes';
+export type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes' | 'financeiro';
 
 export interface Profile {
   id: string;
@@ -268,6 +268,65 @@ export interface AppSettings {
   updated_at: string;
 }
 
+// ---------------------------------------------------------------- Financeiro
+export type FinanceAccountKind = 'banco' | 'caixa' | 'cartao' | 'investimento' | 'outro';
+export type FinanceKind = 'receita' | 'despesa' | 'transferencia';
+
+export interface FinanceAccount {
+  id: string;
+  name: string;
+  kind: FinanceAccountKind;
+  opening_balance: number;
+  color: string;
+  active: boolean;
+  position: number;
+  created_at: string;
+}
+
+export interface FinanceCategory {
+  id: string;
+  name: string;
+  kind: 'receita' | 'despesa';
+  color: string;
+  active: boolean;
+  position: number;
+  created_at: string;
+}
+
+/** Lançamento: conta a receber, conta a pagar ou transferência entre contas. */
+export interface FinanceEntry {
+  id: string;
+  kind: FinanceKind;
+  description: string;
+  amount: number;
+  due_date: string;
+  /** Data do pagamento/recebimento; null = pendente. */
+  paid_at: string | null;
+  account_id: string | null;
+  /** Transferências: conta de destino. */
+  to_account_id: string | null;
+  category_id: string | null;
+  client_id: string | null;
+  project_id: string | null;
+  /** Parcelas/repetições do mesmo lançamento. */
+  series_id: string | null;
+  installment: number | null;
+  installments: number | null;
+  document: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Custo por hora de cada pessoa (rentabilidade dos projetos). */
+export interface FinanceMemberCost {
+  id: string;
+  user_id: string;
+  hourly_cost: number;
+  updated_at: string;
+}
+
 /** Mapa tabela → tipo de linha. Usado pela camada de dados genérica. */
 export interface Tables {
   profiles: Profile;
@@ -286,9 +345,16 @@ export interface Tables {
   notifications: Notification;
   activity_log: ActivityLog;
   app_settings: AppSettings;
+  finance_accounts: FinanceAccount;
+  finance_categories: FinanceCategory;
+  finance_entries: FinanceEntry;
+  finance_member_costs: FinanceMemberCost;
 }
 
 export type TableName = keyof Tables;
+
+/** Tabelas que podem ainda não existir no banco (migração não executada): carregam vazias. */
+export const OPTIONAL_TABLES: TableName[] = ['finance_accounts', 'finance_categories', 'finance_entries', 'finance_member_costs'];
 
 export const TABLES: TableName[] = [
   'profiles',
@@ -307,4 +373,8 @@ export const TABLES: TableName[] = [
   'notifications',
   'activity_log',
   'app_settings',
+  'finance_accounts',
+  'finance_categories',
+  'finance_entries',
+  'finance_member_costs',
 ];
