@@ -72,23 +72,48 @@ create table if not exists public.finance_member_costs (
 );
 
 -- -----------------------------------------------------------------------------
--- Segurança: tudo exige o módulo Financeiro (administradores sempre têm)
+-- Segurança: tudo exige o módulo Financeiro (administradores sempre têm).
+-- Comandos escritos um a um para o SQL Editor do Supabase reconhecer o RLS.
 -- -----------------------------------------------------------------------------
-do $$
-declare t text;
-begin
-  foreach t in array array['finance_accounts', 'finance_categories', 'finance_entries', 'finance_member_costs'] loop
-    execute format('alter table public.%I enable row level security', t);
-    execute format('drop policy if exists airos_%1$s_select on public.%1$s', t);
-    execute format('drop policy if exists airos_%1$s_insert on public.%1$s', t);
-    execute format('drop policy if exists airos_%1$s_update on public.%1$s', t);
-    execute format('drop policy if exists airos_%1$s_delete on public.%1$s', t);
-    execute format('create policy airos_%1$s_select on public.%1$s for select to authenticated using (public.has_module(''financeiro''))', t);
-    execute format('create policy airos_%1$s_insert on public.%1$s for insert to authenticated with check (public.has_module(''financeiro''))', t);
-    execute format('create policy airos_%1$s_update on public.%1$s for update to authenticated using (public.has_module(''financeiro'')) with check (public.has_module(''financeiro''))', t);
-    execute format('create policy airos_%1$s_delete on public.%1$s for delete to authenticated using (public.has_module(''financeiro''))', t);
-  end loop;
-end $$;
+alter table public.finance_accounts enable row level security;
+drop policy if exists airos_finance_accounts_select on public.finance_accounts;
+drop policy if exists airos_finance_accounts_insert on public.finance_accounts;
+drop policy if exists airos_finance_accounts_update on public.finance_accounts;
+drop policy if exists airos_finance_accounts_delete on public.finance_accounts;
+create policy airos_finance_accounts_select on public.finance_accounts for select to authenticated using (public.has_module('financeiro'));
+create policy airos_finance_accounts_insert on public.finance_accounts for insert to authenticated with check (public.has_module('financeiro'));
+create policy airos_finance_accounts_update on public.finance_accounts for update to authenticated using (public.has_module('financeiro')) with check (public.has_module('financeiro'));
+create policy airos_finance_accounts_delete on public.finance_accounts for delete to authenticated using (public.has_module('financeiro'));
+
+alter table public.finance_categories enable row level security;
+drop policy if exists airos_finance_categories_select on public.finance_categories;
+drop policy if exists airos_finance_categories_insert on public.finance_categories;
+drop policy if exists airos_finance_categories_update on public.finance_categories;
+drop policy if exists airos_finance_categories_delete on public.finance_categories;
+create policy airos_finance_categories_select on public.finance_categories for select to authenticated using (public.has_module('financeiro'));
+create policy airos_finance_categories_insert on public.finance_categories for insert to authenticated with check (public.has_module('financeiro'));
+create policy airos_finance_categories_update on public.finance_categories for update to authenticated using (public.has_module('financeiro')) with check (public.has_module('financeiro'));
+create policy airos_finance_categories_delete on public.finance_categories for delete to authenticated using (public.has_module('financeiro'));
+
+alter table public.finance_entries enable row level security;
+drop policy if exists airos_finance_entries_select on public.finance_entries;
+drop policy if exists airos_finance_entries_insert on public.finance_entries;
+drop policy if exists airos_finance_entries_update on public.finance_entries;
+drop policy if exists airos_finance_entries_delete on public.finance_entries;
+create policy airos_finance_entries_select on public.finance_entries for select to authenticated using (public.has_module('financeiro'));
+create policy airos_finance_entries_insert on public.finance_entries for insert to authenticated with check (public.has_module('financeiro'));
+create policy airos_finance_entries_update on public.finance_entries for update to authenticated using (public.has_module('financeiro')) with check (public.has_module('financeiro'));
+create policy airos_finance_entries_delete on public.finance_entries for delete to authenticated using (public.has_module('financeiro'));
+
+alter table public.finance_member_costs enable row level security;
+drop policy if exists airos_finance_member_costs_select on public.finance_member_costs;
+drop policy if exists airos_finance_member_costs_insert on public.finance_member_costs;
+drop policy if exists airos_finance_member_costs_update on public.finance_member_costs;
+drop policy if exists airos_finance_member_costs_delete on public.finance_member_costs;
+create policy airos_finance_member_costs_select on public.finance_member_costs for select to authenticated using (public.has_module('financeiro'));
+create policy airos_finance_member_costs_insert on public.finance_member_costs for insert to authenticated with check (public.has_module('financeiro'));
+create policy airos_finance_member_costs_update on public.finance_member_costs for update to authenticated using (public.has_module('financeiro')) with check (public.has_module('financeiro'));
+create policy airos_finance_member_costs_delete on public.finance_member_costs for delete to authenticated using (public.has_module('financeiro'));
 
 -- Tempo real
 do $$
