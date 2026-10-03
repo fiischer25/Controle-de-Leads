@@ -5,7 +5,8 @@ import { useData } from '../context/DataContext';
 import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
 import type { ProjectStatus } from '../lib/types';
 import { byPosition, cn, downloadFile, formatDate, formatMinutes, matches, toCsv, today } from '../lib/utils';
-import { AvatarStack, Badge, Button, DueBadge, EmptyState, Input, PageHeader, ProgressBar, Segmented, Select } from '../components/ui';
+import { CSS_COLOR } from '../lib/status';
+import { AvatarStack, Button, DueBadge, EmptyState, Input, PageHeader, ProgressBar, Segmented, Select, StatusBadge } from '../components/ui';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { useProjectSummaries, type ProjectSummary } from '../components/projects/useProjectSummaries';
 
@@ -158,31 +159,30 @@ function KpiButton({ icon, label, value, tone, onClick, active }: { icon: ReactN
         <span className="text-stone-300">{icon}</span>
         {label}
       </div>
-      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' && value > 0 ? 'text-rose-700' : 'text-ink-900')}>{value}</div>
+      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' && value > 0 ? 'text-danger-fg' : 'text-ink')}>{value}</div>
     </button>
   );
 }
 
 function ProjectCard({ s, soonDays }: { s: ProjectSummary; soonDays: number }) {
   const p = s.project;
-  const st = PROJECT_STATUS[p.status];
   const finished = p.status === 'concluido' || p.status === 'cancelado';
   return (
     <Link
       to={`/projetos/${p.id}`}
       className={cn(
         'card group relative flex flex-col overflow-hidden p-5 transition-all hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md',
-        s.deadline === 'overdue' && 'border-rose-200',
+        s.deadline === 'overdue' && 'border-danger-line',
       )}
     >
-      <span className="absolute inset-y-0 left-0 w-1" style={{ backgroundColor: s.type?.color ?? '#d6d3d1' }} />
+      <span className="absolute inset-y-0 left-0 w-1" style={{ backgroundColor: s.type?.color ?? CSS_COLOR.stone(300) }} />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] font-medium uppercase tracking-wider text-stone-400">{p.code}</div>
-          <h3 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-900 group-hover:text-stone-600 tracking-tight">{p.name}</h3>
+          <h3 className="mt-0.5 truncate font-display text-lg font-semibold text-ink group-hover:text-stone-600 tracking-tight">{p.name}</h3>
           <div className="truncate text-sm text-stone-500">{s.client?.name ?? 'Cliente removido'}</div>
         </div>
-        <Badge className={st.badge} dot={st.dot}>{st.label}</Badge>
+        <StatusBadge kind="project" value={p.status} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
         {s.type && <span className="font-medium" style={{ color: s.type.color }}>{s.type.name}</span>}
@@ -191,16 +191,16 @@ function ProjectCard({ s, soonDays }: { s: ProjectSummary; soonDays: number }) {
       </div>
       <div className="mt-4">
         <div className="mb-1.5 flex items-baseline justify-between text-xs">
-          <span className="font-medium text-stone-700">Etapa: <span className="text-ink-900">{s.phase}</span></span>
-          <span className="font-semibold text-ink-900 tabular">{s.progress}%</span>
+          <span className="font-medium text-stone-700">Etapa: <span className="text-ink">{s.phase}</span></span>
+          <span className="font-semibold text-ink tabular">{s.progress}%</span>
         </div>
-        <ProgressBar value={s.progress} color={p.status === 'concluido' ? '#10b981' : undefined} />
+        <ProgressBar value={s.progress} color={p.status === 'concluido' ? CSS_COLOR.success : undefined} />
       </div>
       <div className="mt-4 flex items-center justify-between gap-2 border-t border-line/70 pt-3">
         <div className="flex items-center gap-2">
           <DueBadge due={p.due_date} done={finished} soonDays={soonDays} />
           {s.overdueTasks > 0 && !finished && (
-            <span className="text-xs font-medium text-rose-600">{s.overdueTasks} tarefa{s.overdueTasks > 1 ? 's' : ''} atrasada{s.overdueTasks > 1 ? 's' : ''}</span>
+            <span className="text-xs font-medium text-danger-fg">{s.overdueTasks} tarefa{s.overdueTasks > 1 ? 's' : ''} atrasada{s.overdueTasks > 1 ? 's' : ''}</span>
           )}
         </div>
         <AvatarStack users={s.people} />
@@ -228,20 +228,19 @@ function ProjectTable({ items, soonDays }: { items: ProjectSummary[]; soonDays: 
         <tbody className="divide-y divide-line/70">
           {items.map((s) => {
             const p = s.project;
-            const st = PROJECT_STATUS[p.status];
             return (
               <tr key={p.id} className="cursor-pointer hover:bg-stone-50" onClick={() => navigate(`/projetos/${p.id}`)}>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="h-8 w-1 rounded-full" style={{ backgroundColor: s.type?.color ?? '#d6d3d1' }} />
+                    <span className="h-8 w-1 rounded-full" style={{ backgroundColor: s.type?.color ?? CSS_COLOR.stone(300) }} />
                     <div>
-                      <div className="font-semibold text-ink-900">{p.name}</div>
+                      <div className="font-semibold text-ink">{p.name}</div>
                       <div className="text-xs text-stone-500">{p.code} · {s.type?.name}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-stone-700">{s.client?.name}</td>
-                <td className="px-4 py-3"><Badge className={st.badge} dot={st.dot}>{st.label}</Badge></td>
+                <td className="px-4 py-3"><StatusBadge kind="project" value={p.status} /></td>
                 <td className="px-4 py-3 text-stone-700">{s.phase}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">

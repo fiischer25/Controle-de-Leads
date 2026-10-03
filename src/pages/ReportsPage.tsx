@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { BarChart3, Clock, Download, Hourglass, Target, Timer, TrendingUp, Trophy } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { CSS_COLOR, personColor } from '../lib/status';
 import { entryMinutes } from '../lib/domain';
 import { addDays, cn, diffDays, downloadFile, formatDate, formatMinutes, formatNumber, MONTHS_FULL, toCsv, toDateKey, today } from '../lib/utils';
 import { Avatar, BarRow, Button, Card, CardHeader, PageHeader, Select } from '../components/ui';
@@ -161,15 +162,15 @@ export default function ReportsPage() {
         <CardHeader icon={<BarChart3 className="h-4 w-4" />} title="Últimos 12 meses" subtitle="Leads recebidos, fechamentos e entregas por mês" />
         <div className="px-5 pb-5">
           <div className="mb-3 flex flex-wrap gap-4 text-xs text-stone-600">
-            <Legend color="#2a78d6" label="Leads recebidos" />
-            <Legend color="#eb6834" label="Fechados" />
-            <Legend color="#1baf7a" label="Projetos entregues" />
+            <Legend color={CSS_COLOR.stone(300)} label="Leads recebidos" />
+            <Legend color={CSS_COLOR.brand(500)} label="Fechados" />
+            <Legend color={CSS_COLOR.success} label="Projetos entregues" />
           </div>
           <div className="flex h-56 items-end gap-2 border-b border-line">
             {r.months.map((m) => (
               <div key={m.key} className="flex h-full flex-1 flex-col justify-end" title={`${m.label}: ${m.leads} leads, ${m.won} fechados, ${m.delivered} entregues`}>
                 <div className="flex h-full items-end justify-center gap-[2px]">
-                  {[['#2a78d6', m.leads], ['#eb6834', m.won], ['#1baf7a', m.delivered]].map(([c, v]) => (
+                  {[[CSS_COLOR.stone(300), m.leads], [CSS_COLOR.brand(500), m.won], [CSS_COLOR.success, m.delivered]].map(([c, v]) => (
                     <div key={c as string} className="w-full max-w-[14px] rounded-t-[4px]" style={{ height: `${((v as number) / maxMonth) * 100}%`, minHeight: (v as number) > 0 ? 3 : 0, backgroundColor: c as string }} />
                   ))}
                 </div>
@@ -184,7 +185,7 @@ export default function ReportsPage() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Conversão por origem" subtitle="Leads que entraram no período" />
+          <CardHeader title="Como os clientes chegam" subtitle="Conversão por origem dos leads que entraram no período" />
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-stone-400">
@@ -219,14 +220,14 @@ export default function ReportsPage() {
             <CardHeader title="Motivos de perda" />
             <div className="space-y-3 px-5 pb-5">
               {r.lostReasons.length === 0 && <p className="text-sm text-stone-500">Nenhuma perda no período. 🎉</p>}
-              {r.lostReasons.map(([reason, n]) => <BarRow key={reason} label={reason} value={n} max={r.lostReasons[0][1]} color="#e34948" />)}
+              {r.lostReasons.map(([reason, n]) => <BarRow key={reason} label={reason} value={n} max={r.lostReasons[0][1]} color={CSS_COLOR.stone(500)} />)}
             </div>
           </Card>
           <Card>
             <CardHeader title="Leads por cidade" />
             <div className="space-y-3 px-5 pb-5">
               {r.cities.length === 0 && <p className="text-sm text-stone-500">Sem dados.</p>}
-              {r.cities.map(([city, n]) => <BarRow key={city} label={city} value={n} max={r.cities[0][1]} color="#2a78d6" />)}
+              {r.cities.map(([city, n]) => <BarRow key={city} label={city} value={n} max={r.cities[0][1]} />)}
             </div>
           </Card>
         </div>
@@ -246,7 +247,7 @@ export default function ReportsPage() {
                   value={Math.round(min / 60)}
                   suffix="h"
                   max={Math.round(r.byMember[0][1] / 60) || 1}
-                  color={u?.color}
+                  color={personColor(uid)}
                   title={formatMinutes(min)}
                 />
               );
@@ -267,7 +268,7 @@ export default function ReportsPage() {
           <div className="space-y-3 px-5 pb-5">
             {r.byType.length === 0 && <p className="text-sm text-stone-500">Nenhuma hora registrada.</p>}
             {r.byType.map(([name, min]) => (
-              <BarRow key={name} label={name} value={Math.round(min / 60)} suffix="h" max={Math.round(r.byType[0][1] / 60) || 1} color="#1baf7a" title={formatMinutes(min)} />
+              <BarRow key={name} label={name} value={Math.round(min / 60)} suffix="h" max={Math.round(r.byType[0][1] / 60) || 1} color={CSS_COLOR.brand(500)} title={formatMinutes(min)} />
             ))}
           </div>
           {r.perSqm.length > 0 && (
@@ -294,7 +295,7 @@ function Tile({ icon, label, value, sub }: { icon: ReactNode; label: string; val
 function Legend({ color, label }: { color: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
+      <span className="h-2.5 w-2.5 rounded-[2px]" style={{ backgroundColor: color }} />
       {label}
     </span>
   );

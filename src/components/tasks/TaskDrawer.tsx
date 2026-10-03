@@ -94,7 +94,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => title.trim() && title !== task.title && save({ title: title.trim() })}
-            className="mt-1 w-full rounded-md bg-transparent font-display text-xl font-semibold text-ink-900 outline-none focus:bg-stone-50 tracking-tight"
+            className="mt-1 w-full rounded-xs bg-transparent font-display text-xl font-semibold text-ink outline-none focus:bg-stone-50 tracking-tight"
             aria-label="Título da tarefa"
           />
           <div className="mt-2 flex flex-wrap gap-2">
@@ -112,8 +112,8 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
               key={s}
               onClick={() => save({ status: s })}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ring-inset transition-colors',
-                task.status === s ? TASK_STATUS[s].badge + ' ring-2' : 'bg-white text-stone-500 ring-stone-200 hover:bg-stone-50',
+                'inline-flex h-7 items-center gap-1.5 rounded-xs border px-2.5 text-xs font-medium transition-colors',
+                task.status === s ? cn('border-transparent', TASK_STATUS[s].badge) : 'border-line text-muted hover:bg-subtle hover:text-ink',
               )}
             >
               <span className={cn('h-1.5 w-1.5 rounded-full', TASK_STATUS[s].dot)} />
@@ -168,7 +168,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
         </Field>
 
         {/* Tempo */}
-        <section className="rounded-2xl border border-line">
+        <section className="rounded-xl border border-line">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-brand-600" />
@@ -200,7 +200,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
             </div>
             <div className="px-3 py-3">
               <div className="text-[11px] uppercase tracking-wide text-stone-500">Estimado</div>
-              <div className={cn('font-display text-lg font-bold tabular', task.estimated_hours && total > task.estimated_hours * 60 && 'text-rose-600')}>
+              <div className={cn('font-display text-lg font-bold tabular', task.estimated_hours && total > task.estimated_hours * 60 && 'text-danger-fg')}>
                 {task.estimated_hours ? `${task.estimated_hours}h` : '—'}
               </div>
             </div>
@@ -250,7 +250,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
           </div>
           <ul className="space-y-1">
             {checklist.map((item) => (
-              <li key={item.id} className="group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-stone-50">
+              <li key={item.id} className="group flex items-center gap-2 rounded-sm px-2 py-1.5 hover:bg-stone-50">
                 <input
                   type="checkbox"
                   checked={item.done}
@@ -259,7 +259,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
                 />
                 <span className={cn('flex-1 text-sm', item.done && 'text-stone-400 line-through')}>{item.text}</span>
                 <button
-                  className="text-stone-300 opacity-0 hover:text-rose-600 group-hover:opacity-100"
+                  className="text-stone-300 opacity-0 hover:text-danger-fg group-hover:opacity-100"
                   onClick={() => save({ checklist: checklist.filter((c) => c.id !== item.id) })}
                   aria-label="Remover item"
                 >
@@ -291,7 +291,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
               return (
                 <li key={c.id} className="flex gap-3">
                   <Avatar user={user} size="sm" />
-                  <div className="min-w-0 flex-1 rounded-xl bg-stone-50 px-3 py-2">
+                  <div className="min-w-0 flex-1 rounded-lg bg-stone-50 px-3 py-2">
                     <div className="flex items-center gap-2 text-xs">
                       <span className="font-semibold text-stone-800">{user?.name ?? 'Usuário'}</span>
                       <span className="text-stone-400" title={formatDateTime(c.created_at)}>{formatRelative(c.created_at)}</span>
@@ -333,7 +333,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
           {task.completed_at && <> · concluída em {formatDateTime(task.completed_at)}</>}
         </span>
         {canDelete && (
-          <Button size="xs" variant="ghost" className="text-rose-600 hover:bg-rose-50 hover:text-rose-700" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => setConfirmDelete(true)}>
+          <Button size="xs" variant="ghost" className="text-danger-fg hover:bg-danger-bg hover:text-danger-fg" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => setConfirmDelete(true)}>
             Excluir
           </Button>
         )}

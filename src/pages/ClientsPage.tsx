@@ -82,7 +82,7 @@ export default function ClientsPage() {
               {rows.map(({ client: c, projects, active, source }) => (
                 <tr key={c.id} className="cursor-pointer hover:bg-stone-50" onClick={() => navigate(`/clientes/${c.id}`)}>
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-ink-900">{c.name}</div>
+                    <div className="font-semibold text-ink">{c.name}</div>
                     <div className="text-xs text-stone-500">{c.document}</div>
                   </td>
                   <td className="px-4 py-3">

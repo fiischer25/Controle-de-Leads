@@ -94,7 +94,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
     <Drawer onClose={onClose} width="max-w-md">
       <div className="flex items-center justify-between px-6 pb-3 pt-5">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink-900 text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-surface">
             <Sparkles className="h-4 w-4" strokeWidth={1.8} />
           </span>
           <div>
@@ -109,7 +109,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
 
       <div className="scrollbar-thin flex-1 space-y-4 overflow-y-auto px-6 py-4">
         {!available && (
-          <div className="rounded-2xl border border-dashed border-line p-5 text-sm leading-relaxed text-stone-500">
+          <div className="rounded-xl border border-dashed border-line p-5 text-sm leading-relaxed text-stone-500">
             O assistente roda no servidor e fica disponível quando o sistema estiver conectado ao Supabase, com a chave da
             Anthropic configurada. Veja <b>Configurações → WhatsApp e assistente</b>.
           </div>
@@ -124,7 +124,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
                 <button
                   key={ex}
                   onClick={() => send(ex)}
-                  className="rounded-xl border border-line px-3.5 py-2.5 text-left text-[13px] text-stone-600 transition-colors hover:border-stone-300 hover:bg-canvas"
+                  className="rounded-lg border border-line px-3.5 py-2.5 text-left text-[13px] text-stone-600 transition-colors hover:border-stone-300 hover:bg-canvas"
                 >
                   {ex}
                 </button>
@@ -136,8 +136,8 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
           <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div
               className={cn(
-                'max-w-[85%] rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed',
-                m.role === 'user' ? 'rounded-br-md bg-ink-900 text-white' : 'rounded-bl-md bg-canvas text-ink-900',
+                'max-w-[85%] rounded-xl px-4 py-2.5 text-[13.5px] leading-relaxed',
+                m.role === 'user' ? 'rounded-br-xs bg-ink text-surface' : 'rounded-bl-xs bg-canvas text-ink',
               )}
             >
               {renderRich(m.text)}
@@ -161,7 +161,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
         }}
         className="border-t border-line p-4"
       >
-        <div className="flex items-end gap-2 rounded-2xl border border-line bg-white p-1.5 pl-3.5 focus-within:border-ink-900/30">
+        <div className="flex items-end gap-2 rounded-xl border border-line bg-surface p-1.5 pl-3.5 focus-within:border-ink/30">
           <textarea
             ref={inputRef}
             value={input}
@@ -180,7 +180,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
           <button
             type="submit"
             disabled={!available || busy || !input.trim()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-white transition-opacity disabled:opacity-30"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink text-surface transition-opacity disabled:opacity-30"
             aria-label="Enviar"
           >
             <ArrowUp className="h-4 w-4" />

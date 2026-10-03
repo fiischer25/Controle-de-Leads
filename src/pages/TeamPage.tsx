@@ -74,8 +74,8 @@ export default function TeamPage() {
                   </div>
                   <div className="text-sm text-stone-500">{p.job_title || '—'}</div>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {p.role === 'admin' && <Badge className="bg-brand-50 text-brand-800 ring-brand-200"><ShieldCheck className="h-3 w-3" /> Administrador</Badge>}
-                    {!p.active && <Badge className="bg-stone-100 text-stone-600 ring-stone-200">Desativado</Badge>}
+                    {p.role === 'admin' && <Badge tone="brand"><ShieldCheck /> Administrador</Badge>}
+                    {!p.active && <Badge>Desativado</Badge>}
                   </div>
                 </div>
                 {isAdmin && (
@@ -97,7 +97,7 @@ export default function TeamPage() {
                 <div>
                   <div className="flex items-center justify-center gap-1 text-[11px] text-stone-500"><ListChecks className="h-3 w-3" />Tarefas</div>
                   <div className="font-display text-lg font-medium tracking-tight tabular">{s?.open ?? 0}</div>
-                  {s?.overdue ? <div className="text-[11px] font-medium text-rose-600">{s.overdue} atrasadas</div> : <div className="text-[11px] text-stone-400">em dia</div>}
+                  {s?.overdue ? <div className="text-[11px] font-medium text-danger-fg">{s.overdue} atrasadas</div> : <div className="text-[11px] text-stone-400">em dia</div>}
                 </div>
                 <div>
                   <div className="flex items-center justify-center gap-1 text-[11px] text-stone-500"><Briefcase className="h-3 w-3" />Projetos</div>
@@ -227,13 +227,6 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
             <option value="member">Membro</option>
             <option value="admin">Administrador</option>
           </Select>
-        </Field>
-        <Field label="Cor de identificação">
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {SWATCHES.map((c) => (
-              <button key={c} type="button" onClick={() => setV({ ...v, color: c })} className={cn('h-7 w-7 rounded-full ring-offset-2 transition', v.color === c && 'ring-2 ring-stone-900')} style={{ backgroundColor: c }} aria-label={`Cor ${c}`} />
-            ))}
-          </div>
         </Field>
       </div>
     </Modal>

@@ -3,53 +3,83 @@ import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'reac
 import {
   BarChart3,
   Bell,
-  Briefcase,
+  Building2,
   CalendarDays,
   CheckCheck,
-  ChevronDown,
+  Clock,
+  Contact,
   FolderKanban,
-  LayoutDashboard,
+  LayoutGrid,
   ListChecks,
   LogOut,
-  Menu,
+  Monitor,
+  Moon,
+  MoreHorizontal,
+  Play,
+  Plus,
   Search,
-  Sparkles,
   Settings,
+  Sparkles,
   Square,
+  Sun,
   UserCircle,
   Users,
-  UsersRound,
-  X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { cn, formatClock, formatRelative, today } from '../../lib/utils';
-import { Avatar, Badge, IconButton, MenuItem, Popover } from '../ui';
+import { useBranding } from '../../context/BrandingContext';
+import { useToast } from '../../context/ToastContext';
+import { isProjectActive } from '../../lib/domain';
+import { useTheme, type ThemePref } from '../../lib/theme';
+import { cn, formatRelative, today } from '../../lib/utils';
+import { Avatar, IconButton, MenuItem, Popover, Segmented, Sheet } from '../ui';
 import { TaskDrawer } from '../tasks/TaskDrawer';
+import { TaskFormModal } from '../tasks/TaskFormModal';
+import { LogTimeModal } from '../tasks/LogTimeModal';
+import { LeadFormModal } from '../leads/LeadFormModal';
+import { EventFormModal } from '../events/EventFormModal';
 import { AssistantPanel } from './AssistantPanel';
 import { CommandPalette } from './CommandPalette';
 import { BrandMark } from './Logo';
-import { useBranding } from '../../context/BrandingContext';
+import { useRunningTimer } from './useRunningTimer';
+import type { CreateKind } from '../../lib/create';
 
 interface NavItem {
   to: string;
   label: string;
-  icon: ReactNode;
-  badge?: number;
-  adminOnly?: boolean;
+  icon: typeof LayoutGrid;
   end?: boolean;
+  adminOnly?: boolean;
+  /** Indicador discreto: ponto (retornos pendentes) ou contador. */
+  dot?: boolean;
+  count?: number;
 }
+
+const PAGE_TITLES: Array<[RegExp, string]> = [
+  [/^\/$/, 'Início'],
+  [/^\/oportunidades/, 'Oportunidades'],
+  [/^\/clientes/, 'Clientes'],
+  [/^\/projetos/, 'Projetos'],
+  [/^\/tarefas/, 'Minhas tarefas'],
+  [/^\/agenda/, 'Agenda'],
+  [/^\/relatorios/, 'Relatórios'],
+  [/^\/equipe/, 'Equipe'],
+  [/^\/configuracoes/, 'Configurações'],
+  [/^\/perfil/, 'Meu perfil'],
+];
+
+const ICON = 'h-4 w-4';
 
 export function AppLayout() {
   const { db, me, isAdmin, settings } = useData();
-  const { mode } = useAuth();
   const { setBranding } = useBranding();
   useEffect(() => {
     setBranding({ office_name: settings.office_name, logo_url: settings.logo_url ?? null });
   }, [settings.office_name, settings.logo_url, setBranding]);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [creating, setCreating] = useState<CreateKind | null>(null);
+  const [sheet, setSheet] = useState<'create' | 'more' | null>(null);
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const openTaskId = params.get('tarefa');
@@ -59,7 +89,7 @@ export function AppLayout() {
     setParams(next, { replace: true });
   };
 
-  useEffect(() => setMobileOpen(false), [location.pathname]);
+  useEffect(() => setSheet(null), [location.pathname]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -72,161 +102,400 @@ export function AppLayout() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const myOverdue = useMemo(() => {
-    const t = today();
-    return db.tasks.filter((x) => x.assignee_id === me.id && x.status !== 'done' && x.due_date && x.due_date <= t).length;
-  }, [db.tasks, me.id]);
+  // Atalhos globais de criação (usados pelo Início e pelo menu "+" do celular).
+  useEffect(() => {
+    const onCreate = (e: Event) => setCreating((e as CustomEvent<CreateKind>).detail);
+    window.addEventListener('airos:create', onCreate);
+    return () => window.removeEventListener('airos:create', onCreate);
+  }, []);
 
-  const followUps = useMemo(() => {
+  const myOpenTasks = useMemo(
+    () =>
+      db.tasks.filter((x) => {
+        if (x.assignee_id !== me.id || x.status === 'done') return false;
+        const p = x.project_id ? db.projects.find((pr) => pr.id === x.project_id) : null;
+        return !p || isProjectActive(p);
+      }).length,
+    [db.tasks, db.projects, me.id],
+  );
+
+  const pendingFollowUps = useMemo(() => {
     const t = today();
     const openStages = new Set(db.lead_stages.filter((s) => s.kind === 'open').map((s) => s.id));
     return db.leads.filter((l) => openStages.has(l.stage_id) && l.next_contact_date && l.next_contact_date <= t).length;
   }, [db.leads, db.lead_stages]);
 
-  const nav: NavItem[] = [
-    { to: '/', label: 'Início', icon: <LayoutDashboard className="h-[17px] w-[17px]" strokeWidth={1.6} />, end: true },
-    { to: '/oportunidades', label: 'Oportunidades', icon: <FolderKanban className="h-[17px] w-[17px]" strokeWidth={1.6} />, badge: followUps },
-    { to: '/clientes', label: 'Clientes', icon: <UsersRound className="h-[17px] w-[17px]" strokeWidth={1.6} /> },
-    { to: '/projetos', label: 'Projetos', icon: <Briefcase className="h-[17px] w-[17px]" strokeWidth={1.6} /> },
-    { to: '/tarefas', label: 'Minhas tarefas', icon: <ListChecks className="h-[17px] w-[17px]" strokeWidth={1.6} />, badge: myOverdue },
-    { to: '/agenda', label: 'Agenda', icon: <CalendarDays className="h-[17px] w-[17px]" strokeWidth={1.6} /> },
-    { to: '/relatorios', label: 'Relatórios', icon: <BarChart3 className="h-[17px] w-[17px]" strokeWidth={1.6} /> },
-    { to: '/equipe', label: 'Equipe', icon: <Users className="h-[17px] w-[17px]" strokeWidth={1.6} /> },
-    { to: '/configuracoes', label: 'Configurações', icon: <Settings className="h-[17px] w-[17px]" strokeWidth={1.6} />, adminOnly: true },
+  // Grupos separados apenas por espaço, sem rótulos. Nomes inalterados.
+  const groups: NavItem[][] = [
+    [{ to: '/', label: 'Início', icon: LayoutGrid, end: true }],
+    [
+      { to: '/oportunidades', label: 'Oportunidades', icon: FolderKanban, dot: pendingFollowUps > 0 },
+      { to: '/clientes', label: 'Clientes', icon: Contact },
+    ],
+    [
+      { to: '/projetos', label: 'Projetos', icon: Building2 },
+      { to: '/tarefas', label: 'Minhas tarefas', icon: ListChecks, count: myOpenTasks },
+      { to: '/agenda', label: 'Agenda', icon: CalendarDays },
+    ],
+    [
+      { to: '/relatorios', label: 'Relatórios', icon: BarChart3 },
+      { to: '/equipe', label: 'Equipe', icon: Users },
+      { to: '/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
+    ],
   ];
-
-  const sidebar = (
-    <div className="flex h-full flex-col border-r border-line bg-white">
-      <div className="flex h-20 items-center px-6">
-        <BrandMark />
-      </div>
-      <button
-        onClick={() => setPaletteOpen(true)}
-        className="mx-4 mb-4 flex items-center gap-2.5 rounded-lg border border-line bg-canvas/60 px-3 py-2 text-left text-[13px] text-stone-400 transition-colors hover:border-stone-300 hover:text-stone-600"
-      >
-        <Search className="h-3.5 w-3.5" />
-        <span className="flex-1">Buscar</span>
-        <kbd className="font-sans text-[10px] text-stone-400">⌘K</kbd>
-      </button>
-      <nav className="scrollbar-thin flex-1 space-y-px overflow-y-auto px-3">
-        {nav
-          .filter((n) => !n.adminOnly || isAdmin)
-          .map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.end}
-              className={({ isActive }) =>
-                cn(
-                  'group flex items-center gap-3 rounded-lg px-3 py-[9px] text-[13.5px] transition-colors',
-                  isActive ? 'bg-canvas font-medium text-ink-900' : 'text-stone-500 hover:bg-canvas/70 hover:text-ink-900',
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <span className={cn(isActive ? 'text-ink-900' : 'text-stone-400 group-hover:text-stone-600')}>{n.icon}</span>
-                  <span className="flex-1">{n.label}</span>
-                  {!!n.badge && (
-                    <span className="min-w-[20px] rounded-full bg-ink-900 px-1.5 py-px text-center text-[10.5px] font-medium text-white tabular">{n.badge}</span>
-                  )}
-                </>
-              )}
-            </NavLink>
-          ))}
-      </nav>
-      <div className="p-4">
-        {mode === 'local' && (
-          <div className="rounded-lg border border-dashed border-line px-3 py-2.5 text-[11px] leading-snug text-stone-400">
-            Modo demonstração · dados salvos apenas neste navegador
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const visibleGroups = groups.map((g) => g.filter((n) => !n.adminOnly || isAdmin)).filter((g) => g.length > 0);
+  const pageTitle = PAGE_TITLES.find(([re]) => re.test(location.pathname))?.[1] ?? '';
 
   return (
-    <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 lg:block">{sidebar}</aside>
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-ink-900/25 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="relative h-full w-72 animate-slide-in">{sidebar}</div>
-          <button
-            className="absolute right-4 top-4 rounded-full bg-white p-2 text-ink-900 shadow-pop"
-            onClick={() => setMobileOpen(false)}
-            aria-label="Fechar menu"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-      )}
-      <div className="lg:pl-60">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-2 bg-canvas/80 px-4 backdrop-blur-md sm:px-8">
-          <IconButton label="Abrir menu" className="lg:hidden" onClick={() => setMobileOpen(true)}>
-            <Menu className="h-5 w-5" />
-          </IconButton>
-          <div className="lg:hidden">
-            <BrandMark size="sm" />
-          </div>
+    <div className="min-h-screen bg-canvas">
+      {/* Sidebar: 232px no desktop, só ícones entre 768 e 1279px, oculta no celular. */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[76px] md:block xl:w-sidebar">
+        <Sidebar groups={visibleGroups} onSearch={() => setPaletteOpen(true)} />
+      </aside>
+
+      <div className="md:pl-[76px] xl:pl-[232px]">
+        <MobileAppBar
+          title={pageTitle}
+          onSearch={() => setPaletteOpen(true)}
+          isHome={location.pathname === '/'}
+        />
+        <header className="hidden h-[72px] items-center gap-2 px-8 md:flex xl:px-16">
+          <TimerPill />
           <div className="flex-1" />
-          <IconButton label="Buscar" className="lg:hidden" onClick={() => setPaletteOpen(true)}>
-            <Search className="h-5 w-5" />
-          </IconButton>
-          <RunningTimer />
           <button
+            type="button"
             onClick={() => setAssistantOpen(true)}
-            className="inline-flex h-9 items-center gap-2 rounded-full border border-line bg-white px-3.5 text-[13px] font-medium text-ink-900 transition-colors hover:border-stone-300"
+            className="inline-flex h-[34px] items-center gap-2 rounded-[9px] px-3 text-body font-medium text-stone-800 transition-colors hover:bg-ink/5 hover:text-ink"
           >
-            <Sparkles className="h-4 w-4" strokeWidth={1.6} />
-            <span className="hidden sm:inline">Assistente</span>
+            <Sparkles className={ICON} strokeWidth={1.6} />
+            Assistente
           </button>
           <NotificationsMenu />
-          <UserMenu />
         </header>
-        <main className="mx-auto w-full max-w-[1440px] px-4 pb-16 pt-4 sm:px-8 lg:px-10">
+        <main className="px-5 pb-[120px] pt-1 md:px-8 md:pb-16 xl:px-16 xl:pb-[72px]">
           <Outlet />
         </main>
       </div>
+
+      <BottomNav onCreate={() => setSheet('create')} onMore={() => setSheet('more')} />
+
+      {sheet === 'create' && (
+        <Sheet title="Criar" onClose={() => setSheet(null)}>
+          <SheetItem icon={<ListChecks />} label="Tarefa" onClick={() => { setSheet(null); setCreating('task'); }} />
+          <SheetItem icon={<FolderKanban />} label="Oportunidade" onClick={() => { setSheet(null); setCreating('lead'); }} />
+          <SheetItem icon={<CalendarDays />} label="Reunião" onClick={() => { setSheet(null); setCreating('event'); }} />
+          <SheetItem icon={<Clock />} label="Lançar horas" onClick={() => { setSheet(null); setCreating('time'); }} />
+        </Sheet>
+      )}
+      {sheet === 'more' && (
+        <MoreSheet
+          isAdmin={isAdmin}
+          onClose={() => setSheet(null)}
+          onAssistant={() => {
+            setSheet(null);
+            setAssistantOpen(true);
+          }}
+        />
+      )}
+
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
       {assistantOpen && <AssistantPanel onClose={() => setAssistantOpen(false)} />}
       {openTaskId && <TaskDrawer key={openTaskId} taskId={openTaskId} onClose={closeTask} />}
+      {creating === 'task' && <TaskFormModal onClose={() => setCreating(null)} />}
+      {creating === 'lead' && <LeadFormModal onClose={() => setCreating(null)} />}
+      {creating === 'event' && <EventFormModal defaults={{ date: today() }} onClose={() => setCreating(null)} />}
+      {creating === 'time' && <LogTimeModal onClose={() => setCreating(null)} />}
       <span className="sr-only">{me.name}</span>
     </div>
   );
 }
 
-function RunningTimer() {
-  const { runningEntry, maps, stopTimer } = useData();
-  const navigate = useNavigate();
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!runningEntry) return;
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [runningEntry]);
-  if (!runningEntry) return null;
-  const task = maps.tasks[runningEntry.task_id];
-  const seconds = (Date.now() - new Date(runningEntry.started_at).getTime()) / 1000;
+// ---------------------------------------------------------------- Sidebar
+function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => void }) {
+  const { mode } = useAuth();
+  const { office_name } = useBranding();
   return (
-    <div className="flex items-center gap-1 rounded-full border border-line bg-white py-1 pl-3 pr-1 text-sm">
+    <div className="flex h-full flex-col gap-8 px-3.5 pb-6 pt-8 xl:px-5">
+      <div className="flex h-9 items-center px-1.5 xl:px-2.5">
+        <BrandMark className="hidden xl:block" />
+        <span className="font-display text-[15px] font-bold text-ink xl:hidden" aria-label={office_name}>
+          {office_name.trim().charAt(0).toUpperCase()}
+        </span>
+      </div>
+
       <button
-        className="flex min-w-0 items-center gap-2 text-ink-900"
-        onClick={() => navigate(`/tarefas?tarefa=${runningEntry.task_id}`)}
-        title={task?.title}
+        type="button"
+        onClick={onSearch}
+        title="Buscar (⌘K)"
+        className="flex h-[34px] items-center gap-2.5 rounded-[9px] bg-ink/[0.04] px-2.5 text-left text-[13px] text-faint transition-colors hover:bg-ink/[0.06] hover:text-muted max-xl:justify-center"
       >
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
-        <span className="hidden max-w-[180px] truncate md:inline">{task?.title ?? 'Tarefa'}</span>
-        <span className="font-semibold tabular">{formatClock(seconds)}</span>
+        <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+        <span className="hidden flex-1 xl:inline">Buscar</span>
+        <kbd className="hidden font-sans text-[11.5px] xl:inline">⌘K</kbd>
       </button>
-      <IconButton label="Parar cronômetro" onClick={() => stopTimer()} className="h-7 w-7 text-ink-900 hover:bg-canvas">
-        <Square className="h-3.5 w-3.5 fill-current" />
-      </IconButton>
+
+      <nav className="scrollbar-none -mx-1 flex flex-1 flex-col gap-5 overflow-y-auto px-1" aria-label="Navegação principal">
+        {groups.map((g, i) => (
+          <div key={i} className="flex flex-col gap-px">
+            {g.map((n) => (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.end}
+                title={n.label}
+                className={({ isActive }) =>
+                  cn(
+                    'relative flex h-[34px] items-center gap-3 rounded-[9px] px-2.5 text-body transition-colors max-xl:justify-center',
+                    isActive ? 'bg-ink/5 font-medium text-ink' : 'text-muted hover:text-ink',
+                  )
+                }
+              >
+                <n.icon className={cn(ICON, 'shrink-0')} strokeWidth={1.6} />
+                <span className="hidden flex-1 truncate xl:inline">{n.label}</span>
+                {n.dot && (
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning-solid max-xl:absolute max-xl:right-2 max-xl:top-2"
+                    title="Há retornos pendentes"
+                  />
+                )}
+                {!!n.count && <span className="hidden text-xs tabular text-faint xl:inline">{n.count}</span>}
+              </NavLink>
+            ))}
+          </div>
+        ))}
+      </nav>
+
+      {mode === 'local' && (
+        <p className="hidden px-2.5 text-[11px] leading-snug text-faint xl:block">Modo demonstração · dados salvos apenas neste navegador</p>
+      )}
+      <UserMenu />
     </div>
   );
 }
 
-function NotificationsMenu() {
+// ---------------------------------------------------------------- Cronômetro
+/** Pílula do cronômetro no header: ponto pulsante, tempo, tarefa e parar. */
+function TimerPill() {
+  const timer = useRunningTimer();
+  const { stopTimer } = useData();
+  const toast = useToast();
+  const [, setParams] = useSearchParams();
+  if (!timer) return <StartTimerMenu />;
+  return (
+    <div className="flex h-[34px] min-w-0 items-center gap-2.5 rounded-full bg-surface pl-3 pr-1 shadow-[0_0_0_1px_rgb(var(--line))]">
+      <span className="h-[7px] w-[7px] shrink-0 animate-timer-dot rounded-full bg-[#d07a62]" aria-hidden />
+      <span className="font-mono text-[12.5px] tabular text-ink" aria-label="Tempo decorrido">{timer.elapsed}</span>
+      <button
+        type="button"
+        onClick={() => setParams((p) => { const next = new URLSearchParams(p); next.set('tarefa', timer.entry.task_id); return next; })}
+        className="min-w-0 max-w-[320px] truncate text-[13px] text-muted hover:text-ink"
+        title={timer.label}
+      >
+        {timer.label}
+      </button>
+      <button
+        type="button"
+        onClick={() => stopTimer().then(() => toast.success('Tempo lançado na tarefa.')).catch(toast.error)}
+        aria-label="Parar cronômetro"
+        title="Parar cronômetro"
+        className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-stone-100 text-ink transition-colors hover:bg-stone-200"
+      >
+        <Square className="h-[11px] w-[11px] fill-current" strokeWidth={0} />
+      </button>
+    </div>
+  );
+}
+
+/** Cronômetro parado: escolhe uma das minhas tarefas abertas para iniciar. */
+function StartTimerMenu() {
+  const { db, maps, me, startTimer } = useData();
+  const toast = useToast();
+  const tasks = useMemo(
+    () =>
+      db.tasks
+        .filter((x) => x.assignee_id === me.id && x.status !== 'done')
+        .filter((x) => {
+          const p = x.project_id ? maps.projects[x.project_id] : null;
+          return !p || isProjectActive(p);
+        })
+        .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
+        .slice(0, 8),
+    [db.tasks, maps.projects, me.id],
+  );
+  return (
+    <Popover
+      align="left"
+      className="w-[min(92vw,340px)]"
+      trigger={({ toggle }) => (
+        <button
+          type="button"
+          onClick={toggle}
+          className="inline-flex h-[34px] items-center gap-2 rounded-full px-3 text-[13px] text-muted transition-colors hover:bg-ink/5 hover:text-ink"
+        >
+          <Play className="h-3.5 w-3.5" strokeWidth={1.8} />
+          Iniciar cronômetro
+        </button>
+      )}
+    >
+      {(close) => (
+        <div>
+          <div className="px-2.5 pb-1 pt-1.5 text-xs text-faint">Minhas tarefas abertas</div>
+          {tasks.length === 0 && <p className="px-2.5 py-3 text-sm text-muted">Nenhuma tarefa aberta com você.</p>}
+          {tasks.map((x) => {
+            const p = x.project_id ? maps.projects[x.project_id] : null;
+            return (
+              <MenuItem
+                key={x.id}
+                icon={<Play className="h-3.5 w-3.5" />}
+                onClick={() => {
+                  close();
+                  startTimer(x.id).catch(toast.error);
+                }}
+              >
+                <span className="block truncate">{x.title}</span>
+                <span className="block truncate text-xs text-faint">{p ? p.name : 'Avulsa'}</span>
+              </MenuItem>
+            );
+          })}
+        </div>
+      )}
+    </Popover>
+  );
+}
+
+// ---------------------------------------------------------------- Celular
+function MobileAppBar({ title, onSearch, isHome }: { title: string; onSearch: () => void; isHome: boolean }) {
+  const [scrolled, setScrolled] = useState(false);
+  const timer = useRunningTimer();
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 72);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  // No Início a barra do cronômetro fica na página; ao rolar, recolhe para texto aqui.
+  const compact = scrolled || !isHome;
+  return (
+    <div
+      className={cn(
+        'sticky top-0 z-30 flex items-center gap-1 bg-canvas/[0.94] pl-5 pr-2 backdrop-blur-[12px] transition-[height] duration-200 md:hidden',
+        scrolled ? 'h-12 shadow-[0_1px_0_rgb(var(--line))]' : 'h-[52px]',
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        {scrolled ? <span className="font-display text-[15px] font-semibold text-ink">{title}</span> : <BrandMark size="sm" />}
+      </div>
+      {compact && timer && (
+        <span className="mr-1 inline-flex items-center gap-1.5 font-mono text-xs tabular text-ink">
+          <span className="h-1.5 w-1.5 animate-timer-dot rounded-full bg-[#d07a62]" aria-hidden />
+          {timer.elapsed}
+        </span>
+      )}
+      <IconButton label="Buscar" size="touch" onClick={onSearch}>
+        <Search className="h-5 w-5" strokeWidth={1.6} />
+      </IconButton>
+      <NotificationsMenu touch />
+    </div>
+  );
+}
+
+function BottomNav({ onCreate, onMore }: { onCreate: () => void; onMore: () => void }) {
+  const location = useLocation();
+  const moreActive = /^\/(clientes|projetos|agenda|relatorios|equipe|configuracoes|perfil)/.test(location.pathname);
+  const item = (active: boolean) =>
+    cn('flex h-[52px] flex-col items-center justify-center gap-1 text-[10.5px] leading-none', active ? 'font-medium text-ink' : 'text-faint');
+  return (
+    <nav
+      aria-label="Navegação"
+      className="pb-safe fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-canvas/[0.94] px-2 pt-1.5 backdrop-blur-[12px] md:hidden"
+    >
+      <NavLink to="/" end className={({ isActive }) => item(isActive)}>
+        <LayoutGrid className="h-[22px] w-[22px]" strokeWidth={1.6} />
+        Início
+      </NavLink>
+      <NavLink to="/oportunidades" className={({ isActive }) => item(isActive)}>
+        <FolderKanban className="h-[22px] w-[22px]" strokeWidth={1.6} />
+        Oportunidades
+      </NavLink>
+      <div className="flex h-[52px] items-center justify-center">
+        <button
+          type="button"
+          onClick={onCreate}
+          aria-label="Criar"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-ink text-surface shadow-md transition-transform active:scale-95"
+        >
+          <Plus className="h-[22px] w-[22px]" strokeWidth={1.8} />
+        </button>
+      </div>
+      <NavLink to="/tarefas" className={({ isActive }) => item(isActive)}>
+        <ListChecks className="h-[22px] w-[22px]" strokeWidth={1.6} />
+        Tarefas
+      </NavLink>
+      <button type="button" onClick={onMore} className={item(moreActive)}>
+        <MoreHorizontal className="h-[22px] w-[22px]" strokeWidth={1.6} />
+        Mais
+      </button>
+    </nav>
+  );
+}
+
+function SheetItem({ icon, label, onClick, to }: { icon: ReactNode; label: string; onClick?: () => void; to?: string }) {
+  const cls = 'flex h-12 w-full items-center gap-3.5 rounded-[12px] px-3 text-left text-[15px] text-ink transition-colors hover:bg-canvas [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-muted';
+  if (to) {
+    return (
+      <NavLink to={to} className={cls}>
+        {icon}
+        {label}
+      </NavLink>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className={cls}>
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function MoreSheet({ isAdmin, onClose, onAssistant }: { isAdmin: boolean; onClose: () => void; onAssistant: () => void }) {
+  const { signOut } = useAuth();
+  return (
+    <Sheet title="Mais" onClose={onClose}>
+      <SheetItem to="/clientes" icon={<Contact strokeWidth={1.6} />} label="Clientes" />
+      <SheetItem to="/projetos" icon={<Building2 strokeWidth={1.6} />} label="Projetos" />
+      <SheetItem to="/agenda" icon={<CalendarDays strokeWidth={1.6} />} label="Agenda" />
+      <SheetItem to="/relatorios" icon={<BarChart3 strokeWidth={1.6} />} label="Relatórios" />
+      <SheetItem to="/equipe" icon={<Users strokeWidth={1.6} />} label="Equipe" />
+      {isAdmin && <SheetItem to="/configuracoes" icon={<Settings strokeWidth={1.6} />} label="Configurações" />}
+      <div className="mx-3 my-2 border-t border-line" />
+      <SheetItem icon={<Sparkles strokeWidth={1.6} />} label="Assistente" onClick={onAssistant} />
+      <SheetItem to="/perfil" icon={<UserCircle strokeWidth={1.6} />} label="Meu perfil" />
+      <div className="flex items-center justify-between gap-3 px-3 py-2">
+        <span className="text-[15px] text-ink">Tema</span>
+        <ThemeSwitch />
+      </div>
+      <SheetItem icon={<LogOut strokeWidth={1.6} />} label="Sair" onClick={() => signOut()} />
+    </Sheet>
+  );
+}
+
+// ---------------------------------------------------------------- Menus
+function ThemeSwitch() {
+  const [pref, setPref] = useTheme();
+  return (
+    <Segmented<ThemePref>
+      value={pref}
+      onChange={setPref}
+      options={[
+        { id: 'light', label: <span className="sr-only">Claro</span>, icon: <Sun /> },
+        { id: 'dark', label: <span className="sr-only">Escuro</span>, icon: <Moon /> },
+        { id: 'system', label: <span className="sr-only">Sistema</span>, icon: <Monitor /> },
+      ]}
+    />
+  );
+}
+
+function NotificationsMenu({ touch }: { touch?: boolean }) {
   const { db, me, markNotificationsRead } = useData();
   const navigate = useNavigate();
   const mine = useMemo(
@@ -239,26 +508,28 @@ function NotificationsMenu() {
       className="w-[min(92vw,380px)] p-0"
       trigger={({ toggle }) => (
         <button
+          type="button"
           onClick={toggle}
-          className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 hover:bg-white hover:text-ink-900"
-          aria-label="Notificações"
-        >
-          <Bell className="h-[18px] w-[18px]" strokeWidth={1.6} />
-          {unread.length > 0 && (
-            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-ink-900 px-1 text-[9.5px] font-medium text-white">
-              {unread.length > 9 ? '9+' : unread.length}
-            </span>
+          className={cn(
+            'relative inline-flex items-center justify-center text-stone-700 transition-colors hover:bg-ink/5 hover:text-ink',
+            touch ? 'h-11 w-11 rounded-[12px]' : 'h-[34px] w-[34px] rounded-[9px]',
           )}
+          aria-label={unread.length ? `Notificações (${unread.length} não lidas)` : 'Notificações'}
+          title="Notificações"
+        >
+          <Bell className={touch ? 'h-5 w-5' : ICON} strokeWidth={1.6} />
+          {unread.length > 0 && <span className={cn('absolute h-1.5 w-1.5 rounded-full bg-danger-solid', touch ? 'right-3 top-3' : 'right-2 top-2')} />}
         </button>
       )}
     >
       {(close) => (
         <div>
-          <div className="flex items-center justify-between border-b border-line/70 px-4 py-3">
-            <span className="font-display text-sm font-semibold">Notificações</span>
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <span className="font-display text-[15px] font-semibold">Notificações</span>
             {unread.length > 0 && (
               <button
-                className="flex items-center gap-1 text-xs font-medium text-stone-500 hover:text-ink-900"
+                type="button"
+                className="flex items-center gap-1 text-xs font-medium text-muted hover:text-ink"
                 onClick={() => markNotificationsRead(unread.map((n) => n.id))}
               >
                 <CheckCheck className="h-3.5 w-3.5" /> Marcar todas como lidas
@@ -266,22 +537,23 @@ function NotificationsMenu() {
             )}
           </div>
           <div className="scrollbar-thin max-h-[420px] overflow-y-auto p-1">
-            {mine.length === 0 && <p className="px-4 py-8 text-center text-sm text-stone-500">Nenhuma notificação por aqui.</p>}
+            {mine.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">Nenhuma notificação por aqui.</p>}
             {mine.slice(0, 40).map((n) => (
               <button
                 key={n.id}
-                className={cn('flex w-full gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-stone-50', !n.read && 'bg-canvas/70')}
+                type="button"
+                className={cn('flex w-full gap-3 rounded-sm px-3 py-2.5 text-left hover:bg-canvas', !n.read && 'bg-subtle')}
                 onClick={() => {
                   if (!n.read) markNotificationsRead([n.id]);
                   if (n.link) navigate(n.link);
                   close();
                 }}
               >
-                <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.read ? 'bg-transparent' : 'bg-ink-900')} />
+                <span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', n.read ? 'bg-transparent' : 'bg-danger-solid')} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-ink-900">{n.title}</span>
-                  {n.body && <span className="block text-xs text-stone-500">{n.body}</span>}
-                  <span className="mt-0.5 block text-[11px] text-stone-400">{formatRelative(n.created_at)}</span>
+                  <span className="block text-body font-medium text-ink">{n.title}</span>
+                  {n.body && <span className="block text-xs text-muted">{n.body}</span>}
+                  <span className="mt-0.5 block text-[11px] text-faint">{formatRelative(n.created_at)}</span>
                 </span>
               </button>
             ))}
@@ -292,29 +564,37 @@ function NotificationsMenu() {
   );
 }
 
+/** Rodapé da sidebar: avatar + nome + papel, abre o menu da conta. */
 function UserMenu() {
   const { me, isAdmin } = useData();
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const role = isAdmin ? 'Administrador' : me.job_title || 'Membro';
   return (
     <Popover
+      align="left"
+      side="top"
+      className="w-60"
       trigger={({ toggle }) => (
-        <button onClick={toggle} className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-white">
-          <Avatar user={me} size="md" />
-          <span className="hidden text-left leading-tight sm:block">
-            <span className="block text-[13px] font-medium text-ink-900">{me.name.split(' ')[0]}</span>
-            <span className="block text-[11px] text-stone-500">{isAdmin ? 'Administrador' : me.job_title || 'Membro'}</span>
+        <button
+          type="button"
+          onClick={toggle}
+          className="flex w-full items-center gap-2.5 rounded-[9px] p-1 text-left transition-colors hover:bg-ink/5 max-xl:justify-center xl:px-1.5"
+          title={me.name}
+        >
+          <Avatar user={me} size={28} />
+          <span className="hidden min-w-0 leading-tight xl:block">
+            <span className="block truncate text-[13px] font-medium text-ink">{me.name}</span>
+            <span className="block truncate text-[11.5px] text-faint">{role}</span>
           </span>
-          <ChevronDown className="h-4 w-4 text-stone-400" />
         </button>
       )}
     >
       {(close) => (
-        <div className="w-56">
-          <div className="px-3 py-2">
-            <div className="truncate text-sm font-semibold">{me.name}</div>
-            <div className="truncate text-xs text-stone-500">{me.email}</div>
-            {isAdmin && <Badge className="mt-1.5 bg-canvas text-stone-600">Administrador</Badge>}
+        <div>
+          <div className="px-2.5 py-2">
+            <div className="truncate text-body font-medium text-ink">{me.name}</div>
+            <div className="truncate text-xs text-faint">{me.email}</div>
           </div>
           <div className="my-1 border-t border-line" />
           <MenuItem icon={<UserCircle className="h-4 w-4" />} onClick={() => { close(); navigate('/perfil'); }}>
@@ -325,6 +605,11 @@ function UserMenu() {
               Configurações
             </MenuItem>
           )}
+          <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-[13.5px] text-stone-800">
+            Tema
+            <ThemeSwitch />
+          </div>
+          <div className="my-1 border-t border-line" />
           <MenuItem icon={<LogOut className="h-4 w-4" />} onClick={() => signOut()} danger>
             Sair
           </MenuItem>

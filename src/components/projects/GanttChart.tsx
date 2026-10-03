@@ -1,17 +1,11 @@
 import { useMemo } from 'react';
 import { TASK_STATUS } from '../../lib/constants';
+import { TASK_STATUS_STYLE } from '../../lib/status';
 import { orderedPhases } from '../../lib/domain';
 import type { Profile, Task } from '../../lib/types';
 import { addDays, byPosition, cn, diffDays, formatDate, MONTHS_FULL, parseDate, today } from '../../lib/utils';
 import { Avatar, EmptyState } from '../ui';
 
-const STATUS_BAR: Record<Task['status'], string> = {
-  todo: '#a8a29e',
-  doing: '#2a78d6',
-  review: '#4a3aa7',
-  paused: '#c98500',
-  done: '#1baf7a',
-};
 
 /** Cronograma (Gantt) das tarefas do projeto, agrupado por etapa. */
 export function GanttChart({
@@ -62,10 +56,10 @@ export function GanttChart({
 
   const t = today();
   return (
-    <div className="overflow-hidden rounded-xl border border-line">
+    <div className="overflow-hidden rounded-lg border border-line">
       <div className="flex">
         {/* Coluna fixa */}
-        <div className="w-60 shrink-0 border-r border-line bg-white sm:w-72">
+        <div className="w-60 shrink-0 border-r border-line bg-surface sm:w-72">
           <div className="h-12 border-b border-line bg-stone-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Tarefa</div>
           {phases.map((phase) => (
             <div key={phase}>
@@ -104,11 +98,11 @@ export function GanttChart({
                   .filter((i) => [0, 6].includes(parseDate(addDays(range.start, i)).getDay()))
                   .map((i) => <div key={`w${i}`} className="absolute inset-y-0 bg-stone-100/60" style={{ left: i * DAY, width: DAY }} />)}
               {/* hoje */}
-              <div className="absolute inset-y-0 z-10 w-px bg-rose-500" style={{ left: x(t) + DAY / 2 }} title="Hoje">
-                <span className="absolute -top-1 -translate-x-1/2 rounded bg-rose-500 px-1 text-[9px] font-bold text-white">HOJE</span>
+              <div className="absolute inset-y-0 z-10 w-px bg-danger-solid" style={{ left: x(t) + DAY / 2 }} title="Hoje">
+                <span className="absolute -top-1 -translate-x-1/2 rounded bg-danger-solid px-1 text-[9px] font-bold text-surface">HOJE</span>
               </div>
               {projectDue && (
-                <div className="absolute inset-y-0 z-10 w-0 border-l-2 border-dashed border-ink-900/60" style={{ left: x(projectDue) + DAY }} title={`Prazo do projeto: ${formatDate(projectDue)}`} />
+                <div className="absolute inset-y-0 z-10 w-0 border-l-2 border-dashed border-ink/60" style={{ left: x(projectDue) + DAY }} title={`Prazo do projeto: ${formatDate(projectDue)}`} />
               )}
               {phases.map((phase) => (
                 <div key={phase}>
@@ -122,11 +116,11 @@ export function GanttChart({
                         <button
                           onClick={() => onOpen(tk.id)}
                           title={`${tk.title}\n${formatDate(s)} → ${formatDate(e)} · ${TASK_STATUS[tk.status].label}`}
-                          className={cn('absolute top-2 h-5 rounded-[4px] transition-all hover:brightness-110', late && 'ring-2 ring-rose-400 ring-offset-1')}
-                          style={{ left: x(s) + 1, width: Math.max(DAY - 2, (diffDays(s, e) + 1) * DAY - 2), backgroundColor: STATUS_BAR[tk.status] }}
+                          className={cn('absolute top-2 h-5 rounded-[4px] transition-all hover:brightness-110', late && 'ring-2 ring-danger-solid ring-offset-1')}
+                          style={{ left: x(s) + 1, width: Math.max(DAY - 2, (diffDays(s, e) + 1) * DAY - 2), backgroundColor: TASK_STATUS_STYLE[tk.status].color }}
                         >
                           {DAY >= 14 && (diffDays(s, e) + 1) * DAY > 60 && (
-                            <span className="block truncate px-1.5 text-left text-[10px] font-medium leading-5 text-white">{tk.title}</span>
+                            <span className={cn('block truncate px-1.5 text-left text-[10px] font-medium leading-5', tk.status === 'todo' ? 'text-stone-900' : 'text-surface')}>{tk.title}</span>
                           )}
                         </button>
                       </div>
@@ -139,11 +133,11 @@ export function GanttChart({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-4 border-t border-line bg-stone-50 px-4 py-2 text-xs text-stone-600">
-        {(Object.keys(STATUS_BAR) as Task['status'][]).map((s) => (
-          <span key={s} className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ backgroundColor: STATUS_BAR[s] }} />{TASK_STATUS[s].label}</span>
+        {(Object.keys(TASK_STATUS_STYLE) as Task['status'][]).map((s) => (
+          <span key={s} className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-[2px]" style={{ backgroundColor: TASK_STATUS_STYLE[s].color }} />{TASK_STATUS[s].label}</span>
         ))}
-        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-px bg-rose-500" /> Hoje</span>
-        {projectDue && <span className="inline-flex items-center gap-1.5"><span className="h-3 border-l-2 border-dashed border-ink-900/60" /> Prazo do projeto</span>}
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-px bg-danger-solid" /> Hoje</span>
+        {projectDue && <span className="inline-flex items-center gap-1.5"><span className="h-3 border-l-2 border-dashed border-ink/60" /> Prazo do projeto</span>}
       </div>
     </div>
   );

@@ -3,8 +3,7 @@ import { KeyRound, Save } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { backend } from '../lib/backend';
-import { SWATCHES } from '../lib/constants';
-import { cn, maskPhone, toCalendarEmbedUrl } from '../lib/utils';
+import { maskPhone, toCalendarEmbedUrl } from '../lib/utils';
 import { Avatar, Badge, Button, Card, CardHeader, Field, Input, PageHeader, Textarea } from '../components/ui';
 
 export default function ProfilePage() {
@@ -54,23 +53,16 @@ export default function ProfilePage() {
           <CardHeader title="Dados pessoais" />
           <div className="border-t border-line/70 p-5">
             <div className="mb-5 flex items-center gap-4">
-              <Avatar user={{ name: v.name || me.name, color: v.color }} size="lg" />
+              <Avatar user={{ id: me.id, name: v.name || me.name }} size="lg" me />
               <div>
                 <div className="font-semibold">{me.email}</div>
-                <Badge className={me.role === 'admin' ? 'bg-brand-50 text-brand-800 ring-brand-200' : undefined}>{me.role === 'admin' ? 'Administrador' : 'Membro'}</Badge>
+                <Badge tone={me.role === 'admin' ? 'brand' : 'neutral'} className="mt-1">{me.role === 'admin' ? 'Administrador' : 'Membro'}</Badge>
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nome" className="sm:col-span-2"><Input value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} /></Field>
               <Field label="Cargo / função"><Input value={v.job_title} onChange={(e) => setV({ ...v, job_title: e.target.value })} /></Field>
               <Field label="Telefone / WhatsApp" hint="Com ele você fala com o assistente pelo WhatsApp."><Input value={v.phone} onChange={(e) => setV({ ...v, phone: maskPhone(e.target.value) })} /></Field>
-              <Field label="Cor" className="sm:col-span-2">
-                <div className="flex flex-wrap gap-1.5">
-                  {SWATCHES.map((c) => (
-                    <button key={c} onClick={() => setV({ ...v, color: c })} className={cn('h-7 w-7 rounded-full ring-offset-2', v.color === c && 'ring-2 ring-stone-900')} style={{ backgroundColor: c }} aria-label={`Cor ${c}`} />
-                  ))}
-                </div>
-              </Field>
               <Field label="Minha agenda do Google (opcional)" className="sm:col-span-2" hint="Cole o código de incorporação ou o seu e-mail Google para ver sua agenda no painel.">
                 <Textarea value={v.calendar} onChange={(e) => setV({ ...v, calendar: e.target.value })} rows={2} placeholder="seuemail@gmail.com ou <iframe ...>" />
               </Field>

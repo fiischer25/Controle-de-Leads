@@ -100,7 +100,7 @@ export function EventFormModal({
         footer={
           <>
             {canDelete && (
-              <Button variant="ghost" className="mr-auto text-rose-600 hover:bg-rose-50" icon={<Trash2 className="h-4 w-4" />} onClick={() => setConfirmDelete(true)}>
+              <Button variant="ghost" className="mr-auto text-danger-fg hover:bg-danger-bg" icon={<Trash2 className="h-4 w-4" />} onClick={() => setConfirmDelete(true)}>
                 Cancelar reunião
               </Button>
             )}

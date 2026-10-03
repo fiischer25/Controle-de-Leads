@@ -158,7 +158,7 @@ export default function TasksPage() {
             {groups.done.length > 0 && (
               <div className="card overflow-hidden">
                 <button className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-stone-600" onClick={() => setShowDone((s) => !s)}>
-                  <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Concluídas recentemente ({groups.done.length})</span>
+                  <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-success-fg" /> Concluídas recentemente ({groups.done.length})</span>
                   <ChevronDown className={cn('h-4 w-4 transition-transform', showDone && 'rotate-180')} />
                 </button>
                 {showDone && <div className="divide-y divide-line/70 border-t border-line/70">{groups.done.map((x) => <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />)}</div>}
@@ -188,7 +188,7 @@ function Kpi({ icon, label, value, tone }: { icon: ReactNode; label: string; val
         <span className="text-stone-300">{icon}</span>
         {label}
       </div>
-      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' ? 'text-rose-700' : 'text-ink-900')}>{value}</div>
+      <div className={cn('mt-1 font-display text-2xl font-bold', tone === 'bad' ? 'text-danger-fg' : 'text-ink')}>{value}</div>
     </div>
   );
 }
@@ -198,7 +198,7 @@ function Group({ title, tasks, tone, onOpen }: { title: string; tasks: Task[]; t
   return (
     <div className="card overflow-hidden">
       <div className="flex items-center gap-2 border-b border-line/70 px-4 py-2.5">
-        <span className={cn('h-2 w-2 rounded-full', tone === 'bad' ? 'bg-rose-500' : tone === 'warn' ? 'bg-amber-500' : 'bg-stone-300')} />
+        <span className={cn('h-2 w-2 rounded-full', tone === 'bad' ? 'bg-danger-solid' : tone === 'warn' ? 'bg-warning-solid' : 'bg-stone-300')} />
         <h3 className="text-sm font-semibold text-stone-800">{title}</h3>
         <span className="text-xs text-stone-500 tabular">{tasks.length}</span>
       </div>
@@ -235,12 +235,12 @@ function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string) => v
                 const id = e.dataTransfer.getData('text/plain');
                 if (id) updateTask(id, { status }).catch(toast.error);
               }}
-              className={cn('flex w-[280px] shrink-0 flex-col rounded-2xl border bg-stone-100/50', over === status ? 'border-brand-300 bg-brand-50/60' : 'border-transparent')}
+              className={cn('flex w-[280px] shrink-0 flex-col rounded-xl border bg-stone-100/50', over === status ? 'border-brand-300 bg-brand-50/60' : 'border-transparent')}
             >
               <header className="flex items-center gap-2 px-3 pb-2 pt-3">
                 <span className={cn('h-2 w-2 rounded-full', TASK_STATUS[status].dot)} />
                 <h3 className="text-sm font-semibold">{TASK_STATUS[status].label}</h3>
-                <span className="rounded-full bg-white px-1.5 text-xs text-stone-500 tabular">{items.length}</span>
+                <span className="rounded-full bg-surface px-1.5 text-xs text-stone-500 tabular">{items.length}</span>
               </header>
               <div className="min-h-[200px] space-y-2 px-2 pb-3">
                 {items.map((x) => {
@@ -251,10 +251,10 @@ function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string) => v
                       draggable
                       onDragStart={(e) => e.dataTransfer.setData('text/plain', x.id)}
                       onClick={() => onOpen(x.id)}
-                      className="cursor-pointer rounded-xl border border-line bg-white p-3 shadow-card hover:border-stone-300"
+                      className="cursor-pointer rounded-lg border border-line bg-surface p-3 shadow-xs hover:border-stone-300"
                     >
                       <div className="text-[11px] font-medium text-stone-500">{project ? project.name : 'Avulsa'}{x.phase ? ` · ${x.phase}` : ''}</div>
-                      <div className="mt-0.5 text-sm font-medium text-ink-900">{x.title}</div>
+                      <div className="mt-0.5 text-sm font-medium text-ink">{x.title}</div>
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <DueBadge due={x.due_date} done={x.status === 'done'} soonDays={settings.due_soon_days} compact />
                         <Avatar user={x.assignee_id ? maps.profiles[x.assignee_id] : null} size="sm" />

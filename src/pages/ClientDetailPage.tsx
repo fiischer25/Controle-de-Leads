@@ -3,9 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Briefcase, Cake, FileText, Mail, MapPin, MessageCircle, Pencil, Phone, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
-import { INTERACTION_TYPES, PROJECT_STATUS } from '../lib/constants';
+import { INTERACTION_TYPES } from '../lib/constants';
 import { digitsOnly, formatCurrency, formatDate, formatDateTime } from '../lib/utils';
-import { AvatarStack, Badge, Button, Card, ConfirmDialog, DueBadge, EmptyState, IconButton, ProgressBar } from '../components/ui';
+import { AvatarStack, Badge, Button, Card, ConfirmDialog, DueBadge, EmptyState, IconButton, ProgressBar, StatusBadge } from '../components/ui';
 import { ClientFormModal } from '../components/clients/ClientFormModal';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
@@ -58,9 +58,9 @@ export default function ClientDetailPage() {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <a href={`https://wa.me/55${digitsOnly(client.phone)}`} target="_blank" rel="noreferrer"><Button size="sm" icon={<MessageCircle className="h-4 w-4 text-emerald-600" />}>WhatsApp</Button></a>
+              <a href={`https://wa.me/55${digitsOnly(client.phone)}`} target="_blank" rel="noreferrer"><Button size="sm" icon={<MessageCircle className="h-4 w-4 text-success-fg" />}>WhatsApp</Button></a>
             </div>
-            {client.notes && <p className="mt-4 whitespace-pre-wrap rounded-xl bg-stone-50 p-3 text-sm text-stone-700">{client.notes}</p>}
+            {client.notes && <p className="mt-4 whitespace-pre-wrap rounded-lg bg-stone-50 p-3 text-sm text-stone-700">{client.notes}</p>}
           </Card>
           {lead && (
             <Card className="p-5">
@@ -93,7 +93,6 @@ export default function ClientDetailPage() {
           ) : (
             <div className="space-y-3">
               {projects.map((s) => {
-                const st = PROJECT_STATUS[s.project.status];
                 return (
                   <Link key={s.project.id} to={`/projetos/${s.project.id}`} className="card block p-4 hover:border-stone-300">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -103,7 +102,7 @@ export default function ClientDetailPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <DueBadge due={s.project.due_date} done={['concluido', 'cancelado'].includes(s.project.status)} soonDays={settings.due_soon_days} />
-                        <Badge className={st.badge} dot={st.dot}>{st.label}</Badge>
+                        <StatusBadge kind="project" value={s.project.status} />
                       </div>
                     </div>
                     <div className="mt-3 flex items-center gap-3">

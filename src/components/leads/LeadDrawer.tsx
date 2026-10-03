@@ -21,6 +21,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { stageColor } from '../../lib/status';
 import { useToast } from '../../context/ToastContext';
 import { INTERACTION_TYPES, LOST_REASONS } from '../../lib/constants';
 import type { InteractionType } from '../../lib/types';
@@ -171,13 +172,13 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
       <div className="flex items-start justify-between gap-3 border-b border-line/70 px-6 py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs text-stone-500">
-            <ColorDot color={stage?.color ?? '#999'} /> {stage?.name}
+            <ColorDot color={stageColor(stage, stages)} /> {stage?.name}
             <span>· há {diffDays(toDateKey(new Date(lead.stage_changed_at)), today())} dias nesta etapa</span>
           </div>
           <h2 className="mt-1 truncate font-display text-xl font-semibold tracking-tight">{lead.name}</h2>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            {client && <Badge className="bg-emerald-50 text-emerald-800 ring-emerald-200"><UserCheck className="h-3 w-3" /> Cliente</Badge>}
-            {followUpLate && <Badge className="bg-rose-50 text-rose-700 ring-rose-200">Retorno atrasado</Badge>}
+            {client && <Badge tone="success"><UserCheck /> Cliente</Badge>}
+            {followUpLate && <Badge tone="danger">Retorno atrasado</Badge>}
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -199,12 +200,12 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
               </Select>
             </Field>
             {stage?.kind === 'open' && wonStage && (
-              <Button variant="secondary" icon={<Trophy className="h-4 w-4 text-emerald-600" />} onClick={() => changeStage(wonStage.id)}>
+              <Button variant="secondary" icon={<Trophy className="h-4 w-4 text-success-fg" />} onClick={() => changeStage(wonStage.id)}>
                 Fechado
               </Button>
             )}
             {stage?.kind === 'open' && lostStage && (
-              <Button variant="secondary" icon={<XCircle className="h-4 w-4 text-rose-500" />} onClick={() => setLosing(true)}>
+              <Button variant="secondary" icon={<XCircle className="h-4 w-4 text-danger-fg" />} onClick={() => setLosing(true)}>
                 Perdido
               </Button>
             )}
@@ -212,15 +213,15 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
 
           {/* Conversão */}
           {stage?.kind === 'won' && !client && (
-            <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-5">
+            <div className="rounded-xl border border-success-line bg-success-bg p-5">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white"><Trophy className="h-5 w-5" /></div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-surface text-success-fg"><Trophy className="h-5 w-5" strokeWidth={1.6} /></div>
                 <div className="flex-1">
-                  <div className="font-display font-semibold text-emerald-900">Projeto fechado! 🎉</div>
-                  <p className="mt-0.5 text-sm text-emerald-800/80">
+                  <div className="font-display font-semibold text-success-fg">Projeto fechado</div>
+                  <p className="mt-0.5 text-sm text-success-fg/80">
                     Complete os dados do cliente para convertê-lo e iniciar o projeto com as tarefas do modelo.
                   </p>
-                  <Button variant="primary" className="mt-3 bg-emerald-600 hover:bg-emerald-700" icon={<UserCheck className="h-4 w-4" />} onClick={() => setConverting(true)}>
+                  <Button variant="primary" className="mt-3" icon={<UserCheck className="h-4 w-4" />} onClick={() => setConverting(true)}>
                     Virar cliente
                   </Button>
                 </div>
@@ -228,7 +229,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
             </div>
           )}
           {client && (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-stone-50 p-4">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-stone-50 p-4">
               <div className="text-sm">
                 <div className="font-semibold text-stone-800">Convertido em cliente</div>
                 <div className="text-stone-500">{lead.converted_at ? formatDateTime(lead.converted_at) : ''}</div>
@@ -240,7 +241,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
             </div>
           )}
           {stage?.kind === 'lost' && lead.lost_reason && (
-            <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            <div className="rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-fg">
               <span className="font-semibold">Motivo da perda:</span> {lead.lost_reason}
             </div>
           )}
@@ -264,26 +265,26 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
               </div>
             </div>
           </div>
-          {lead.notes && <p className="whitespace-pre-wrap rounded-xl bg-stone-50 p-4 text-sm text-stone-700">{lead.notes}</p>}
+          {lead.notes && <p className="whitespace-pre-wrap rounded-lg bg-stone-50 p-4 text-sm text-stone-700">{lead.notes}</p>}
 
           <div className="flex flex-wrap gap-2">
             <Button size="sm" icon={<CalendarPlus className="h-4 w-4" />} onClick={() => setScheduling(true)}>Agendar reunião</Button>
             <a href={whatsapp} target="_blank" rel="noreferrer">
-              <Button size="sm" icon={<MessageCircle className="h-4 w-4 text-emerald-600" />}>WhatsApp</Button>
+              <Button size="sm" icon={<MessageCircle className="h-4 w-4 text-success-fg" />}>WhatsApp</Button>
             </a>
             {lead.email && (
               <a href={`mailto:${lead.email}`}>
                 <Button size="sm" icon={<Mail className="h-4 w-4" />}>E-mail</Button>
               </a>
             )}
-            <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-stone-300 bg-white pl-3 text-sm font-medium text-stone-800">
+            <label className="inline-flex h-8 items-center gap-2 rounded-sm border border-stone-300 bg-surface pl-3 text-sm font-medium text-stone-800">
               <CalendarClock className="h-4 w-4" />
               Retorno
               <input
                 type="date"
                 value={lead.next_contact_date ?? ''}
                 onChange={(e) => updateLead(lead.id, { next_contact_date: e.target.value || null }).catch(toast.error)}
-                className="h-full rounded-r-lg border-l border-line bg-stone-50 px-2 text-xs outline-none"
+                className="h-full rounded-r-sm border-l border-line bg-stone-50 px-2 text-xs outline-none"
                 aria-label="Data do próximo contato"
               />
             </label>
@@ -292,7 +293,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
           {/* Histórico */}
           <div>
             <h3 className="mb-3 font-display text-sm font-semibold">Histórico de contatos</h3>
-            <div className="rounded-xl border border-line p-3">
+            <div className="rounded-lg border border-line p-3">
               <div className="mb-2 flex flex-wrap gap-2">
                 <Select value={noteType} onChange={(e) => setNoteType(e.target.value as InteractionType)} className="h-8 w-auto py-1 text-xs">
                   {Object.entries(INTERACTION_TYPES).map(([k, label]) => (
@@ -321,7 +322,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
                 const user = i.user_id ? maps.profiles[i.user_id] : null;
                 return (
                   <li key={i.id} className="relative">
-                    <span className="absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-brand-500 ring-1 ring-brand-200" />
+                    <span className="absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full border-2 border-surface bg-brand-500 ring-1 ring-brand-200" />
                     <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
                       <Badge>{INTERACTION_TYPES[i.type]}</Badge>
                       <span>{formatDateTime(i.happened_at)}</span>
@@ -332,7 +333,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
                 );
               })}
               <li className="relative">
-                <span className="absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-stone-300" />
+                <span className="absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full border-2 border-surface bg-stone-300" />
                 <div className="text-xs text-stone-500">Oportunidade criada em {formatDateTime(lead.created_at)}</div>
               </li>
             </ol>

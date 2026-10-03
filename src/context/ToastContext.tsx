@@ -43,7 +43,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-[min(92vw,380px)] flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-[96px] right-4 z-[100] md:bottom-4 flex w-[min(92vw,380px)] flex-col gap-2">
         {toasts.map((t) => {
           const Icon = t.kind === 'success' ? CheckCircle2 : t.kind === 'error' ? AlertTriangle : Info;
           return (
@@ -51,17 +51,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               key={t.id}
               role="status"
               className={cn(
-                'pointer-events-auto flex items-start gap-3 rounded-xl border bg-white px-4 py-3 text-sm shadow-lg shadow-stone-900/5 animate-in',
-                t.kind === 'success' && 'border-emerald-200',
-                t.kind === 'error' && 'border-rose-200',
+                'pointer-events-auto flex items-start gap-3 rounded-md border bg-surface px-4 py-3 text-body shadow-md animate-in',
+                t.kind === 'success' && 'border-success-line',
+                t.kind === 'error' && 'border-danger-line',
                 t.kind === 'info' && 'border-line',
               )}
             >
               <Icon
                 className={cn(
                   'mt-0.5 h-4 w-4 shrink-0',
-                  t.kind === 'success' && 'text-emerald-600',
-                  t.kind === 'error' && 'text-rose-600',
+                  t.kind === 'success' && 'text-success-fg',
+                  t.kind === 'error' && 'text-danger-fg',
                   t.kind === 'info' && 'text-stone-500',
                 )}
               />

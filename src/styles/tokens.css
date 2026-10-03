@@ -1,0 +1,67 @@
+/* AIROS · tokens de cor (RGB separado por espaço para suportar /opacidade no Tailwind)
+   Importar no CSS global (ex.: src/index.css) antes de @tailwind base. */
+:root {
+  --canvas: 246 245 242;        /* #f6f5f2  (v2 usa #f7f6f3 no fundo do Início — aceitar qualquer um) */
+  --surface: 255 255 255;       /* #ffffff */
+  --subtle: 250 249 247;        /* #faf9f7 */
+  --line: 233 230 225;          /* #e9e6e1 */
+  --line-strong: 220 216 209;   /* #dcd8d1 */
+  --ink: 18 17 16;              /* #121110 */
+  --muted: 107 101 92;          /* #6b655c */
+  --faint: 138 131 121;         /* #8a8379 */
+  --accent: 143 124 97;         /* #8f7c61 */
+  --accent-fg: 95 81 63;        /* #5f513f */
+
+  --danger-bg: 250 240 237;     /* #faf0ed */
+  --danger-line: 239 207 197;   /* #efcfc5 */
+  --danger-solid: 180 85 60;    /* #b4553c */
+  --danger-fg: 140 59 39;       /* #8c3b27 */
+
+  --warning-bg: 250 244 232;    /* #faf4e8 */
+  --warning-line: 236 219 179;  /* #ecdbb3 */
+  --warning-solid: 181 134 47;  /* #b5862f */
+  --warning-fg: 125 91 26;      /* #7d5b1a */
+
+  --info-bg: 239 243 245;       /* #eff3f5 */
+  --info-line: 207 219 226;     /* #cfdbe2 */
+  --info-solid: 85 117 137;     /* #557589 */
+  --info-fg: 59 85 102;         /* #3b5566 */
+
+  --success-bg: 239 244 239;    /* #eff4ef */
+  --success-line: 207 222 207;  /* #cfdecf */
+  --success-solid: 93 130 99;   /* #5d8263 */
+  --success-fg: 63 93 69;       /* #3f5d45 */
+}
+
+.dark {
+  --canvas: 18 17 16;           /* #121110 */
+  --surface: 27 26 24;          /* #1b1a18 */
+  --subtle: 33 31 28;           /* #211f1c */
+  --line: 44 41 38;             /* #2c2926 */
+  --line-strong: 58 54 49;      /* #3a3631 */
+  --ink: 242 239 234;           /* #f2efea */
+  --muted: 168 161 152;         /* #a8a198 */
+  --faint: 125 119 110;         /* #7d776e */
+  --accent: 185 166 138;        /* #b9a68a */
+  --accent-fg: 214 199 175;     /* #d6c7af */
+
+  --danger-bg: 46 29 24;        /* #2e1d18 */
+  --danger-line: 90 51 40;      /* #5a3328 */
+  --danger-solid: 208 122 98;   /* #d07a62 */
+  --danger-fg: 235 165 143;     /* #eba58f */
+
+  --warning-bg: 44 36 22;       /* #2c2416 */
+  --warning-line: 90 70 34;     /* #5a4622 */
+  --warning-solid: 201 154 72;  /* #c99a48 */
+  --warning-fg: 227 194 126;    /* #e3c27e */
+
+  --info-bg: 26 35 41;          /* #1a2329 */
+  --info-line: 52 73 90;        /* #34495a */
+  --info-solid: 123 157 179;    /* #7b9db3 */
+  --info-fg: 169 195 212;       /* #a9c3d4 */
+
+  --success-bg: 27 38 29;       /* #1b261d */
+  --success-line: 54 80 59;     /* #36503b */
+  --success-solid: 127 165 133; /* #7fa585 */
+  --success-fg: 174 205 178;    /* #aecdb2 */
+}

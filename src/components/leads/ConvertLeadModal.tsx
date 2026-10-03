@@ -119,12 +119,12 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
               <span
                 className={cn(
                   'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold',
-                  step === n ? 'bg-ink-900 text-white' : done ? 'bg-emerald-600 text-white' : 'bg-stone-200 text-stone-500',
+                  step === n ? 'bg-ink text-surface' : done ? 'bg-success-solid text-surface' : 'bg-stone-200 text-stone-500',
                 )}
               >
                 {done ? <Check className="h-4 w-4" /> : n}
               </span>
-              <span className={cn('font-medium', step === n ? 'text-ink-900' : 'text-stone-500')}>{label}</span>
+              <span className={cn('font-medium', step === n ? 'text-ink' : 'text-stone-500')}>{label}</span>
             </li>
           );
         })}
@@ -133,18 +133,18 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
       {step === 1 ? (
         <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
           <ClientFields value={client} onChange={setClient} errors={clientErrors} />
-          <aside className="h-fit rounded-xl border border-line bg-stone-50 p-4 lg:sticky lg:top-0">
+          <aside className="h-fit rounded-lg border border-line bg-stone-50 p-4 lg:sticky lg:top-0">
             <div className="text-sm font-semibold text-stone-800">Cadastro completo</div>
             <div className="mt-1 text-xs text-stone-500">
               {filled} de {checklist.length} campos obrigatórios
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-200">
-              <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(filled / checklist.length) * 100}%` }} />
+              <div className="h-full rounded-full bg-success-solid transition-all" style={{ width: `${(filled / checklist.length) * 100}%` }} />
             </div>
             <ul className="mt-3 space-y-1.5">
               {checklist.map((c) => (
                 <li key={c.label} className={cn('flex items-center gap-2 text-xs', c.ok ? 'text-stone-700' : 'text-stone-400')}>
-                  {c.ok ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Circle className="h-3.5 w-3.5" />}
+                  {c.ok ? <CheckCircle2 className="h-3.5 w-3.5 text-success-fg" /> : <Circle className="h-3.5 w-3.5" />}
                   {c.label}
                 </li>
               ))}

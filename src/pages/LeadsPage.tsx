@@ -16,6 +16,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { stageColor } from '../lib/status';
 import { useToast } from '../context/ToastContext';
 import type { Lead } from '../lib/types';
 import {
@@ -235,7 +236,7 @@ export default function LeadsPage() {
                 <section
                   key={stage.id}
                   className={cn(
-                    'flex w-[290px] shrink-0 flex-col rounded-2xl border bg-stone-100/50 transition-colors',
+                    'flex w-[290px] shrink-0 flex-col rounded-xl border bg-stone-100/50 transition-colors',
                     isTarget ? 'border-brand-300 bg-brand-50/60' : 'border-transparent',
                   )}
                   onDragOver={(e) => {
@@ -248,13 +249,13 @@ export default function LeadsPage() {
                 >
                   <header className="flex items-center justify-between gap-2 px-3 pb-2 pt-3">
                     <div className="flex min-w-0 items-center gap-2">
-                      <ColorDot color={stage.color} />
+                      <ColorDot color={stageColor(stage, stages)} />
                       <h3 className="truncate text-sm font-semibold text-stone-800">{stage.name}</h3>
-                      <span className="rounded-full bg-white px-1.5 text-xs font-medium text-stone-500 tabular">{items.length}</span>
+                      <span className="rounded-full bg-surface px-1.5 text-xs font-medium text-stone-500 tabular">{items.length}</span>
                     </div>
                     <button
                       onClick={() => setCreatingIn(stage.id)}
-                      className="rounded-md p-1 text-stone-400 hover:bg-white hover:text-stone-700"
+                      className="rounded-xs p-1 text-stone-400 hover:bg-surface hover:text-stone-700"
                       aria-label={`Adicionar em ${stage.name}`}
                     >
                       <Plus className="h-4 w-4" />
@@ -329,7 +330,7 @@ function Stat({ icon, label, value, hint, tone }: { icon: React.ReactNode; label
         <span className="text-stone-300">{icon}</span>
         <span className="truncate">{label}</span>
       </div>
-      <div className={cn('mt-1 font-display text-xl font-medium tracking-tight', tone === 'warn' ? 'text-amber-700' : 'text-ink-900')}>{value}</div>
+      <div className={cn('mt-1 font-display text-xl font-medium tracking-tight', tone === 'warn' ? 'text-warning-fg' : 'text-ink')}>{value}</div>
     </div>
   );
 }
@@ -372,12 +373,12 @@ function LeadCard({
       onDragOver={onDragOverCard}
       onClick={onOpen}
       className={cn(
-        'group cursor-pointer rounded-xl border border-line bg-white p-3 shadow-card transition-all hover:border-stone-300 hover:shadow-md',
+        'group cursor-pointer rounded-lg border border-line bg-surface p-3 shadow-xs transition-all hover:border-stone-300 hover:shadow-md',
         dragging && 'rotate-1 opacity-40',
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <h4 className="text-sm font-semibold leading-snug text-ink-900">{lead.name}</h4>
+        <h4 className="text-sm font-semibold leading-snug text-ink">{lead.name}</h4>
         <Avatar user={owner} size="sm" />
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
@@ -386,44 +387,44 @@ function LeadCard({
       </div>
       <div className="mt-2 flex flex-wrap gap-1">
         {type && (
-          <span className="rounded-md px-1.5 py-0.5 text-[11px] font-medium" style={{ backgroundColor: `${type.color}14`, color: type.color }}>
+          <span className="rounded-xs px-1.5 py-0.5 text-[11px] font-medium" style={{ backgroundColor: `${type.color}14`, color: type.color }}>
             {type.name}
           </span>
         )}
-        {src && <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] text-stone-600">{src.name}</span>}
+        {src && <span className="rounded-xs bg-stone-100 px-1.5 py-0.5 text-[11px] text-stone-600">{src.name}</span>}
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-line/70 pt-2">
         <span className="text-sm font-semibold text-stone-800 tabular">{lead.proposal_value ? formatCurrency(lead.proposal_value) : <span className="font-normal text-stone-400">Sem proposta</span>}</span>
-        <span className={cn('text-[11px]', stale ? 'font-medium text-amber-700' : 'text-stone-400')} title="Dias nesta etapa">
+        <span className={cn('text-[11px]', stale ? 'font-medium text-warning-fg' : 'text-stone-400')} title="Dias nesta etapa">
           {daysInStage}d
         </span>
       </div>
       {followLate && (
-        <div className="mt-2 flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">
+        <div className={cn('mt-2 flex items-center gap-1 rounded-xs px-2 py-1 text-[11px] font-medium', lead.next_contact_date! < t ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg')}>
           <CalendarClock className="h-3 w-3" /> Retorno {lead.next_contact_date === t ? 'hoje' : `desde ${formatDateShort(lead.next_contact_date)}`}
         </div>
       )}
       {stage?.kind === 'won' &&
         (lead.client_id ? (
-          <Badge className="mt-2 bg-emerald-50 text-emerald-800 ring-emerald-200"><UserCheck className="h-3 w-3" /> Cliente</Badge>
+          <Badge tone="success" className="mt-2"><UserCheck /> Cliente</Badge>
         ) : (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onConvert();
             }}
-            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+            className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-[9px] bg-ink px-2 text-xs font-medium text-surface transition-colors hover:bg-stone-800"
           >
             <UserCheck className="h-3.5 w-3.5" /> Virar cliente
           </button>
         ))}
-      {stage?.kind === 'lost' && lead.lost_reason && <p className="mt-2 truncate text-[11px] text-rose-600">{lead.lost_reason}</p>}
+      {stage?.kind === 'lost' && lead.lost_reason && <p className="mt-2 truncate text-[11px] text-faint">{lead.lost_reason}</p>}
     </article>
   );
 }
 
 function LeadList({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => void }) {
-  const { maps } = useData();
+  const { db, maps } = useData();
   const [sortKey, setSortKey] = useState<'created' | 'name' | 'value'>('created');
   const sorted = useMemo(() => {
     const out = [...leads];
@@ -465,10 +466,10 @@ function LeadList({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => vo
               return (
                 <tr key={l.id} className="cursor-pointer hover:bg-stone-50" onClick={() => onOpen(l.id)}>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-ink-900">{l.name}</div>
+                    <div className="font-medium text-ink">{l.name}</div>
                     <div className="text-xs text-stone-500">{l.city} · {l.phone}</div>
                   </td>
-                  <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 whitespace-nowrap"><ColorDot color={stage?.color ?? '#999'} />{stage?.name}</span></td>
+                  <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 whitespace-nowrap"><ColorDot color={stageColor(stage, db.lead_stages)} />{stage?.name}</span></td>
                   <td className="px-4 py-3 text-stone-600">{l.project_type_id ? maps.types[l.project_type_id]?.name : '—'}</td>
                   <td className="px-4 py-3 text-stone-600">{l.source_id ? maps.sources[l.source_id]?.name : '—'}</td>
                   <td className="px-4 py-3 text-right tabular text-stone-600">{l.area_m2 ? formatNumber(l.area_m2) : '—'}</td>

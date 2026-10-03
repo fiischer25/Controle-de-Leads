@@ -42,7 +42,7 @@ export function MemberPicker({
               onClick={() => onChange(on ? value.filter((x) => x !== u.id) : [...value, u.id])}
               className={cn(
                 'flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors',
-                on ? 'border-brand-300 bg-brand-50 text-brand-900' : 'border-line bg-white text-stone-600 hover:border-stone-300',
+                on ? 'border-brand-300 bg-brand-50 text-brand-900' : 'border-line bg-surface text-stone-600 hover:border-stone-300',
               )}
               aria-pressed={on}
             >
@@ -149,7 +149,7 @@ export function ProjectFields({
         </Field>
       </div>
       {showTemplateInfo && value.project_type_id && (
-        <div className="rounded-xl border border-line bg-stone-50 p-4">
+        <div className="rounded-lg border border-line bg-stone-50 p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-stone-800">
             <Layers className="h-4 w-4 text-brand-600" />
             {templates.length} tarefas serão criadas automaticamente
@@ -157,7 +157,7 @@ export function ProjectFields({
           {phases.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {phases.map((p, i) => (
-                <span key={p} className="rounded-md bg-white px-2 py-1 text-xs text-stone-600 ring-1 ring-stone-200">
+                <span key={p} className="rounded-xs bg-surface px-2 py-1 text-xs text-stone-600 ring-1 ring-stone-200">
                   <span className="mr-1 text-stone-400">{i + 1}.</span>
                   {p}
                 </span>
