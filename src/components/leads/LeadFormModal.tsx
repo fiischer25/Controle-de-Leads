@@ -164,7 +164,7 @@ export function LeadFormModal({
         <Field label="Responsável" className="sm:col-span-2">
           <UserSelect users={db.profiles} value={v.owner_id} onChange={(id) => set('owner_id', id)} />
         </Field>
-        <Field label="Próximo contato" className="sm:col-span-3" hint="Gera lembrete no painel e na agenda.">
+        <Field label="Próximo contato" className="sm:col-span-3" hint="Gera lembrete no Início e na Agenda.">
           <Input type="date" value={v.next_contact_date ?? ''} onChange={(e) => set('next_contact_date', e.target.value || null)} />
         </Field>
         <Field label="Previsão de fechamento" className="sm:col-span-3">

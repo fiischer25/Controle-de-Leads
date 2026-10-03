@@ -91,7 +91,7 @@ export default function ProfilePage() {
               <Field
                 label="Minha agenda do Google (opcional)"
                 className="sm:col-span-2"
-                hint="Cole o código de incorporação ou o seu e-mail Google para ver sua agenda no painel."
+                hint="Cole o código de incorporação ou o seu e-mail Google para ver sua agenda em Agenda → Google Agenda."
               >
                 <Textarea
                   value={v.calendar}
