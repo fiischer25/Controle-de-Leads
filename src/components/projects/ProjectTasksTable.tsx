@@ -1,0 +1,315 @@
+import { useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, Flag, ListChecks, MoreVertical, Plus, X } from 'lucide-react';
+import { useData } from '../../context/DataContext';
+import { useToast } from '../../context/ToastContext';
+import { SWATCHES, TASK_PRIORITY, TASK_STATUS_ORDER } from '../../lib/constants';
+import { businessDaysBetween, entryMinutes } from '../../lib/domain';
+import { TASK_STATUS_STYLE } from '../../lib/status';
+import type { Project, Task, TaskStatus } from '../../lib/types';
+import { byPosition, cn, formatDateShort, formatMinutes, formatNumber, today } from '../../lib/utils';
+import { Avatar, Badge, Button, ConfirmDialog, IconButton, Input, MenuItem, Popover } from '../ui';
+
+const phaseColor = (i: number) => SWATCHES[i % SWATCHES.length];
+const cols =
+  'grid grid-cols-[48px_minmax(0,1fr)_56px_118px_64px_60px_60px_58px_70px_128px_84px_36px] items-center gap-x-2';
+
+/**
+ * Tarefas do projeto em tabela por etapas (como a referência): etapas numeradas e recolhíveis
+ * com totais; tarefas com checklist, status, duração, início, fim, horas estimadas e realizadas,
+ * responsável e prioridade. Clique na tarefa abre a gaveta (checklist e observações).
+ */
+export function ProjectTasksTable({
+  project,
+  tasks,
+  phases,
+  hideDone,
+  onOpen,
+}: {
+  project: Project;
+  tasks: Task[];
+  phases: string[];
+  hideDone: boolean;
+  onOpen: (taskId: string) => void;
+}) {
+  const { db, maps, me, isAdmin, updateTask, deleteTask, createTask } = useData();
+  const toast = useToast();
+  const t = today();
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [adding, setAdding] = useState<{ phase: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState<Task | null>(null);
+
+  const minutesByTask = useMemo(() => {
+    const ids = new Set(tasks.map((x) => x.id));
+    const out: Record<string, number> = {};
+    for (const e of db.time_entries) if (ids.has(e.task_id)) out[e.task_id] = (out[e.task_id] ?? 0) + entryMinutes(e);
+    return out;
+  }, [db.time_entries, tasks]);
+
+  const quickAdd = async () => {
+    if (!adding?.title.trim()) return;
+    const phaseTasks = tasks.filter((x) => (x.phase || 'Geral') === adding.phase).sort(byPosition);
+    const last = phaseTasks[phaseTasks.length - 1];
+    try {
+      await createTask({
+        title: adding.title.trim(),
+        project_id: project.id,
+        phase: adding.phase === 'Geral' ? null : adding.phase,
+        assignee_id: project.manager_id,
+        position: last ? last.position + 0.5 : tasks.length,
+        start_date: last?.due_date ?? project.start_date,
+        due_date: last?.due_date ?? null,
+      });
+      setAdding({ ...adding, title: '' });
+    } catch (e) {
+      toast.error(e);
+    }
+  };
+
+  const setStatus = (task: Task, status: TaskStatus) => updateTask(task.id, { status }).catch(toast.error);
+  const dateCls = (task: Task) => (task.status !== 'done' && task.due_date && task.due_date < t ? 'text-danger-fg' : 'text-stone-600');
+
+  return (
+    <div className="overflow-hidden rounded-[14px] bg-surface shadow-surface">
+      <div className={cn(cols, 'border-b border-line/70 bg-stone-50 px-3 py-2 text-[11.5px] font-medium text-stone-500')}>
+        <span>Nº</span>
+        <span>Etapas / tarefas</span>
+        <span className="text-center">Checklist</span>
+        <span>Status</span>
+        <span>Duração</span>
+        <span>Início</span>
+        <span>Fim</span>
+        <span className="text-right">H. est.</span>
+        <span className="text-right">H. real.</span>
+        <span>Responsável</span>
+        <span>Prioridade</span>
+        <span />
+      </div>
+
+      {phases.map((phase, pi) => {
+        const all = tasks.filter((x) => (x.phase || 'Geral') === phase).sort(byPosition);
+        const visible = hideDone ? all.filter((x) => x.status !== 'done') : all;
+        const starts = all.map((x) => x.start_date).filter(Boolean) as string[];
+        const dues = all.map((x) => x.due_date).filter(Boolean) as string[];
+        const pStart = starts.sort()[0];
+        const pEnd = dues.sort().pop();
+        const est = all.reduce((a, x) => a + (x.estimated_hours ?? 0), 0);
+        const real = all.reduce((a, x) => a + (minutesByTask[x.id] ?? 0), 0);
+        const done = all.filter((x) => x.status === 'done').length;
+        const open = !collapsed[phase];
+        return (
+          <div key={phase} className="border-b border-line/70 last:border-b-0">
+            <div className={cn(cols, 'bg-stone-50/60 px-3 py-2.5')}>
+              <span className="text-[13px] tabular text-stone-500">{pi + 1}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCollapsed((c) => ({ ...c, [phase]: open }))}
+                  aria-label={open ? `Recolher ${phase}` : `Expandir ${phase}`}
+                  className="text-stone-500 hover:text-ink"
+                >
+                  {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </button>
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: phaseColor(pi) }} aria-hidden />
+                <span className="truncate text-[13.5px] font-semibold text-ink">{phase}</span>
+                <IconButton label={`Adicionar tarefa em ${phase}`} size="xs" onClick={() => setAdding({ phase, title: '' })}>
+                  <Plus className="h-3.5 w-3.5" />
+                </IconButton>
+                <span className={cn('shrink-0 text-[12px] tabular', done === all.length && all.length ? 'text-success-fg' : 'text-stone-500')}>
+                  {done}/{all.length} {all.length === 1 ? 'tarefa' : 'tarefas'}
+                </span>
+              </span>
+              <span />
+              <span />
+              <span className="text-[12.5px] tabular text-stone-600">{pStart && pEnd ? `${businessDaysBetween(pStart, pEnd)} dias` : ''}</span>
+              <span className="text-[12.5px] tabular text-stone-600">{pStart ? formatDateShort(pStart) : ''}</span>
+              <span className="text-[12.5px] tabular text-stone-600">{pEnd ? formatDateShort(pEnd) : ''}</span>
+              <span className="text-right text-[12.5px] tabular text-stone-600">{est ? `${formatNumber(est, 1)}h` : ''}</span>
+              <span className="text-right text-[12.5px] tabular text-stone-600">{real ? formatMinutes(real) : ''}</span>
+              <span />
+              <span />
+              <span />
+            </div>
+
+            {open &&
+              visible.map((task) => {
+                const ti = all.indexOf(task);
+                const st = TASK_STATUS_STYLE[task.status];
+                const pr = TASK_PRIORITY[task.priority];
+                const person = task.assignee_id ? maps.profiles[task.assignee_id] : null;
+                const checklist = task.checklist ?? [];
+                const checked = checklist.filter((c) => c.done).length;
+                const canDelete = isAdmin || task.created_by === me.id;
+                return (
+                  <div key={task.id} className={cn(cols, 'group border-t border-line/50 px-3 py-2 hover:bg-stone-50/60')}>
+                    <span className="text-[12.5px] tabular text-stone-500">
+                      {pi + 1}.{ti + 1}
+                    </span>
+                    <button type="button" onClick={() => onOpen(task.id)} className="min-w-0 pl-6 text-left">
+                      <span
+                        className={cn(
+                          'block truncate text-[13.5px] group-hover:underline group-hover:decoration-stone-300 group-hover:underline-offset-4',
+                          task.status === 'done' ? 'text-stone-500' : 'text-ink',
+                        )}
+                      >
+                        {task.title}
+                      </span>
+                      {task.description && <span className="block truncate text-[12px] text-stone-400">{task.description}</span>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpen(task.id)}
+                      className={cn(
+                        'flex items-center justify-center gap-1 text-[12.5px] tabular',
+                        !checklist.length ? 'text-stone-300' : checked === checklist.length ? 'text-success-fg' : 'text-stone-600',
+                      )}
+                      title={checklist.length ? `${checked} de ${checklist.length} itens` : 'Sem checklist'}
+                    >
+                      <ListChecks className="h-3.5 w-3.5" />
+                      {checklist.length ? `${checked}/${checklist.length}` : '—'}
+                    </button>
+                    <Popover
+                      align="left"
+                      className="w-48"
+                      trigger={({ toggle }) => (
+                        <button type="button" onClick={toggle} className="text-left" aria-label={`Status de ${task.title}: ${st.label}`}>
+                          <Badge tone={st.tone}>{st.label}</Badge>
+                        </button>
+                      )}
+                    >
+                      {(close) => (
+                        <div>
+                          {TASK_STATUS_ORDER.map((s) => (
+                            <MenuItem
+                              key={s}
+                              active={s === task.status}
+                              onClick={() => {
+                                close();
+                                if (s !== task.status) setStatus(task, s);
+                              }}
+                            >
+                              {TASK_STATUS_STYLE[s].label}
+                            </MenuItem>
+                          ))}
+                        </div>
+                      )}
+                    </Popover>
+                    <span className="text-[12.5px] tabular text-stone-700">
+                      {task.start_date && task.due_date ? `${businessDaysBetween(task.start_date, task.due_date)} dias` : '—'}
+                    </span>
+                    <span className="text-[12.5px] tabular text-stone-600">{task.start_date ? formatDateShort(task.start_date) : '—'}</span>
+                    <span className={cn('text-[12.5px] tabular', dateCls(task))}>{task.due_date ? formatDateShort(task.due_date) : '—'}</span>
+                    <span className="text-right text-[12.5px] tabular text-stone-600">{task.estimated_hours ? `${formatNumber(task.estimated_hours, 1)}h` : '—'}</span>
+                    <span className="text-right text-[12.5px] tabular text-stone-600">{minutesByTask[task.id] ? formatMinutes(minutesByTask[task.id]) : '—'}</span>
+                    <span className="flex min-w-0 items-center gap-1.5 text-[12.5px]">
+                      {person ? (
+                        <>
+                          <Avatar user={person} size="xs" />
+                          <span className="truncate text-stone-700">{person.name.split(' ')[0]}</span>
+                        </>
+                      ) : (
+                        <span className="text-stone-400">—</span>
+                      )}
+                    </span>
+                    <span className={cn('flex items-center gap-1 text-[12.5px]', pr.className)}>
+                      <Flag className="h-3.5 w-3.5" />
+                      {pr.label}
+                    </span>
+                    <Popover
+                      align="right"
+                      className="w-44"
+                      trigger={({ toggle }) => (
+                        <IconButton label={`Ações de ${task.title}`} size="xs" onClick={toggle}>
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </IconButton>
+                      )}
+                    >
+                      {(close) => (
+                        <div>
+                          <MenuItem
+                            onClick={() => {
+                              close();
+                              onOpen(task.id);
+                            }}
+                          >
+                            Abrir tarefa
+                          </MenuItem>
+                          {task.status !== 'done' && (
+                            <MenuItem
+                              onClick={() => {
+                                close();
+                                setStatus(task, 'done');
+                              }}
+                            >
+                              Concluir
+                            </MenuItem>
+                          )}
+                          {canDelete && (
+                            <MenuItem
+                              danger
+                              onClick={() => {
+                                close();
+                                setDeleting(task);
+                              }}
+                            >
+                              Excluir
+                            </MenuItem>
+                          )}
+                        </div>
+                      )}
+                    </Popover>
+                  </div>
+                );
+              })}
+
+            {open && adding?.phase === phase && (
+              <form
+                className="flex items-center gap-2 border-t border-line/50 bg-surface px-3 py-2 pl-[86px]"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  quickAdd();
+                }}
+              >
+                <Input
+                  value={adding.title}
+                  onChange={(e) => setAdding({ ...adding, title: e.target.value })}
+                  placeholder={`Nova tarefa em ${phase}`}
+                  className="h-8 min-w-0 flex-1"
+                  autoFocus
+                  aria-label={`Nova tarefa em ${phase}`}
+                />
+                <Button type="submit" size="sm" variant="primary" disabled={!adding.title.trim()}>
+                  Adicionar
+                </Button>
+                <IconButton label="Fechar" size="xs" onClick={() => setAdding(null)}>
+                  <X className="h-3.5 w-3.5" />
+                </IconButton>
+              </form>
+            )}
+          </div>
+        );
+      })}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Excluir tarefa?"
+          danger
+          confirmLabel="Excluir"
+          message={
+            <>
+              Excluir <b>{deleting.title}</b>, com o checklist, os comentários e as horas lançadas?
+            </>
+          }
+          onConfirm={async () => {
+            try {
+              await deleteTask(deleting.id);
+              toast.success('Tarefa excluída.');
+            } catch (e) {
+              toast.error(e);
+            }
+          }}
+          onClose={() => setDeleting(null)}
+        />
+      )}
+    </div>
+  );
+}

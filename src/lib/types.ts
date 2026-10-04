@@ -60,9 +60,19 @@ export interface TaskTemplate {
   project_type_id: string;
   phase: string;
   title: string;
+  /** Observações, copiadas para a tarefa. */
   description: string | null;
   duration_days: number;
   position: number;
+  // Migração 20261008 (opcionais para funcionar antes dela):
+  /** Itens do checklist, copiados para a tarefa (desmarcados). */
+  checklist?: string[];
+  /** Quem fica à frente; vazio = responsável do projeto. */
+  assignee_id?: string | null;
+  priority?: TaskPriority;
+  estimated_hours?: number | null;
+  /** Começa no mesmo dia da tarefa anterior (em paralelo). */
+  start_with_previous?: boolean;
 }
 
 export type LeadCategory = 'Residencial' | 'Comercial' | 'Corporativo' | 'Institucional' | 'Outro';

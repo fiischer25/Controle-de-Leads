@@ -167,13 +167,13 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
               />
             </Field>
           </div>
-          <Field label="Descrição" className="mt-4">
+          <Field label="Observações" className="mt-4">
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onBlur={() => (description || null) !== task.description && save({ description: description || null })}
               rows={3}
-              placeholder="Detalhes, referências, links…"
+              placeholder="Orientações, referências, links, pendências…"
             />
           </Field>
         </section>
