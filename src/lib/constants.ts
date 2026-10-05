@@ -25,7 +25,7 @@ export const TASK_PRIORITY_ORDER: TaskPriority[] = ['baixa', 'media', 'alta', 'u
 
 export const STAGE_KIND: Record<StageKind, string> = {
   open: 'Em andamento',
-  won: 'Fechado (ganho)',
+  won: 'Ganho',
   lost: 'Perdido',
 };
 
