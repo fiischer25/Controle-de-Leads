@@ -13,7 +13,7 @@ insert into airos_st values
   ('Proposta enviada', 'open', '#806c52', 5),
   ('Negociação', 'open', '#6b5a44', 6),
   ('Ganho', 'won', '#5d8263', 7),
-  ('Perdido', 'lost', '#b3aca2', 8);
+  ('Não ganho', 'lost', '#b3aca2', 8);
 
 create temp table airos_so (name text, pos int);
 insert into airos_so values
@@ -38,6 +38,8 @@ update public.lead_stages set name = 'Em contato' where name = 'Primeiro contato
   and not exists (select 1 from public.lead_stages where name = 'Em contato');
 update public.lead_stages set name = 'Ganho' where name = 'Fechado'
   and not exists (select 1 from public.lead_stages where name = 'Ganho');
+update public.lead_stages set name = 'Não ganho' where name = 'Perdido'
+  and not exists (select 1 from public.lead_stages where name = 'Não ganho');
 update public.lead_sources o set name = r.novo from (values
   ('Tráfego pago (Meta Ads)', 'Meta Ads (Instagram/Facebook pago)'),
   ('Tráfego pago (Google Ads)', 'Google Ads'),

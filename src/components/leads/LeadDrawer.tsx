@@ -3,10 +3,9 @@ import { CalendarPlus, Mail, MessageCircle, Pencil, Phone, Trash2, Trophy, X, XC
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { INTERACTION_TYPES, LOST_REASONS } from '../../lib/constants';
-import { stageColor } from '../../lib/status';
+import { funnelOrder, stageColor } from '../../lib/status';
 import type { InteractionType } from '../../lib/types';
 import {
-  byPosition,
   cn,
   diffDays,
   digitsOnly,
@@ -36,8 +35,8 @@ export function LostReasonModal({ onConfirm, onClose }: { onConfirm: (reason: st
   const [busy, setBusy] = useState(false);
   return (
     <Modal
-      title="Marcar como perdido"
-      subtitle="Registrar o motivo ajuda a entender onde o funil está vazando."
+      title="Não ganhou"
+      subtitle="Por que a oportunidade não foi fechada? Registrar o motivo ajuda a entender onde o funil está vazando."
       size="sm"
       onClose={onClose}
       footer={
@@ -56,7 +55,7 @@ export function LostReasonModal({ onConfirm, onClose }: { onConfirm: (reason: st
               }
             }}
           >
-            Confirmar perda
+            Confirmar não ganho
           </Button>
         </>
       }
@@ -122,7 +121,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
   const [noteDate, setNoteDate] = useState(today());
   const [sending, setSending] = useState(false);
 
-  const stages = useMemo(() => [...db.lead_stages].sort(byPosition), [db.lead_stages]);
+  const stages = useMemo(() => funnelOrder(db.lead_stages), [db.lead_stages]);
   const timeline = useMemo(
     () => db.lead_interactions.filter((i) => i.lead_id === leadId).sort((a, b) => b.happened_at.localeCompare(a.happened_at)),
     [db.lead_interactions, leadId],
@@ -137,6 +136,8 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
   const project = client ? db.projects.find((p) => p.lead_id === lead.id || p.client_id === client.id) : null;
   const wonStage = stages.find((s) => s.kind === 'won');
   const lostStage = stages.find((s) => s.kind === 'lost');
+  // Reabrir um "não ganho": volta para a última etapa em andamento (ex.: Negociação)
+  const reopenStage = [...stages].reverse().find((s) => s.kind === 'open');
   const phone = digitsOnly(lead.phone);
   const whatsapp = `https://wa.me/55${phone}`;
   const daysInStage = diffDays(toDateKey(new Date(lead.stage_changed_at)), t);
@@ -249,25 +250,51 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
                 }))}
               />
             </div>
-            {open && wonStage && (
-              <Button variant="ghost" icon={<Trophy className="h-4 w-4" strokeWidth={1.6} />} onClick={() => changeStage(wonStage.id)}>
-                Ganho
-              </Button>
-            )}
-            {open && lostStage && (
-              <Button variant="ghost" icon={<XCircle className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setLosing(true)}>
-                Perdido
-              </Button>
-            )}
           </div>
+
+          {/* Desfecho: ganhou (vira cliente) ou não ganhou (motivo) */}
+          {open && wonStage && lostStage && (
+            <div className="mt-4 rounded-lg border border-line px-4 py-3.5">
+              <div className="text-body font-medium text-ink">Fechou negócio?</div>
+              <p className="mt-0.5 text-[13px] text-muted">
+                <b className="font-medium text-ink">Ganhou:</b> informe o valor e a forma de pagamento e cadastre o cliente e o projeto.{' '}
+                <b className="font-medium text-ink">Não ganhou:</b> registre o motivo.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button variant="primary" icon={<Trophy className="h-4 w-4" strokeWidth={1.6} />} onClick={() => changeStage(wonStage.id)}>
+                  Ganhou
+                </Button>
+                <Button icon={<XCircle className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setLosing(true)}>
+                  Não ganhou
+                </Button>
+              </div>
+            </div>
+          )}
 
           {stage?.kind === 'won' && !client && (
             <div className="mt-4 rounded-lg bg-success-bg px-4 py-3.5">
-              <div className="text-body font-medium text-success-fg">Oportunidade fechada</div>
-              <p className="mt-0.5 text-[13px] text-success-fg/80">Complete os dados do cliente para criar o projeto com as tarefas do modelo.</p>
+              <div className="text-body font-medium text-success-fg">Oportunidade ganha</div>
+              <p className="mt-0.5 text-[13px] text-success-fg/80">
+                Próximo passo: cadastrar o cliente (CPF/CNPJ, e-mail, endereço) e criar o projeto com as tarefas do modelo.
+              </p>
               <Button variant="primary" size="sm" className="mt-3" onClick={() => setConverting(true)}>
                 Virar cliente
               </Button>
+            </div>
+          )}
+          {stage?.kind === 'lost' && (
+            <div className="mt-4 rounded-lg bg-subtle px-4 py-3.5">
+              <div className="text-body font-medium text-ink">Não ganho</div>
+              {lead.lost_reason && (
+                <p className="mt-0.5 text-[13px] text-muted">
+                  <span className="text-faint">Motivo:</span> {lead.lost_reason}
+                </p>
+              )}
+              {reopenStage && (
+                <Button size="sm" className="mt-3" onClick={() => moveLead(lead.id, reopenStage.id, null, { lost_reason: null }).catch(toast.error)}>
+                  Reabrir oportunidade
+                </Button>
+              )}
             </div>
           )}
           {client && (
@@ -304,11 +331,6 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
                 <ActionLink onClick={() => setWinning({ mode: 'edit' })}>Definir forma de pagamento</ActionLink>
               </div>
             )
-          )}
-          {stage?.kind === 'lost' && lead.lost_reason && (
-            <p className="mt-4 text-[13px] text-muted">
-              <span className="text-faint">Motivo da perda:</span> {lead.lost_reason}
-            </p>
           )}
         </Section>
 
@@ -432,7 +454,8 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
             if (winning.stageId) await moveLead(lead.id, winning.stageId);
             if (created > 0) toast.success(`${created} ${created === 1 ? 'parcela lançada' : 'parcelas lançadas'} em contas a receber.`);
             else if (plan) toast.success('Forma de pagamento salva.');
-            else if (!lead.client_id) toast.success(`${lead.name} fechou! Complete os dados para virar cliente.`);
+            // Acabou de ganhar: segue direto para o cadastro do cliente e do projeto
+            if (winning.stageId && !lead.client_id) setConverting(true);
           }}
         />
       )}

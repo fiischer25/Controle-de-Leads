@@ -22,7 +22,11 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   responsável, próximo contato e previsão de fechamento.
 - **Kanban com arrastar e soltar** entre as etapas (configuráveis), e visão em lista. Funil padrão de
   CRM: Novo lead → Em contato → Qualificado → Reunião agendada → Proposta em elaboração → Proposta
-  enviada → Negociação → Ganho / Perdido.
+  enviada → Negociação → **Ganho** / **Não ganho**. Ganho e Não ganho são etapas fixas, sempre no fim
+  do quadro (o sistema recria se faltarem).
+- **Fechou negócio?** Na ficha do lead (e no card, ao passar o mouse) há os botões **Ganhou** e
+  **Não ganhou**. Ganhou: abre o fechamento (valor e forma de pagamento) e, em seguida, o cadastro do
+  cliente e do projeto. Não ganhou: pede o motivo; dá para reabrir depois.
 - Origens padrão: Instagram e Facebook (orgânico), Meta Ads, Google Ads, Google (busca orgânica),
   Google Meu Negócio, site/formulário, WhatsApp, indicação de cliente, indicação de parceiro,
   cliente recorrente, prospecção ativa, eventos e feiras, portais e marketplaces e outros.
@@ -33,7 +37,7 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   50% · 50%, à vista, mensal ou personalizado, com as datas. As parcelas entram sozinhas em
   **contas a receber** do Financeiro (categoria honorários), mesmo quando quem fecha só tem o módulo
   Comercial, e passam para o projeto quando o lead vira cliente. Editar depois não duplica.
-- **Virar cliente**: disponível quando o lead está “Ganho”, e só conclui com **todos os dados do
+- **Virar cliente**: abre sozinho logo depois de marcar como ganho (ou pelo botão no lead ganho), e só conclui com **todos os dados do
   cliente** (CPF/CNPJ validado, e-mail, telefone, endereço completo — CEP preenche o endereço).
 
 **Projetos**
@@ -164,8 +168,9 @@ Para uso real pela equipe, configure o Supabase.
    `supabase/migrations/20261007000000_finance_import_files.sql`,
    `supabase/migrations/20261008000000_task_templates_details.sql`,
    `supabase/migrations/20261009000000_lead_payment_plan.sql`,
-   `supabase/migrations/20261010000000_arq_int_templates.sql` e
-   `supabase/migrations/20261011000000_crm_defaults.sql`
+   `supabase/migrations/20261010000000_arq_int_templates.sql`,
+   `supabase/migrations/20261011000000_crm_defaults.sql` e
+   `supabase/migrations/20261012000000_won_lost_stages.sql`
    (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
    (podem rodar mais de uma vez sem problema).
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):

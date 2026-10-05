@@ -184,6 +184,14 @@ export function DataProvider({ userId, children }: { userId: string; children: R
         if (me?.role === 'admin') {
           const seeds: Array<Promise<unknown>> = [];
           if (current.lead_stages.length === 0) seeds.push(backend.insert('lead_stages', defaultStages()));
+          else {
+            // "Ganho" e "Não ganho" são fixos no funil: recria o que faltar
+            const max = Math.max(...current.lead_stages.map((s) => s.position));
+            const missing = defaultStages()
+              .filter((s) => s.kind !== 'open' && !current.lead_stages.some((x) => x.kind === s.kind))
+              .map((s, i) => ({ ...s, position: max + 1 + i }));
+            if (missing.length) seeds.push(backend.insert('lead_stages', missing));
+          }
           if (current.lead_sources.length === 0) seeds.push(backend.insert('lead_sources', defaultSources()));
           if (current.project_types.length === 0) {
             const { types, templates } = defaultProjectTypes();
