@@ -199,7 +199,7 @@ export default function HomePage() {
                       />
                     </div>
                   ) : (
-                    <div className="-mx-5 -mb-3 overflow-hidden pb-1.5 md:-mx-6">
+                    <div className="-mx-4 -mb-2 overflow-hidden pb-1.5 md:-mx-6 md:-mb-3">
                       {groups
                         .filter((g) => g.tasks.length > 0)
                         .map((g) => (

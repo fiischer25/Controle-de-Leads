@@ -24,14 +24,14 @@ export function KpiCard({
 }) {
   const pct = progress && progress.max > 0 ? Math.min(100, Math.round((progress.value / progress.max) * 100)) : 0;
   return (
-    <div className="metric-tile px-5">
+    <div className="metric-tile md:px-5">
       <div className="flex items-center justify-between gap-2 text-[12.5px] font-medium text-muted">
         {label}
         {icon && <span className="text-faint">{icon}</span>}
       </div>
       <div
         className={cn(
-          'mt-2 font-display text-[28px] font-semibold leading-8 tabular tracking-[-0.015em]',
+          'mt-1.5 truncate font-display text-[22px] font-semibold leading-7 tabular tracking-[-0.015em] md:mt-2 md:text-[28px] md:leading-8',
           tone === 'success' ? 'text-success-fg' : tone === 'danger' ? 'text-danger-fg' : 'text-ink',
         )}
         title={value}

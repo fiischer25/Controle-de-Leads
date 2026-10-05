@@ -1308,7 +1308,7 @@ export function PageHeader({
 /** Título de seção (Inter Tight 16/600) com um link ou contador à direita. */
 export function SectionHeader({ title, aside, id, className }: { title: ReactNode; aside?: ReactNode; id?: string; className?: string }) {
   return (
-    <div className={cn('mb-4 flex items-baseline justify-between gap-4', className)}>
+    <div className={cn('mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1', className)}>
       <h2 id={id} className="font-display text-[16.5px] font-semibold leading-6 tracking-[-0.01em] text-ink">
         {title}
       </h2>
@@ -1341,7 +1341,7 @@ export function MetricRow({ items, className, label }: { items: Metric[]; classN
           const inner = (
             <>
               <div className="truncate text-[12.5px] font-medium text-muted">{k.label}</div>
-              <div className={cn('metric-value mt-2 truncate font-display text-[26px] font-semibold leading-8 tracking-[-0.015em] tabular md:text-[28px]', k.tone ?? 'text-ink')}>
+              <div className={cn('metric-value mt-1.5 truncate font-display text-[23px] font-semibold leading-7 tracking-[-0.015em] tabular md:mt-2 md:text-[28px] md:leading-8', k.tone ?? 'text-ink')}>
                 {k.value}
               </div>
               {k.sub && <div className="mt-1.5 truncate text-[12px] text-faint">{k.sub}</div>}

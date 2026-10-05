@@ -260,7 +260,7 @@ export default function ProjectDetailPage() {
               const done = pt.filter((t) => t.status === 'done').length;
               const pMinutes = totalMinutes(db.time_entries.filter((e) => pt.some((t) => t.id === e.task_id)));
               return (
-                <section key={p} aria-label={p}>
+                <section key={p} aria-label={p} className="panel">
                   <div className="flex items-baseline justify-between gap-3 border-b border-hairline pb-2.5">
                     <h3 className="flex min-w-0 items-baseline gap-2">
                       <span className="text-[12.5px] tabular text-faint">{i + 1}.</span>
