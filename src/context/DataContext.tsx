@@ -10,7 +10,8 @@ import {
 } from 'react';
 import { backend, type NewUserInput } from '../lib/backend';
 import { defaultFinanceAccount, defaultFinanceCategories, defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from '../lib/defaults';
-import { buildProjectTasks, nextProjectCode } from '../lib/domain';
+import { buildProjectTasks, nextProjectCode, tasksToTemplates } from '../lib/domain';
+import { SWATCHES } from '../lib/constants';
 import {
   TABLES,
   type ActivityLog,
@@ -22,13 +23,17 @@ import {
   type ModuleKey,
   type Profile,
   type Project,
+  type ProjectType,
   type TableName,
   type Tables,
   type Task,
   type TimeEntry,
+  type FinanceEntry,
+  type LeadPaymentPlan,
 } from '../lib/types';
 import { byPosition, nowIso, uid } from '../lib/utils';
 import { canAccess } from '../lib/permissions';
+import { planAmounts } from '../lib/paymentPlan';
 import { useToast } from './ToastContext';
 
 export type Db = { [K in TableName]: Tables[K][] };
@@ -106,6 +111,11 @@ interface DataApi {
   deleteLead(id: string): Promise<void>;
   addInteraction(leadId: string, type: InteractionType, description: string, happenedAt: string): Promise<void>;
   convertLead(leadId: string, client: ClientInput, project: Omit<ProjectInput, 'client_id' | 'lead_id'>): Promise<Project>;
+  /**
+   * Fechamento: salva a forma de pagamento no lead e, com `launch`, lança as parcelas em contas a
+   * receber (uma única vez por oportunidade). Devolve quantas parcelas foram criadas.
+   */
+  closeDeal(leadId: string, plan: LeadPaymentPlan, launch: boolean): Promise<number>;
 
   // Clientes e projetos
   createClient(input: ClientInput): Promise<Client>;
@@ -115,6 +125,8 @@ interface DataApi {
   updateProject(id: string, patch: Partial<Project>): Promise<void>;
   deleteProject(id: string): Promise<void>;
   applyTemplates(projectId: string, startDate: string, assigneeId: string | null): Promise<void>;
+  /** Usa as tarefas do projeto como modelo: substitui as tarefas-modelo de um tipo ou cria um tipo novo. */
+  saveProjectAsTemplate(projectId: string, target: { typeId: string } | { newTypeName: string }, keepAssignees: boolean): Promise<{ type: ProjectType; count: number }>;
 
   // Tarefas
   createTask(input: TaskInput): Promise<Task>;
@@ -405,6 +417,60 @@ export function DataProvider({ userId, children }: { userId: string; children: R
     [patch, log],
   );
 
+  const closeDeal = useCallback(
+    async (leadId: string, plan: LeadPaymentPlan, launch: boolean) => {
+      const lead = dbRef.current.leads.find((l) => l.id === leadId);
+      if (!lead) throw new Error('Oportunidade não encontrada.');
+      await patch('leads', leadId, { payment_plan: plan, proposal_value: plan.total });
+      await log('lead', leadId, 'payment_plan', `definiu a forma de pagamento de ${lead.name}`);
+      if (!launch) return 0;
+      if (backend.mode === 'supabase') {
+        // Função segura do banco: funciona também para quem só tem o módulo Comercial
+        const created = Number(await backend.rpc('create_lead_receivables', { p_lead: leadId })) || 0;
+        if (canAccess(dbRef.current.profiles.find((p) => p.id === userId), 'financeiro')) await loadTable('finance_entries');
+        return created;
+      }
+      // Modo demonstração: mesmas regras da função do banco
+      if (dbRef.current.finance_entries.some((e) => e.lead_id === leadId)) return 0;
+      const amounts = planAmounts(plan.total, plan.rows);
+      if (!amounts.length) return 0;
+      const n = plan.rows.length;
+      const series = n > 1 ? uid() : null;
+      const now = nowIso();
+      const category = [...dbRef.current.finance_categories]
+        .sort(byPosition)
+        .find((c) => c.kind === 'receita' && c.active && c.name.toLowerCase().startsWith('honor'));
+      const project = dbRef.current.projects.find((p) => p.lead_id === leadId);
+      const account = plan.account_id && dbRef.current.finance_accounts.some((a) => a.id === plan.account_id) ? plan.account_id : null;
+      const rows: FinanceEntry[] = plan.rows.map((r, i) => ({
+        id: uid(),
+        kind: 'receita',
+        description: `Honorários ${lead.name} · ${r.label.trim() || `Parcela ${i + 1}`}`,
+        amount: amounts[i],
+        due_date: r.due_date,
+        paid_at: null,
+        account_id: account,
+        to_account_id: null,
+        category_id: category?.id ?? null,
+        client_id: lead.client_id,
+        project_id: project?.id ?? null,
+        lead_id: leadId,
+        series_id: series,
+        installment: n > 1 ? i + 1 : null,
+        installments: n > 1 ? n : null,
+        document: null,
+        notes: 'Forma de pagamento definida no fechamento da oportunidade',
+        created_by: userId,
+        created_at: now,
+        updated_at: now,
+      }));
+      const valid = rows.filter((r) => r.amount > 0);
+      await insertRows('finance_entries', valid);
+      return valid.length;
+    },
+    [patch, log, insertRows, loadTable, userId],
+  );
+
   const deleteLead = useCallback(
     async (id: string) => {
       const lead = dbRef.current.leads.find((l) => l.id === id);
@@ -474,6 +540,42 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       }
     },
     [insertRows, notify, userId],
+  );
+
+  const saveProjectAsTemplate = useCallback(
+    async (projectId: string, target: { typeId: string } | { newTypeName: string }, keepAssignees: boolean) => {
+      const project = dbRef.current.projects.find((p) => p.id === projectId);
+      if (!project) throw new Error('Projeto não encontrado.');
+      const tasks = dbRef.current.tasks.filter((t) => t.project_id === projectId);
+      if (!tasks.length) throw new Error('O projeto não tem tarefas para usar como modelo.');
+      let type: ProjectType | undefined;
+      if ('typeId' in target) {
+        type = dbRef.current.project_types.find((t) => t.id === target.typeId);
+        if (!type) throw new Error('Tipo de projeto não encontrado.');
+      } else {
+        const name = target.newTypeName.trim();
+        if (!name) throw new Error('Informe o nome do novo tipo de projeto.');
+        const types = dbRef.current.project_types;
+        [type] = await insertRows('project_types', [
+          {
+            id: uid(),
+            name,
+            description: `Criado a partir do projeto ${project.name}`,
+            color: SWATCHES[types.length % SWATCHES.length],
+            active: true,
+            position: types.length ? Math.max(...types.map((t) => t.position)) + 1 : 0,
+          },
+        ]);
+      }
+      const old = dbRef.current.task_templates.filter((t) => t.project_type_id === type.id).map((t) => t.id);
+      const templates = tasksToTemplates(tasks, type.id, keepAssignees);
+      // Grava as novas antes de apagar as antigas: se algo falhar, o modelo anterior continua lá
+      await insertRows('task_templates', templates);
+      if (old.length) await removeRows('task_templates', old);
+      await log('project', projectId, 'template', `usou o projeto ${project.name} como modelo de “${type.name}” (${templates.length} tarefas)`);
+      return { type, count: templates.length };
+    },
+    [insertRows, removeRows, log],
   );
 
   const createProject = useCallback(
@@ -551,6 +653,12 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       const client = await createClient(clientInput, leadId);
       const project = await createProject({ ...projectInput, client_id: client.id, lead_id: leadId });
       await patch('leads', leadId, { client_id: client.id, converted_at: nowIso() });
+      // Parcelas do fechamento passam a apontar para o projeto (no Supabase, um gatilho do banco faz isso)
+      if (backend.mode === 'local') {
+        for (const e of dbRef.current.finance_entries.filter((x) => x.lead_id === leadId && !x.project_id)) {
+          await patch('finance_entries', e.id, { project_id: project.id, client_id: e.client_id ?? client.id });
+        }
+      }
       await log('lead', leadId, 'converted', `converteu ${lead.name} em cliente`);
       return project;
     },
@@ -773,9 +881,9 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   const api: DataApi = {
     db: visibleDb, loading, me, isAdmin, settings, maps, refresh,
     insertRows, patch, removeRows, log, notify,
-    createLead, updateLead, moveLead, deleteLead, addInteraction, convertLead,
+    createLead, updateLead, moveLead, deleteLead, addInteraction, convertLead, closeDeal,
     createClient: (input) => createClient(input), updateClient, deleteClient,
-    createProject, updateProject, deleteProject, applyTemplates,
+    createProject, updateProject, deleteProject, applyTemplates, saveProjectAsTemplate,
     createTask, updateTask, deleteTask, addComment, startTimer, stopTimer, addTimeEntry, deleteTimeEntry, runningEntry,
     createEvent, updateEvent, deleteEvent,
     markNotificationsRead, createUser, updateUser, can,

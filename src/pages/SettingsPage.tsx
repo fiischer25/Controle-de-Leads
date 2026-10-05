@@ -81,8 +81,10 @@ function useReorder<T extends TableName>(table: T) {
 function ProjectTypesSettings() {
   const { db, insertRows, patch, removeRows, log } = useData();
   const toast = useToast();
+  const [params] = useSearchParams();
   const types = useMemo(() => [...db.project_types].sort(byPosition), [db.project_types]);
-  const [selectedId, setSelectedId] = useState<string | null>(types[0]?.id ?? null);
+  // ?tipo=<id> abre direto no tipo (link de "Salvar como modelo" no projeto)
+  const [selectedId, setSelectedId] = useState<string | null>(params.get('tipo') ?? types[0]?.id ?? null);
   const [confirmDelete, setConfirmDelete] = useState<ProjectType | null>(null);
   const reorder = useReorder('project_types');
   const selected = types.find((t) => t.id === selectedId) ?? types[0];

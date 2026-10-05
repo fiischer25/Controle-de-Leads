@@ -25,6 +25,7 @@ import { ActionLink, Avatar, Button, EmptyState, FilterPick, IconButton, SearchF
 import { LeadDrawer, LostReasonModal } from '../components/leads/LeadDrawer';
 import { LeadFormModal } from '../components/leads/LeadFormModal';
 import { ConvertLeadModal } from '../components/leads/ConvertLeadModal';
+import { WonDealModal } from '../components/leads/WonDealModal';
 
 type View = 'kanban' | 'list';
 
@@ -37,7 +38,7 @@ function readView(): View {
 }
 
 export default function LeadsPage() {
-  const { db, maps, moveLead, settings } = useData();
+  const { db, maps, moveLead, settings, closeDeal } = useData();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const [view, setView] = useState<View>(readView);
@@ -50,6 +51,7 @@ export default function LeadsPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ stage: string; before: string | null } | null>(null);
   const [pendingLost, setPendingLost] = useState<{ id: string; stage: string; before: string | null } | null>(null);
+  const [pendingWon, setPendingWon] = useState<{ id: string; stage: string; before: string | null } | null>(null);
   const [converting, setConverting] = useState<Lead | null>(null);
   const [mobileStage, setMobileStage] = useState<string | null>(null);
   const desktop = useMediaQuery('(min-width: 768px)');
@@ -113,6 +115,11 @@ export default function LeadsPage() {
     const target = maps.stages[stageId];
     if (lead && target?.kind === 'lost' && lead.stage_id !== stageId) {
       setPendingLost({ id, stage: stageId, before });
+      return;
+    }
+    // Ganho: abre o fechamento (valor e forma de pagamento → Financeiro)
+    if (lead && target?.kind === 'won' && lead.stage_id !== stageId) {
+      setPendingWon({ id, stage: stageId, before });
       return;
     }
     try {
@@ -404,6 +411,20 @@ export default function LeadsPage() {
       {creatingIn !== null && <LeadFormModal defaultStageId={creatingIn} onClose={() => setCreatingIn(null)} />}
       {openLeadId && <LeadDrawer leadId={openLeadId} onClose={() => openLead(null)} />}
       {converting && <ConvertLeadModal lead={converting} onClose={() => setConverting(null)} />}
+      {pendingWon && maps.leads[pendingWon.id] && (
+        <WonDealModal
+          lead={maps.leads[pendingWon.id]}
+          mode="won"
+          onClose={() => setPendingWon(null)}
+          onSubmit={async (plan, launch) => {
+            const lead = maps.leads[pendingWon.id];
+            const created = plan ? await closeDeal(lead.id, plan, launch) : 0;
+            await moveLead(pendingWon.id, pendingWon.stage, pendingWon.before);
+            if (created > 0) toast.success(`${lead.name} fechou! ${created} ${created === 1 ? 'parcela lançada' : 'parcelas lançadas'} em contas a receber.`);
+            else if (!lead.client_id) toast.success(`${lead.name} fechou! Complete os dados para virar cliente.`);
+          }}
+        />
+      )}
       {pendingLost && (
         <LostReasonModal
           onClose={() => setPendingLost(null)}

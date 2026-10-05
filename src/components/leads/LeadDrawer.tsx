@@ -13,6 +13,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateShort,
+  formatMoney,
   formatNumber,
   isoToLocalTime,
   parseDate,
@@ -25,6 +26,9 @@ import { ConvertLeadModal } from './ConvertLeadModal';
 import { ContactLogModal } from './ContactLogModal';
 import { EventFormModal } from '../events/EventFormModal';
 import { LeadFormModal } from './LeadFormModal';
+import { WonDealModal } from './WonDealModal';
+import { planSummary } from '../../lib/paymentPlan';
+import type { LeadPaymentPlan } from '../../lib/types';
 
 export function LostReasonModal({ onConfirm, onClose }: { onConfirm: (reason: string) => Promise<void>; onClose: () => void }) {
   const [reason, setReason] = useState(LOST_REASONS[0]);
@@ -102,12 +106,14 @@ function Detail({ label, children, wide }: { label: string; children: ReactNode;
 }
 
 export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }) {
-  const { db, maps, isAdmin, can, moveLead, deleteLead, addInteraction, updateLead } = useData();
+  const { db, maps, isAdmin, can, moveLead, deleteLead, addInteraction, updateLead, closeDeal } = useData();
   const toast = useToast();
   const lead = maps.leads[leadId];
   const [editing, setEditing] = useState(false);
   const [converting, setConverting] = useState(false);
   const [losing, setLosing] = useState(false);
+  // Fechamento: ao marcar como ganho (com a etapa de destino) ou para editar a forma de pagamento
+  const [winning, setWinning] = useState<{ mode: 'won' | 'edit'; stageId?: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [logging, setLogging] = useState(false);
@@ -143,6 +149,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
   const changeStage = async (stageId: string) => {
     const target = maps.stages[stageId];
     if (target?.kind === 'lost') return setLosing(true);
+    if (target?.kind === 'won' && lead.stage_id !== stageId) return setWinning({ mode: 'won', stageId });
     try {
       await moveLead(lead.id, stageId);
       if (target?.kind === 'won' && !lead.client_id) toast.success(`${lead.name} fechou! Complete os dados para virar cliente.`);
@@ -274,6 +281,30 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
               </span>
             </div>
           )}
+          {lead.payment_plan ? (
+            <div className="mt-4 rounded-lg border border-hairline px-4 py-3 text-[13px]">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-medium text-ink">Forma de pagamento</span>
+                <span className="flex items-center gap-4">
+                  {can('financeiro') && (
+                    <ActionLink to="/financeiro?aba=lancamentos" muted>
+                      Financeiro
+                    </ActionLink>
+                  )}
+                  <ActionLink onClick={() => setWinning({ mode: 'edit' })}>Editar</ActionLink>
+                </span>
+              </div>
+              <p className="mt-0.5 text-muted">
+                {formatMoney(lead.payment_plan.total)} · {planSummary(lead.payment_plan.rows)}
+              </p>
+            </div>
+          ) : (
+            stage?.kind === 'won' && (
+              <div className="mt-3">
+                <ActionLink onClick={() => setWinning({ mode: 'edit' })}>Definir forma de pagamento</ActionLink>
+              </div>
+            )
+          )}
           {stage?.kind === 'lost' && lead.lost_reason && (
             <p className="mt-4 text-[13px] text-muted">
               <span className="text-faint">Motivo da perda:</span> {lead.lost_reason}
@@ -389,6 +420,20 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
         <EventFormModal
           defaults={{ title: `Reunião com ${lead.name}`, lead_id: lead.id, participant_ids: lead.owner_id ? [lead.owner_id] : [] }}
           onClose={() => setScheduling(false)}
+        />
+      )}
+      {winning && (
+        <WonDealModal
+          lead={lead}
+          mode={winning.mode}
+          onClose={() => setWinning(null)}
+          onSubmit={async (plan: LeadPaymentPlan | null, launch: boolean) => {
+            const created = plan ? await closeDeal(lead.id, plan, launch) : 0;
+            if (winning.stageId) await moveLead(lead.id, winning.stageId);
+            if (created > 0) toast.success(`${created} ${created === 1 ? 'parcela lançada' : 'parcelas lançadas'} em contas a receber.`);
+            else if (plan) toast.success('Forma de pagamento salva.');
+            else if (!lead.client_id) toast.success(`${lead.name} fechou! Complete os dados para virar cliente.`);
+          }}
         />
       )}
       {losing && lostStage && (

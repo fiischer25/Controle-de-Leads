@@ -23,6 +23,11 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - **Kanban com arrastar e soltar** entre as etapas (configuráveis), e visão em lista.
 - Histórico de contatos (ligação, WhatsApp, reunião, visita…), lembrete de retorno, alerta de
   lead parado, motivo de perda, atalhos para WhatsApp/e-mail e exportação CSV.
+- **Fechamento com forma de pagamento:** ao marcar o lead como ganho (botão *Ganho*, etapa ou
+  arrastando no kanban), informa-se o valor fechado e as parcelas combinadas — 30% · 40% · 30%,
+  50% · 50%, à vista, mensal ou personalizado, com as datas. As parcelas entram sozinhas em
+  **contas a receber** do Financeiro (categoria honorários), mesmo quando quem fecha só tem o módulo
+  Comercial, e passam para o projeto quando o lead vira cliente. Editar depois não duplica.
 - **Virar cliente**: disponível quando o lead está “Fechado”, e só conclui com **todos os dados do
   cliente** (CPF/CNPJ validado, e-mail, telefone, endereço completo — CEP preenche o endereço).
 
@@ -32,9 +37,12 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   agendadas em sequência (dias úteis) a partir da data de início.
 - Lista de projetos com status, cliente, pessoas à frente, etapa atual, progresso e prazo
   (vencidos / a vencer), em cards ou tabela, com filtros e exportação.
-- Tela do projeto: tarefas em tabela por etapa (nº, checklist, status, duração, início, fim, horas
-  estimadas e realizadas, responsável, prioridade), **cronograma (Gantt)**, equipe e horas por pessoa,
+- Tela do projeto: tarefas em tabela por etapa (nº, checklist, status, duração, início e fim — clique
+  para escolher a data —, horas estimadas e realizadas, responsável, prioridade), **cronograma (Gantt)**, equipe e horas por pessoa,
   dados do cliente, links (Drive, pranchas…), anotações e histórico de atividades.
+- **Usar como modelo:** as tarefas de um projeto (etapas, ordem, checklist, observações, prioridade,
+  horas, duração pelas datas e tarefas em paralelo) viram as tarefas-modelo de um tipo existente ou
+  de um tipo novo; depois é só ajustar em Configurações. Projetos já criados não mudam.
 
 **Tarefas**
 - Cada tarefa tem responsável, data de início e fim, status, prioridade, estimativa, checklist e
@@ -118,7 +126,12 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 **Configurações (administrador ou quem tiver o módulo)**
 - Tipos de projeto e suas **tarefas-modelo**, em tabela por etapas: nº, duração, início e fim
   simulados, horas estimadas, quem fica à frente, prioridade, **checklist** e **observações** de cada
-  tarefa (copiados para cada novo projeto), tarefas em paralelo e etapas que se renomeiam e reordenam.
+  tarefa (copiados para cada novo projeto), tarefas em paralelo, tarefas com **duração 0** (entram no
+  projeto sem datas, como reuniões e visitas, e o início e o fim são preenchidos depois) e etapas que se renomeiam e reordenam.
+- Modelo **Arquitetura e Interiores** do escritório: LD - Levantamento de Dados, EP - Estudo
+  Preliminar, C3D - Concepção 3D, PI - Projeto de Interiores, PL - Projeto Legal, PCE - Projetos
+  Complementares Engenharia, CO - Compatibilização, PE - Projeto Executivo, PEI - Projeto Executivo
+  de Interiores e VL - Visita em Lojas (23 tarefas com checklist; migração `20261010000000_arq_int_templates.sql`).
 - Etapas do funil, origens de leads, Google Agenda do escritório, dias de alerta de prazo e prefixo
   dos códigos.
 
@@ -144,8 +157,10 @@ Para uso real pela equipe, configure o Supabase.
    `supabase/migrations/20261004000000_module_permissions.sql`,
    `supabase/migrations/20261005000000_whatsapp_alerts.sql`,
    `supabase/migrations/20261006000000_finance.sql`,
-   `supabase/migrations/20261007000000_finance_import_files.sql` e
-   `supabase/migrations/20261008000000_task_templates_details.sql`
+   `supabase/migrations/20261007000000_finance_import_files.sql`,
+   `supabase/migrations/20261008000000_task_templates_details.sql`,
+   `supabase/migrations/20261009000000_lead_payment_plan.sql` e
+   `supabase/migrations/20261010000000_arq_int_templates.sql`
    (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
    (podem rodar mais de uma vez sem problema).
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):

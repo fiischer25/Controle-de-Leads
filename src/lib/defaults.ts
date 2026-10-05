@@ -1,4 +1,4 @@
-import type { AppSettings, FinanceAccount, FinanceCategory, LeadSource, LeadStage, ProjectType, TaskTemplate } from './types';
+import type { AppSettings, FinanceAccount, FinanceCategory, LeadSource, LeadStage, ProjectType, TaskPriority, TaskTemplate } from './types';
 import { nowIso, uid } from './utils';
 
 /**
@@ -116,22 +116,67 @@ const INT: PhaseSpec[] = [
   ]],
 ];
 
-const ARQ_INT: PhaseSpec[] = [
-  ...ARQ.filter(([p]) => p !== 'Entrega'),
-  ...INT.filter(([p]) => p !== 'Briefing' && p !== 'Entrega').map(
-    ([p, t]) => [p.startsWith('Executivo') ? p : `Interiores · ${p}`, t] as PhaseSpec,
-  ),
-  ['Entrega', [
-    ['Caderno de projeto completo', 3],
-    ['Revisão final e conferência', 2],
-    ['Entrega do projeto ao cliente', 1],
+/** Tarefa-modelo com prioridade, checklist e execução em paralelo com a anterior. */
+type RichTask = { title: string; days: number; priority?: TaskPriority; checklist?: string[]; parallel?: boolean };
+type RichPhaseSpec = [phase: string, tasks: RichTask[]];
+
+/**
+ * Arquitetura e Interiores: etapas e tarefas do escritório (mesmas da migração
+ * 20261010000000_arq_int_templates.sql). Durações em dias úteis.
+ */
+export const ARQ_INT: RichPhaseSpec[] = [
+  ['LD - Levantamento de Dados', [
+    { title: 'Coleta de Documentos', days: 12, priority: 'alta', checklist: ['Matrícula atualizada do imóvel', 'IPTU / inscrição imobiliária', 'Guia amarela (consulta de zoneamento)', 'Levantamento topográfico', 'Documentos pessoais do proprietário'] },
+    { title: 'Levantamento do Programa de Necessidades (Briefing)', days: 2, priority: 'alta', checklist: ['Aplicar questionário de briefing', 'Registrar o programa de necessidades'] },
+    { title: 'Reunião com o Cliente', days: 0, checklist: ['Agendar a reunião', 'Apresentar etapas, prazos e forma de trabalho', 'Registrar as decisões da reunião'] },
+    { title: 'Visita ao Terreno', days: 0, checklist: ['Fotos do terreno e do entorno', 'Conferir medidas, níveis e orientação solar'] },
+  ]],
+  ['EP - Estudo Preliminar', [
+    { title: 'Estudo de Planta Layout', days: 30, checklist: ['Implantação no terreno', 'Setorização e fluxos', 'Planta layout do térreo', 'Planta layout do pavimento superior', 'Pré-dimensionamento dos ambientes', 'Verificar recuos, taxa de ocupação e coeficiente', 'Quadro de áreas', 'Estudo de cobertura', 'Apresentação ao cliente'] },
+    { title: 'Revisões do Estudo Preliminar', days: 20, priority: 'baixa', checklist: ['Aprovação do estudo preliminar pelo cliente'] },
+  ]],
+  ['C3D - Concepção 3D', [
+    { title: 'Modelagem 3D da volumetria', days: 10, checklist: ['Modelar a volumetria a partir do layout aprovado', 'Definir cobertura e aberturas'] },
+    { title: 'Estudo de fachadas e materiais', days: 7, checklist: ['Fachadas principais', 'Materiais e cores', 'Paisagismo básico'] },
+    { title: 'Apresentação e aprovação do 3D', days: 3, checklist: ['Gerar imagens', 'Reunião de apresentação', 'Registrar ajustes ou aprovação'] },
+  ]],
+  ['PI - Projeto de Interiores', [
+    { title: 'Briefing de interiores e referências', days: 2, checklist: ['Questionário de interiores', 'Pasta de referências', 'Validar orçamento previsto'] },
+    { title: 'Layout e mobiliário', days: 5, checklist: ['Layout de todos os ambientes', 'Mobiliário existente e novo'] },
+    { title: 'Moodboard e conceito', days: 3, checklist: ['Moodboard por ambiente', 'Paleta de cores e materiais'] },
+    { title: 'Modelagem 3D e imagens dos ambientes', days: 10, checklist: ['Modelar os ambientes', 'Renderizar as imagens'] },
+    { title: 'Apresentação e ajustes de interiores', days: 5, checklist: ['Reunião de apresentação', 'Ajustes pedidos', 'Aprovação do cliente'] },
+  ]],
+  ['PL - Projeto Legal', [
+    { title: 'Projeto legal e aprovação na prefeitura', days: 15, priority: 'alta', checklist: ['Plantas no padrão da prefeitura', 'Memorial e quadro de áreas', 'ART/RRT emitida', 'Documentos do proprietário', 'Protocolo e acompanhamento na prefeitura'] },
+  ]],
+  ['PCE - Projetos Complementares Engenharia', [
+    { title: 'Projeto estrutural', days: 15, checklist: ['Enviar arquitetura ao engenheiro', 'Receber e revisar o projeto'] },
+    { title: 'Projeto elétrico', days: 10, parallel: true, checklist: ['Enviar layout e pontos', 'Receber e revisar o projeto'] },
+    { title: 'Projeto hidrossanitário', days: 10, parallel: true, checklist: ['Enviar layout e pontos', 'Receber e revisar o projeto'] },
+  ]],
+  ['CO - Compatibilização', [
+    { title: 'Compatibilização dos projetos', days: 5, checklist: ['Estrutural', 'Elétrico', 'Hidrossanitário', 'Ar-condicionado', 'Registrar interferências resolvidas'] },
+  ]],
+  ['PE - Projeto Executivo', [
+    { title: 'Projeto executivo de arquitetura', days: 20, checklist: ['Plantas executivas', 'Cortes e fachadas', 'Detalhes construtivos', 'Esquadrias', 'Memorial descritivo e especificações', 'Revisão final e conferência'] },
+  ]],
+  ['PEI - Projeto Executivo de Interiores', [
+    { title: 'Detalhamento de marcenaria', days: 10, checklist: CHECKLISTS['Detalhamento de marcenaria'] },
+    { title: 'Paginações, luminotécnico e especificações', days: 7, checklist: ['Paginação de piso e revestimentos', 'Projeto luminotécnico', 'Pontos elétricos e hidráulicos', 'Especificações e lista de compras'] },
+  ]],
+  ['VL - Visita em Lojas', [
+    { title: 'Visita às lojas com o cliente', days: 2, checklist: ['Agendar com as lojas', 'Revestimentos, louças e metais', 'Iluminação e mobiliário', 'Registrar escolhas e orçamentos'] },
   ]],
 ];
 
+const rich = (phases: PhaseSpec[]): RichPhaseSpec[] =>
+  phases.map(([phase, tasks]) => [phase, tasks.map(([title, days]) => ({ title, days, checklist: CHECKLISTS[title] }))]);
+
 export function defaultProjectTypes(): { types: ProjectType[]; templates: TaskTemplate[] } {
-  const specs: Array<[string, string, string, PhaseSpec[]]> = [
-    ['Arquitetura', 'Projeto arquitetônico completo, do estudo ao executivo.', '#8f7c61', ARQ],
-    ['Interiores', 'Projeto de interiores, do conceito ao detalhamento.', '#557589', INT],
+  const specs: Array<[string, string, string, RichPhaseSpec[]]> = [
+    ['Arquitetura', 'Projeto arquitetônico completo, do estudo ao executivo.', '#8f7c61', rich(ARQ)],
+    ['Interiores', 'Projeto de interiores, do conceito ao detalhamento.', '#557589', rich(INT)],
     ['Arquitetura e Interiores', 'Projeto completo de arquitetura com interiores.', '#5d8263', ARQ_INT],
   ];
   const types: ProjectType[] = [];
@@ -141,20 +186,20 @@ export function defaultProjectTypes(): { types: ProjectType[]; templates: TaskTe
     types.push(type);
     let pos = 0;
     for (const [phase, tasks] of phases) {
-      for (const [title, duration_days] of tasks) {
+      for (const task of tasks) {
         templates.push({
           id: uid(),
           project_type_id: type.id,
           phase,
-          title,
+          title: task.title,
           description: null,
-          duration_days,
+          duration_days: task.days,
           position: pos++,
-          checklist: CHECKLISTS[title] ?? [],
+          checklist: task.checklist ?? [],
           assignee_id: null,
-          priority: 'media',
+          priority: task.priority ?? 'media',
           estimated_hours: null,
-          start_with_previous: false,
+          start_with_previous: !!task.parallel,
         });
       }
     }

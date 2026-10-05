@@ -153,8 +153,12 @@ export async function buildDemoData(
     const start = addDays(t, spec.startOffset);
     const projectTasks = buildProjectTasks({ templates: tpl, projectId, startDate: start, assigneeId: spec.manager.id, createdBy: admin.id });
     const doneCount = Math.round(projectTasks.length * spec.done);
+    let lastDue = start;
     projectTasks.forEach((task, idx) => {
       task.assignee_id = spec.members[idx % spec.members.length].id;
+      // Tarefa-modelo de duração 0 entra sem datas; as já feitas ganham a data da anterior
+      if (task.due_date) lastDue = task.due_date;
+      else if (idx <= doneCount) task.start_date = task.due_date = lastDue;
       if (idx < doneCount) {
         task.status = 'done';
         task.completed_at = `${task.due_date}T18:00:00.000Z`;

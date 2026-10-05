@@ -235,6 +235,11 @@ export class LocalBackend implements Backend {
     return null;
   }
 
+  async rpc(): Promise<unknown> {
+    // No modo demonstração as regras rodam no próprio navegador (DataContext).
+    throw new Error('Função disponível apenas com o Supabase.');
+  }
+
   // Arquivos no modo demonstração: guardados no próprio navegador (limite pequeno).
   async uploadFile(bucket: string, path: string, file: File) {
     if (file.size > 1_500_000) throw new Error('No modo demonstração, anexe arquivos de até 1,5 MB.');
