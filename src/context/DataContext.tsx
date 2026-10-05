@@ -26,9 +26,12 @@ import {
   type Tables,
   type Task,
   type TimeEntry,
+  type FinanceEntry,
+  type LeadPaymentPlan,
 } from '../lib/types';
 import { byPosition, nowIso, uid } from '../lib/utils';
 import { canAccess } from '../lib/permissions';
+import { planAmounts } from '../lib/paymentPlan';
 import { useToast } from './ToastContext';
 
 export type Db = { [K in TableName]: Tables[K][] };
@@ -106,6 +109,11 @@ interface DataApi {
   deleteLead(id: string): Promise<void>;
   addInteraction(leadId: string, type: InteractionType, description: string, happenedAt: string): Promise<void>;
   convertLead(leadId: string, client: ClientInput, project: Omit<ProjectInput, 'client_id' | 'lead_id'>): Promise<Project>;
+  /**
+   * Fechamento: salva a forma de pagamento no lead e, com `launch`, lança as parcelas em contas a
+   * receber (uma única vez por oportunidade). Devolve quantas parcelas foram criadas.
+   */
+  closeDeal(leadId: string, plan: LeadPaymentPlan, launch: boolean): Promise<number>;
 
   // Clientes e projetos
   createClient(input: ClientInput): Promise<Client>;
@@ -405,6 +413,60 @@ export function DataProvider({ userId, children }: { userId: string; children: R
     [patch, log],
   );
 
+  const closeDeal = useCallback(
+    async (leadId: string, plan: LeadPaymentPlan, launch: boolean) => {
+      const lead = dbRef.current.leads.find((l) => l.id === leadId);
+      if (!lead) throw new Error('Oportunidade não encontrada.');
+      await patch('leads', leadId, { payment_plan: plan, proposal_value: plan.total });
+      await log('lead', leadId, 'payment_plan', `definiu a forma de pagamento de ${lead.name}`);
+      if (!launch) return 0;
+      if (backend.mode === 'supabase') {
+        // Função segura do banco: funciona também para quem só tem o módulo Comercial
+        const created = Number(await backend.rpc('create_lead_receivables', { p_lead: leadId })) || 0;
+        if (canAccess(dbRef.current.profiles.find((p) => p.id === userId), 'financeiro')) await loadTable('finance_entries');
+        return created;
+      }
+      // Modo demonstração: mesmas regras da função do banco
+      if (dbRef.current.finance_entries.some((e) => e.lead_id === leadId)) return 0;
+      const amounts = planAmounts(plan.total, plan.rows);
+      if (!amounts.length) return 0;
+      const n = plan.rows.length;
+      const series = n > 1 ? uid() : null;
+      const now = nowIso();
+      const category = [...dbRef.current.finance_categories]
+        .sort(byPosition)
+        .find((c) => c.kind === 'receita' && c.active && c.name.toLowerCase().startsWith('honor'));
+      const project = dbRef.current.projects.find((p) => p.lead_id === leadId);
+      const account = plan.account_id && dbRef.current.finance_accounts.some((a) => a.id === plan.account_id) ? plan.account_id : null;
+      const rows: FinanceEntry[] = plan.rows.map((r, i) => ({
+        id: uid(),
+        kind: 'receita',
+        description: `Honorários ${lead.name} · ${r.label.trim() || `Parcela ${i + 1}`}`,
+        amount: amounts[i],
+        due_date: r.due_date,
+        paid_at: null,
+        account_id: account,
+        to_account_id: null,
+        category_id: category?.id ?? null,
+        client_id: lead.client_id,
+        project_id: project?.id ?? null,
+        lead_id: leadId,
+        series_id: series,
+        installment: n > 1 ? i + 1 : null,
+        installments: n > 1 ? n : null,
+        document: null,
+        notes: 'Forma de pagamento definida no fechamento da oportunidade',
+        created_by: userId,
+        created_at: now,
+        updated_at: now,
+      }));
+      const valid = rows.filter((r) => r.amount > 0);
+      await insertRows('finance_entries', valid);
+      return valid.length;
+    },
+    [patch, log, insertRows, loadTable, userId],
+  );
+
   const deleteLead = useCallback(
     async (id: string) => {
       const lead = dbRef.current.leads.find((l) => l.id === id);
@@ -551,6 +613,12 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       const client = await createClient(clientInput, leadId);
       const project = await createProject({ ...projectInput, client_id: client.id, lead_id: leadId });
       await patch('leads', leadId, { client_id: client.id, converted_at: nowIso() });
+      // Parcelas do fechamento passam a apontar para o projeto (no Supabase, um gatilho do banco faz isso)
+      if (backend.mode === 'local') {
+        for (const e of dbRef.current.finance_entries.filter((x) => x.lead_id === leadId && !x.project_id)) {
+          await patch('finance_entries', e.id, { project_id: project.id, client_id: e.client_id ?? client.id });
+        }
+      }
       await log('lead', leadId, 'converted', `converteu ${lead.name} em cliente`);
       return project;
     },
@@ -773,7 +841,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   const api: DataApi = {
     db: visibleDb, loading, me, isAdmin, settings, maps, refresh,
     insertRows, patch, removeRows, log, notify,
-    createLead, updateLead, moveLead, deleteLead, addInteraction, convertLead,
+    createLead, updateLead, moveLead, deleteLead, addInteraction, convertLead, closeDeal,
     createClient: (input) => createClient(input), updateClient, deleteClient,
     createProject, updateProject, deleteProject, applyTemplates,
     createTask, updateTask, deleteTask, addComment, startTimer, stopTimer, addTimeEntry, deleteTimeEntry, runningEntry,

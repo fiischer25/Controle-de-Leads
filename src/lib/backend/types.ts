@@ -66,6 +66,9 @@ export interface Backend {
   fileUrl(bucket: string, path: string): Promise<string>;
   removeFiles(bucket: string, paths: string[]): Promise<void>;
 
+  /** Função do banco (somente Supabase). */
+  rpc(name: string, args: Record<string, unknown>): Promise<unknown>;
+
   /** Notifica quando outra sessão/usuário altera uma tabela. */
   subscribe(cb: (table: TableName) => void): () => void;
 }

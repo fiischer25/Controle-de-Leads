@@ -5,6 +5,7 @@ import { BR_STATES, LEAD_CATEGORIES } from '../../lib/constants';
 import type { Lead, LeadCategory } from '../../lib/types';
 import { byPosition, digitsOnly, maskPhone, normalize } from '../../lib/utils';
 import { Button, Field, Input, Modal, Select, Textarea, UserSelect } from '../ui';
+import { MoneyInput } from '../finance/MoneyInput';
 
 export function LeadFormModal({
   lead,
@@ -150,7 +151,7 @@ export function LeadFormModal({
           <Input value={v.referred_by ?? ''} onChange={(e) => set('referred_by', e.target.value || null)} placeholder={isReferral ? 'Quem indicou?' : 'Opcional'} />
         </Field>
         <Field label="Valor da proposta (R$)" className="sm:col-span-2">
-          <Input type="number" min={0} step="100" value={v.proposal_value ?? ''} onChange={(e) => set('proposal_value', e.target.value ? Number(e.target.value) : null)} />
+          <MoneyInput value={v.proposal_value} onChange={(n) => set('proposal_value', n)} aria-label="Valor da proposta" />
         </Field>
         <Field label="Etapa" required error={errors.stage_id} className="sm:col-span-2">
           <Select value={v.stage_id} onChange={(e) => set('stage_id', e.target.value)}>

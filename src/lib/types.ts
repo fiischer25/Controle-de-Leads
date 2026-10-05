@@ -75,6 +75,15 @@ export interface TaskTemplate {
   start_with_previous?: boolean;
 }
 
+/** Forma de pagamento combinada ao ganhar a oportunidade. */
+export interface LeadPaymentPlan {
+  total: number;
+  rows: Array<{ label: string; percent: number; due_date: string }>;
+  account_id: string | null;
+  preset: string;
+  defined_at: string;
+}
+
 export type LeadCategory = 'Residencial' | 'Comercial' | 'Corporativo' | 'Institucional' | 'Outro';
 
 export interface Lead {
@@ -90,6 +99,8 @@ export interface Lead {
   source_id: string | null;
   referred_by: string | null;
   proposal_value: number | null;
+  /** Forma de pagamento combinada no fechamento (migração 20261009). */
+  payment_plan?: LeadPaymentPlan | null;
   stage_id: string;
   owner_id: string | null;
   position: number;
@@ -337,6 +348,8 @@ export interface FinanceEntry {
   notes: string | null;
   /** Identificador da transação no extrato importado (evita importar duas vezes). Migração 20261007. */
   bank_ref?: string | null;
+  /** Oportunidade que originou a parcela (fechamento com forma de pagamento). Migração 20261009. */
+  lead_id?: string | null;
   /** Comprovantes e notas. Migração 20261007. */
   attachments?: FinanceAttachment[];
   created_by: string | null;

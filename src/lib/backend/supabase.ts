@@ -15,6 +15,9 @@ function translateError(message: string): string {
   if (/failed to send a request to the edge function|requested function was not found/i.test(message)) {
     return 'Não foi possível falar com a função do servidor. Confira no Supabase, em Edge Functions, se ela foi publicada com o nome exato indicado no guia.';
   }
+  if (/payment_plan|lead_id/i.test(message) && /column|schema cache/i.test(message)) {
+    return 'O banco ainda não tem a forma de pagamento do fechamento. No Supabase, execute a migração 20261009000000_lead_payment_plan.sql.';
+  }
   if (/start_with_previous|estimated_hours|checklist|assignee_id|priority/i.test(message) && /task_templates/i.test(message) && /column|schema cache/i.test(message)) {
     return 'O banco ainda não tem os detalhes das tarefas-modelo. No Supabase, abra o SQL Editor e execute a migração 20261008000000_task_templates_details.sql.';
   }
@@ -204,6 +207,17 @@ export class SupabaseBackend implements Backend {
         /* resposta sem JSON */
       }
       throw new Error(translateError(message));
+    }
+    return data;
+  }
+
+  async rpc(name: string, args: Record<string, unknown>) {
+    const { data, error } = await this.client.rpc(name, args);
+    if (error) {
+      if (/could not find the function|PGRST202/i.test(`${error.message} ${error.code ?? ''}`)) {
+        throw new Error('O banco ainda não tem a forma de pagamento do fechamento. No Supabase, execute a migração 20261009000000_lead_payment_plan.sql.');
+      }
+      fail(error);
     }
     return data;
   }
