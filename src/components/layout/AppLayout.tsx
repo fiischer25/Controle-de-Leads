@@ -133,9 +133,9 @@ export function AppLayout() {
     return db.leads.filter((l) => openStages.has(l.stage_id) && l.next_contact_date && l.next_contact_date <= t).length;
   }, [db.leads, db.lead_stages, can]);
 
-  // Grupos separados apenas por espaço, sem rótulos. Nomes inalterados.
-  // Primeiro bloco: telas iniciais, projetos e tarefas. O administrador abre no dashboard
-  // do escritório e tem o próprio painel ao lado; os demais abrem no próprio painel.
+  // Grupos com rótulo (Trabalho, Comercial, Gestão). Primeiro bloco: telas iniciais, projetos
+  // e tarefas. O administrador abre no dashboard do escritório e tem o próprio painel ao lado;
+  // os demais abrem no próprio painel.
   const groups: NavItem[][] = [
     [
       ...(isAdmin
@@ -164,7 +164,7 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-canvas">
       {/* Sidebar: 232px no desktop, só ícones entre 768 e 1279px, oculta no celular. */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[76px] md:block xl:w-sidebar">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[76px] border-r border-line bg-surface md:block xl:w-sidebar">
         <Sidebar groups={visibleGroups} onSearch={() => setPaletteOpen(true)} />
       </aside>
 
@@ -174,7 +174,7 @@ export function AppLayout() {
           onSearch={() => setPaletteOpen(true)}
           isHome={location.pathname === '/'}
         />
-        <header className="hidden h-[72px] items-center gap-2 px-8 md:flex xl:px-16">
+        <header className="mx-auto hidden h-[68px] max-w-[1440px] items-center gap-2 px-8 md:flex xl:px-12">
           <TimerPill />
           <div className="flex-1" />
           <button
@@ -187,7 +187,7 @@ export function AppLayout() {
           </button>
           <NotificationsMenu />
         </header>
-        <main className="px-5 pb-[120px] pt-1 md:px-8 md:pb-16 xl:px-16 xl:pb-[72px]">
+        <main className="mx-auto max-w-[1440px] px-5 pb-[120px] pt-1 md:px-8 md:pb-16 xl:px-12 xl:pb-[72px]">
           <SchemaBanner />
           <Outlet />
         </main>
@@ -228,6 +228,14 @@ export function AppLayout() {
 }
 
 // ---------------------------------------------------------------- Sidebar
+/** Rótulo do grupo do menu pelo primeiro item dele. */
+function groupLabel(g: NavItem[]): string {
+  const first = g[0]?.to ?? '';
+  if (['/oportunidades', '/clientes'].includes(first)) return 'Comercial';
+  if (['/financeiro', '/relatorios', '/equipe', '/configuracoes'].includes(first)) return 'Gestão';
+  return 'Trabalho';
+}
+
 function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => void }) {
   const { mode } = useAuth();
   const { office_name } = useBranding();
@@ -251,9 +259,10 @@ function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => vo
         <kbd className="hidden font-sans text-[11.5px] xl:inline">⌘K</kbd>
       </button>
 
-      <nav className="scrollbar-none -mx-1 flex flex-1 flex-col gap-5 overflow-y-auto px-1" aria-label="Navegação principal">
+      <nav className="scrollbar-none -mx-1 flex flex-1 flex-col gap-6 overflow-y-auto px-1" aria-label="Navegação principal">
         {groups.map((g, i) => (
-          <div key={i} className="flex flex-col gap-px">
+          <div key={i} className="flex flex-col gap-0.5">
+            <div className="mb-1 hidden px-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-faint xl:block">{groupLabel(g)}</div>
             {g.map((n) => (
               <NavLink
                 key={n.to}
@@ -262,8 +271,10 @@ function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => vo
                 title={n.label}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex h-[34px] items-center gap-3 rounded-[9px] px-2.5 text-body transition-colors max-xl:justify-center',
-                    isActive ? 'bg-ink/5 font-medium text-ink' : 'text-muted hover:text-ink',
+                    'relative flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-body transition-colors max-xl:justify-center',
+                    isActive
+                      ? 'bg-canvas font-medium text-ink shadow-[inset_0_0_0_1px_rgb(var(--line))]'
+                      : 'text-muted hover:bg-canvas/70 hover:text-ink',
                   )
                 }
               >
@@ -275,7 +286,11 @@ function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => vo
                     title="Há retornos pendentes"
                   />
                 )}
-                {!!n.count && <span className="hidden text-xs tabular text-faint xl:inline">{n.count}</span>}
+                {!!n.count && (
+                  <span className="hidden min-w-[20px] rounded-full bg-stone-100 px-1.5 text-center text-[11px] font-medium leading-5 tabular text-muted xl:inline">
+                    {n.count}
+                  </span>
+                )}
               </NavLink>
             ))}
           </div>

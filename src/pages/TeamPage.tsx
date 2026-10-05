@@ -172,7 +172,7 @@ export default function TeamPage() {
       </ul>
 
       {selected && (
-        <section aria-labelledby="tarefas-membro" className="mt-12">
+        <section aria-labelledby="tarefas-membro" className="panel mt-12">
           <SectionHeader
             id="tarefas-membro"
             title={`Tarefas abertas de ${selected.name.split(' ')[0]}`}
@@ -190,7 +190,7 @@ export default function TeamPage() {
           {selectedTasks.length === 0 ? (
             <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhuma tarefa aberta.</p>
           ) : (
-            <div className="overflow-hidden rounded-[16px] bg-surface shadow-surface">
+            <div className="-mx-5 -mb-3 overflow-hidden border-t border-hairline-surface md:-mx-6">
               <div className="divide-y divide-hairline-surface md:[&>div]:px-6">
                 {selectedTasks.map((x) => (
                   <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />

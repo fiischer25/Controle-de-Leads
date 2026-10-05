@@ -1296,20 +1296,20 @@ export function PageHeader({
   return (
     <div className={cn('mb-8 flex flex-col gap-5 pt-2 sm:flex-row sm:items-end sm:justify-between md:mb-12 md:pt-6', className)}>
       <div className="min-w-0">
-        {eyebrow && <div className="mb-1.5 text-[13px] text-faint">{eyebrow}</div>}
-        <h1 className="font-display text-[30px] font-medium leading-9 tracking-[-0.03em] text-ink md:text-hero">{title}</h1>
-        {description && <p className="mt-2 text-[14.5px] leading-[21px] text-muted md:text-body-lg">{description}</p>}
+        {eyebrow && <div className="mb-2 text-[12px] font-medium uppercase tracking-[0.08em] text-faint">{eyebrow}</div>}
+        <h1 className="font-display text-[28px] font-semibold leading-9 tracking-[-0.015em] text-ink md:text-[32px] md:leading-[40px]">{title}</h1>
+        {description && <p className="mt-2 max-w-[760px] text-[14.5px] leading-[22px] text-muted">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
 
-/** Título de seção (Inter Tight 18/600) com um link ou contador à direita. */
+/** Título de seção (Inter Tight 16/600) com um link ou contador à direita. */
 export function SectionHeader({ title, aside, id, className }: { title: ReactNode; aside?: ReactNode; id?: string; className?: string }) {
   return (
     <div className={cn('mb-4 flex items-baseline justify-between gap-4', className)}>
-      <h2 id={id} className="font-display text-section text-ink">
+      <h2 id={id} className="font-display text-[16.5px] font-semibold leading-6 tracking-[-0.01em] text-ink">
         {title}
       </h2>
       {aside}
@@ -1328,31 +1328,31 @@ export interface Metric {
   sub?: ReactNode;
 }
 
-/** Números sem caixas: rótulo 12.5 + número 32/36, separados do resto por uma hairline. */
+/** Indicadores em cartões: rótulo, número em destaque e linha de apoio. */
 export function MetricRow({ items, className, label }: { items: Metric[]; className?: string; label?: string }) {
   const cols = { 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-4', 5: 'md:grid-cols-3 xl:grid-cols-5', 6: 'md:grid-cols-3 xl:grid-cols-6' }[
     Math.min(6, Math.max(2, items.length)) as 2 | 3 | 4 | 5 | 6
   ];
   return (
     <section aria-label={label ?? 'Números'} className={className}>
-      {label && <div className="mb-3 text-[12.5px] text-faint">{label}</div>}
-      <div className={cn('grid grid-cols-2 gap-x-8 gap-y-6 border-t border-hairline pt-5', cols)}>
+      {label && <div className="mb-3 text-[12px] font-medium uppercase tracking-[0.08em] text-faint">{label}</div>}
+      <div className={cn('grid grid-cols-2 gap-3 md:gap-4', cols)}>
         {items.map((k) => {
           const inner = (
             <>
-              <div className="truncate text-[12.5px] text-faint group-hover:text-muted">{k.label}</div>
-              <div className={cn('mt-1.5 font-display text-[28px] font-normal leading-[34px] tracking-[-0.025em] tabular md:text-metric', k.tone ?? 'text-ink')}>
+              <div className="truncate text-[12.5px] font-medium text-muted">{k.label}</div>
+              <div className={cn('metric-value mt-2 truncate font-display text-[26px] font-semibold leading-8 tracking-[-0.015em] tabular md:text-[28px]', k.tone ?? 'text-ink')}>
                 {k.value}
               </div>
-              {k.sub && <div className="mt-1 truncate text-xs text-faint">{k.sub}</div>}
+              {k.sub && <div className="mt-1.5 truncate text-[12px] text-faint">{k.sub}</div>}
             </>
           );
           return k.to ? (
-            <Link key={k.label} to={k.to} title={k.hint} className="group min-w-0">
+            <Link key={k.label} to={k.to} title={k.hint} className="metric-tile group block min-w-0 hover:border-stone-300">
               {inner}
             </Link>
           ) : (
-            <div key={k.label} title={k.hint} className="min-w-0">
+            <div key={k.label} title={k.hint} className="metric-tile min-w-0">
               {inner}
             </div>
           );

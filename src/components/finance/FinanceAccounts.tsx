@@ -39,7 +39,7 @@ export function FinanceAccounts({ onImport }: { onImport: (accountId?: string) =
               <button
                 type="button"
                 onClick={() => setEditing(a)}
-                className={cn('w-full rounded-[16px] bg-surface p-5 text-left shadow-surface transition-shadow hover:shadow-md', !a.active && 'opacity-60')}
+                className={cn('w-full rounded-[16px] border border-line bg-surface p-5 text-left shadow-card transition-shadow hover:shadow-md', !a.active && 'opacity-60')}
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-2">

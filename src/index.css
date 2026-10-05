@@ -50,7 +50,25 @@
     @apply h-auto py-2;
   }
   .card {
-    @apply rounded-xl border border-line bg-surface;
+    @apply rounded-xl border border-line bg-surface shadow-card;
+  }
+  /* Painel: agrupa um título e o conteúdo dele (listas, gráficos) num cartão branco. */
+  .panel {
+    @apply min-w-0 rounded-[16px] border border-line bg-surface px-5 pb-3 pt-5 shadow-card md:px-6;
+  }
+  .panel .panel {
+    @apply rounded-none border-0 bg-transparent p-0 shadow-none;
+  }
+  /* Indicador (número) em cartão; dentro de um painel fica mais leve */
+  .metric-tile {
+    @apply rounded-[14px] border border-line bg-surface px-4 py-4 shadow-card transition-colors;
+  }
+  .panel .metric-tile {
+    @apply rounded-[12px] border-line/70 bg-subtle px-3.5 py-3 shadow-none;
+  }
+  /* Dentro de painéis os cartões são mais estreitos: número um pouco menor */
+  .panel .metric-value {
+    @apply text-[21px] leading-7;
   }
   .label {
     @apply mb-1.5 block text-[12.5px] font-medium leading-4 text-stone-800;

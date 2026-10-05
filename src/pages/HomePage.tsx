@@ -178,7 +178,7 @@ export default function HomePage() {
 
             <div className="grid gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
               <div className="flex min-w-0 flex-col gap-12">
-                <section aria-labelledby="minhas-tarefas">
+                <section aria-labelledby="minhas-tarefas" className="panel">
                   <SectionHeader
                     id="minhas-tarefas"
                     title="Minhas tarefas"
@@ -189,7 +189,7 @@ export default function HomePage() {
                     }
                   />
                   {upcomingCount === 0 ? (
-                    <div className="rounded-[16px] bg-surface shadow-surface">
+                    <div>
                       <EmptyState
                         tone="success"
                         icon={<CheckCircle2 strokeWidth={1.6} />}
@@ -199,7 +199,7 @@ export default function HomePage() {
                       />
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-[16px] bg-surface pb-1.5 shadow-surface">
+                    <div className="-mx-5 -mb-3 overflow-hidden pb-1.5 md:-mx-6">
                       {groups
                         .filter((g) => g.tasks.length > 0)
                         .map((g) => (
@@ -226,7 +226,7 @@ export default function HomePage() {
                 </section>
 
                 {mine.followups.length > 0 && (
-                  <section aria-labelledby="retornos">
+                  <section aria-labelledby="retornos" className="panel">
                     <SectionHeader id="retornos" title="Retornos de leads" aside={<ActionLink to="/oportunidades" muted>Oportunidades</ActionLink>} />
                     <ul>
                       {mine.followups.slice(0, 6).map((l) => {

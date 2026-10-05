@@ -77,7 +77,7 @@ export function ProjectTasksTable({
   const dateCls = (task: Task) => (task.status !== 'done' && task.due_date && task.due_date < t ? 'text-danger-fg' : 'text-stone-600');
 
   return (
-    <div className="overflow-hidden rounded-[14px] bg-surface shadow-surface">
+    <div className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
       <div className={cn(cols, 'border-b border-line/70 bg-stone-50 px-3 py-2 text-[11.5px] font-medium text-stone-500')}>
         <span>Nº</span>
         <span>Etapas / tarefas</span>

@@ -95,7 +95,7 @@ export default function ClientDetailPage() {
 
       <div className="grid gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
         <div className="min-w-0 space-y-12">
-          <section aria-labelledby="projetos">
+          <section aria-labelledby="projetos" className="panel">
             <SectionHeader id="projetos" title="Projetos" aside={<span className="text-[13px] text-faint">{projects.length}</span>} />
             {projects.length === 0 ? (
               <EmptyState
@@ -147,7 +147,7 @@ export default function ClientDetailPage() {
           <ClientFinanceSection client={client} lead={lead} projectIds={projects.map((s) => s.project.id)} />
 
           {lead && (
-            <section aria-labelledby="historico">
+            <section aria-labelledby="historico" className="panel">
               <SectionHeader id="historico" title="Histórico comercial" aside={<ActionLink to={`/oportunidades?lead=${lead.id}`} muted>Ver oportunidade</ActionLink>} />
               {interactions.length === 0 ? (
                 <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhum contato registrado.</p>
@@ -173,7 +173,7 @@ export default function ClientDetailPage() {
         </div>
 
         <aside className="min-w-0 space-y-10">
-          <section aria-labelledby="dados">
+          <section aria-labelledby="dados" className="panel">
             <SectionHeader id="dados" title="Dados" />
             <dl>
               <Detail label="Telefone">{client.phone}</Detail>
@@ -196,7 +196,7 @@ export default function ClientDetailPage() {
           </section>
 
           {lead && (
-            <section aria-labelledby="origem">
+            <section aria-labelledby="origem" className="panel">
               <SectionHeader id="origem" title="Origem comercial" />
               <dl>
                 <Detail label="Origem">

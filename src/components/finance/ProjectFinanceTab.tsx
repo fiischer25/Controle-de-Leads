@@ -52,7 +52,7 @@ export function ProjectFinanceTab({ project }: { project: Project }) {
         </p>
       )}
 
-      <section aria-labelledby="honorarios">
+      <section aria-labelledby="honorarios" className="panel">
         <SectionHeader
           id="honorarios"
           title="Honorários"
@@ -75,7 +75,7 @@ export function ProjectFinanceTab({ project }: { project: Project }) {
         />
       </section>
 
-      <section aria-labelledby="despesas-projeto">
+      <section aria-labelledby="despesas-projeto" className="panel">
         <SectionHeader
           id="despesas-projeto"
           title="Despesas do projeto"

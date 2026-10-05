@@ -468,7 +468,7 @@ function InfoTab({ project, onEditProject }: { project: Project; onEditProject: 
 
   return (
     <div className="grid gap-12 lg:grid-cols-3 lg:gap-12">
-      <section aria-labelledby="info-projeto">
+      <section aria-labelledby="info-projeto" className="panel">
         <SectionHeader id="info-projeto" title="Projeto" aside={<ActionLink onClick={onEditProject}>Editar</ActionLink>} />
         <dl>
           <InfoRow label="Área">{project.area_m2 ? `${formatNumber(project.area_m2)} m²` : '—'}</InfoRow>
@@ -483,7 +483,7 @@ function InfoTab({ project, onEditProject }: { project: Project; onEditProject: 
           {project.completed_at && <InfoRow label="Concluído em">{formatDateTime(project.completed_at)}</InfoRow>}
         </dl>
       </section>
-      <section aria-labelledby="info-cliente">
+      <section aria-labelledby="info-cliente" className="panel">
         <SectionHeader
           id="info-cliente"
           title="Cliente"
@@ -519,7 +519,7 @@ function InfoTab({ project, onEditProject }: { project: Project; onEditProject: 
         )}
       </section>
       {lead && (can('comercial') || can('financeiro')) && (
-        <section aria-labelledby="info-contrato">
+        <section aria-labelledby="info-contrato" className="panel">
           <SectionHeader
             id="info-contrato"
             title="Contrato"
@@ -543,7 +543,7 @@ function InfoTab({ project, onEditProject }: { project: Project; onEditProject: 
           )}
         </section>
       )}
-      <section aria-labelledby="info-links">
+      <section aria-labelledby="info-links" className="panel">
         <SectionHeader id="info-links" title="Links e arquivos" />
         <ul>
           {(project.links ?? []).map((l) => (
@@ -574,7 +574,7 @@ function InfoTab({ project, onEditProject }: { project: Project; onEditProject: 
           </div>
         </div>
       </section>
-      <section aria-labelledby="info-notas" className="lg:col-span-3">
+      <section aria-labelledby="info-notas" className="panel lg:col-span-3">
         <SectionHeader id="info-notas" title="Anotações" aside={<span className="text-[12.5px] text-faint">salva ao sair do campo</span>} />
         <Textarea
           value={notes}

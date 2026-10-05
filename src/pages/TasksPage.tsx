@@ -232,7 +232,7 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
         {view === 'board' ? (
           <TaskBoard tasks={base} onOpen={openTask} />
         ) : base.length === 0 ? (
-          <div className="rounded-[16px] bg-surface shadow-surface">
+          <div className="rounded-[16px] border border-line bg-surface shadow-card">
             <EmptyState
               tone="success"
               icon={<CheckCircle2 strokeWidth={1.6} />}
@@ -245,7 +245,7 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
         ) : (
           <>
             {openCount > 0 ? (
-              <div className="overflow-hidden rounded-[16px] bg-surface pb-1.5 shadow-surface">
+              <div className="overflow-hidden rounded-[16px] border border-line bg-surface pb-1.5 shadow-card">
                 {sections
                   .filter((s) => s.tasks.length > 0)
                   .map((s) => (
