@@ -7,7 +7,7 @@ import { INTERACTION_TYPES } from '../lib/constants';
 import { isProjectActive } from '../lib/domain';
 import { digitsOnly, formatCurrency, formatDate, formatDateShort, isoToLocalTime, toDateKey } from '../lib/utils';
 import { ActionLink, AvatarStack, BackLink, Button, ConfirmDialog, EmptyState, IconButton, PageHeader, SectionHeader, StatusBadge } from '../components/ui';
-import { ClientFormModal } from '../components/clients/ClientFormModal';
+import { ClientEditModal } from '../components/clients/ClientEditModal';
 import { ClientFinanceSection } from '../components/finance/ClientFinanceSection';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
@@ -78,9 +78,9 @@ export default function ClientDetailPage() {
                 WhatsApp
               </Button>
             </a>
-            <IconButton label="Editar cliente" onClick={() => setEditing(true)}>
-              <Pencil className="h-4 w-4" strokeWidth={1.6} />
-            </IconButton>
+            <Button variant="secondary" icon={<Pencil className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setEditing(true)}>
+              Editar
+            </Button>
             {isAdmin && (
               <IconButton label="Excluir cliente" onClick={() => setConfirmDelete(true)} className="hover:text-danger-fg">
                 <Trash2 className="h-4 w-4" strokeWidth={1.6} />
@@ -211,7 +211,7 @@ export default function ClientDetailPage() {
         </aside>
       </div>
 
-      {editing && <ClientFormModal client={client} onClose={() => setEditing(false)} />}
+      {editing && <ClientEditModal client={client} onClose={() => setEditing(false)} />}
       {newProject && <ProjectFormModal clientId={client.id} onClose={() => setNewProject(false)} />}
       {confirmDelete && (
         <ConfirmDialog

@@ -53,6 +53,10 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Tela do projeto: tarefas em tabela por etapa (nº, checklist, status, início e fim — clique para
   escolher a data —, duração em dias úteis calculada pelas datas e editável (recalcula o fim), horas estimadas e realizadas, responsável, prioridade), **cronograma (Gantt)**, equipe e horas por pessoa,
   dados do cliente, links (Drive, pranchas…), anotações e histórico de atividades.
+- **Cliente editável por inteiro:** o botão **Editar** do cliente abre Dados do cliente (todos os
+  campos, inclusive telefone e endereço), **Contrato e pagamento** (valor fechado e parcelas, que
+  atualizam o Financeiro) e Origem comercial. Cliente cadastrado sem oportunidade ganha uma
+  oportunidade já ganha ao registrar o contrato, para o valor entrar nos relatórios.
 - **Informações do projeto:** dados do projeto, do cliente (com CPF/CNPJ) e do contrato, cada um
   com **Editar**.
 - **Usar como modelo:** as tarefas de um projeto (etapas, ordem, checklist, observações, prioridade,
@@ -105,7 +109,8 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - **Valores do contrato em todo o sistema:** as parcelas do ganho aparecem no Financeiro, na aba
   Financeiro do projeto, na tela do **cliente** (contrato, recebido, a receber, atrasado, parcelas,
   “Lançar valor” e “Marcar como recebido”), nos **Relatórios** (contratos fechados, ticket médio,
-  recebido, a receber e atrasado) e no dashboard do escritório. Na Visão geral do Financeiro, **A receber por
+  recebido, a receber e atrasado) e no dashboard do escritório. Na Visão geral do Financeiro: cartões de saldo, entradas, saídas e
+  resultado do mês, **fluxo de caixa** (realizado nos meses passados e previsto nos próximos) e **A receber por
   mês** lista cada parcela em aberto no mês do vencimento (próximos 12 meses).
 
 **Resumo diário no WhatsApp**

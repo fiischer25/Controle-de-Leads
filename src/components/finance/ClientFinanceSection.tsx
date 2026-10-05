@@ -6,7 +6,7 @@ import { planSummary } from '../../lib/paymentPlan';
 import type { Client, FinanceEntry, Lead } from '../../lib/types';
 import { byPosition, cn, formatCurrency, formatDate, formatDateShort, formatMoney, today } from '../../lib/utils';
 import { ActionLink, IconButton, MetricRow, SectionHeader } from '../ui';
-import { WonDealModal } from '../leads/WonDealModal';
+import { ClientEditModal } from '../clients/ClientEditModal';
 import { EntryFormModal } from './EntryFormModal';
 import { useFinance } from './useFinance';
 
@@ -16,7 +16,7 @@ import { useFinance } from './useFinance';
  * e atrasado, e o botão para lançar um valor.
  */
 export function ClientFinanceSection({ client, lead, projectIds }: { client: Client; lead: Lead | null; projectIds: string[] }) {
-  const { db, can, closeDeal } = useData();
+  const { db, can } = useData();
   const fin = useFinance();
   const toast = useToast();
   const finance = can('financeiro');
@@ -43,7 +43,7 @@ export function ClientFinanceSection({ client, lead, projectIds }: { client: Cli
   const contracted = plan?.total ?? lead?.proposal_value ?? null;
   const honorarios = [...db.finance_categories].sort(byPosition).find((c) => c.kind === 'receita' && c.active && c.name.toLowerCase().startsWith('honor'));
 
-  if (!finance && !plan) return null;
+  if (!finance && !plan && !can('comercial')) return null;
 
   return (
     <section aria-labelledby="cliente-financeiro">
@@ -52,7 +52,7 @@ export function ClientFinanceSection({ client, lead, projectIds }: { client: Cli
         title="Financeiro"
         aside={
           <span className="flex items-center gap-4">
-            {lead && (can('comercial') || finance) && <ActionLink onClick={() => setEditingPlan(true)}>{plan ? 'Editar contrato' : 'Definir contrato'}</ActionLink>}
+            {can('comercial') && <ActionLink onClick={() => setEditingPlan(true)}>{plan ? 'Editar contrato' : 'Definir contrato'}</ActionLink>}
             {finance && <ActionLink onClick={() => setEntryForm({})}>Lançar valor</ActionLink>}
           </span>
         }
@@ -122,18 +122,7 @@ export function ClientFinanceSection({ client, lead, projectIds }: { client: Cli
         )
       )}
 
-      {editingPlan && lead && (
-        <WonDealModal
-          lead={lead}
-          mode="edit"
-          onClose={() => setEditingPlan(false)}
-          onSubmit={async (p, launch) => {
-            if (!p) return;
-            const n = await closeDeal(lead.id, p, launch, true);
-            toast.success(n > 0 ? `Contrato salvo e ${n} ${n === 1 ? 'parcela atualizada' : 'parcelas atualizadas'} no Financeiro.` : 'Contrato salvo.');
-          }}
-        />
-      )}
+      {editingPlan && <ClientEditModal client={client} initialTab="contrato" onClose={() => setEditingPlan(false)} />}
       {entryForm && (
         <EntryFormModal
           entry={entryForm.entry}
