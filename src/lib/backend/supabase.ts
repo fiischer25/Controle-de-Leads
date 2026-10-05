@@ -53,6 +53,19 @@ export class SupabaseBackend implements Backend {
     });
   }
 
+  /** Diagnóstico: erro ao ler estas colunas (null = existem). */
+  async probe(table: string, columns: string): Promise<string | null> {
+    const { error } = await this.client.from(table).select(columns).limit(1);
+    return error ? error.message : null;
+  }
+
+  /** Diagnóstico: a função existe com estes parâmetros? (erro dela própria conta como existente) */
+  async probeRpc(name: string, args: Record<string, unknown>): Promise<string | null> {
+    const { error } = await this.client.rpc(name, args);
+    if (!error) return null;
+    return /PGRST202|could not find the function/i.test(`${error.code ?? ''} ${error.message}`) ? error.message : null;
+  }
+
   async getBranding(): Promise<Branding | null> {
     const { data, error } = await this.client.rpc('office_branding');
     if (error || !data) return null;

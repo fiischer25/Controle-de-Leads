@@ -8,6 +8,7 @@ import { isProjectActive } from '../lib/domain';
 import { digitsOnly, formatCurrency, formatDate, formatDateShort, isoToLocalTime, toDateKey } from '../lib/utils';
 import { ActionLink, AvatarStack, BackLink, Button, ConfirmDialog, EmptyState, IconButton, PageHeader, SectionHeader, StatusBadge } from '../components/ui';
 import { ClientFormModal } from '../components/clients/ClientFormModal';
+import { ClientFinanceSection } from '../components/finance/ClientFinanceSection';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
 import { projectRail, templatePhasesByType } from '../components/projects/rail';
@@ -143,6 +144,8 @@ export default function ClientDetailPage() {
             )}
           </section>
 
+          <ClientFinanceSection client={client} lead={lead} projectIds={projects.map((s) => s.project.id)} />
+
           {lead && (
             <section aria-labelledby="historico">
               <SectionHeader id="historico" title="Histórico comercial" aside={<ActionLink to={`/oportunidades?lead=${lead.id}`} muted>Ver oportunidade</ActionLink>} />
@@ -200,7 +203,7 @@ export default function ClientDetailPage() {
                   {lead.source_id ? maps.sources[lead.source_id]?.name : '—'}
                   {lead.referred_by && <span className="text-muted"> · {lead.referred_by}</span>}
                 </Detail>
-                <Detail label="Proposta">{formatCurrency(lead.proposal_value)}</Detail>
+                <Detail label={lead.payment_plan ? 'Valor fechado' : 'Proposta'}>{formatCurrency(lead.payment_plan?.total ?? lead.proposal_value)}</Detail>
                 <Detail label="Convertido em">{lead.converted_at ? formatDate(toDateKey(new Date(lead.converted_at))) : '—'}</Detail>
               </dl>
             </section>

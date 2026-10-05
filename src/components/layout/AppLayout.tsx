@@ -47,6 +47,7 @@ import { useRunningTimer } from './useRunningTimer';
 import type { CreateKind } from '../../lib/create';
 import type { ModuleKey } from '../../lib/types';
 import { ProjectFormModal } from '../projects/ProjectFormModal';
+import { SchemaBanner } from './SchemaBanner';
 
 interface NavItem {
   to: string;
@@ -187,6 +188,7 @@ export function AppLayout() {
           <NotificationsMenu />
         </header>
         <main className="px-5 pb-[120px] pt-1 md:px-8 md:pb-16 xl:px-16 xl:pb-[72px]">
+          <SchemaBanner />
           <Outlet />
         </main>
       </div>
