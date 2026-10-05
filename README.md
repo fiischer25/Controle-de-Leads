@@ -102,6 +102,10 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   em armazenamento privado do Supabase.
 - **Relatório mensal em PDF** (botão *Relatório*): resumo de caixa, saldos por conta, receitas e
   despesas por categoria, recebido por projeto, a receber e a pagar em aberto e lançamentos do mês.
+- **Valores do contrato em todo o sistema:** as parcelas do ganho aparecem no Financeiro, na aba
+  Financeiro do projeto, na tela do **cliente** (contrato, recebido, a receber, atrasado, parcelas,
+  “Lançar valor” e “Marcar como recebido”), nos **Relatórios** (contratos fechados, ticket médio,
+  recebido, a receber e atrasado) e no dashboard do escritório.
 
 **Resumo diário no WhatsApp**
 - No horário escolhido (Configurações → **Resumo diário**), cada pessoa com telefone recebe uma
@@ -180,6 +184,8 @@ Para uso real pela equipe, configure o Supabase.
    `supabase/migrations/20261013000000_payment_plan_values.sql`
    (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
    (podem rodar mais de uma vez sem problema).
+   Em **Configurações → Banco de dados** (administrador) o sistema confere quais atualizações já
+   foram aplicadas e copia o SQL das que faltam; um aviso aparece no topo quando falta alguma.
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):
    ```bash
    npx supabase login

@@ -3,7 +3,8 @@ import { Download } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { CSS_COLOR } from '../lib/status';
 import { entryMinutes } from '../lib/domain';
-import { addDays, cn, diffDays, downloadFile, formatDate, formatMinutes, formatNumber, MONTHS_FULL, toCsv, toDateKey, today } from '../lib/utils';
+import { addDays, cn, diffDays, downloadFile, formatDate, formatCurrency, formatMinutes, formatMoney, formatNumber, MONTHS_FULL, toCsv, toDateKey, today } from '../lib/utils';
+import { planSummary } from '../lib/paymentPlan';
 import { Avatar, BarRow, Button, Listbox, MetricRow, PageHeader, SectionHeader } from '../components/ui';
 import { MonthBars } from '../components/charts/MonthBars';
 
@@ -110,6 +111,20 @@ export default function ReportsPage() {
 
   const conv = r.won.length + r.lost.length ? Math.round((r.won.length / (r.won.length + r.lost.length)) * 100) : null;
 
+  // Valores: contratos fechados no período (forma de pagamento do ganho) e, com o Financeiro,
+  // o que foi recebido e o que falta receber
+  const finance = can('financeiro');
+  const contractValue = (l: (typeof r.won)[number]) => l.payment_plan?.total ?? l.proposal_value ?? 0;
+  const contracted = r.won.reduce((a, l) => a + contractValue(l), 0);
+  const receitas = db.finance_entries.filter((e) => e.kind === 'receita');
+  const receivedInPeriod = receitas.filter((e) => e.paid_at && e.paid_at >= since && e.paid_at <= t).reduce((a, e) => a + e.amount, 0);
+  const openReceitas = receitas.filter((e) => !e.paid_at);
+  const toReceive = openReceitas.reduce((a, e) => a + e.amount, 0);
+  const overdue = openReceitas.filter((e) => e.due_date < t).reduce((a, e) => a + e.amount, 0);
+  // Recebido do contrato: parcelas da oportunidade e lançamentos do cliente que ela virou
+  const receivedByLead = (l: (typeof r.won)[number]) =>
+    receitas.filter((e) => e.paid_at && (e.lead_id === l.id || (l.client_id && e.client_id === l.client_id))).reduce((a, e) => a + e.amount, 0);
+
   const exportTimesheet = () => {
     downloadFile(
       `horas-${since}-a-${t}.csv`,
@@ -165,7 +180,7 @@ export default function ReportsPage() {
       <PageHeader
         title="Relatórios"
         description={
-          commercial ? 'Desempenho comercial e produtividade da equipe · sem dados financeiros' : 'Entregas e produtividade da equipe · sem dados financeiros'
+          commercial ? 'Desempenho comercial, valores dos contratos e produtividade da equipe' : 'Entregas e produtividade da equipe'
         }
         actions={
           <>
@@ -219,6 +234,45 @@ export default function ReportsPage() {
             },
           ]}
         />
+
+        {(commercial || finance) && (
+          <section aria-labelledby="valores">
+            <SectionHeader id="valores" title="Valores" aside={<span className="text-[12.5px] text-faint">{PERIODS.find((p) => p.id === period)?.label}</span>} />
+            <MetricRow
+              items={[
+                ...(commercial
+                  ? [
+                      { label: 'Contratos fechados', value: formatCurrency(contracted), sub: `${r.won.length} ${r.won.length === 1 ? 'ganho' : 'ganhos'} no período` },
+                      { label: 'Ticket médio', value: r.won.length ? formatCurrency(contracted / r.won.length) : '—', sub: 'valor fechado por contrato' },
+                    ]
+                  : []),
+                ...(finance
+                  ? [
+                      { label: 'Recebido no período', value: formatCurrency(receivedInPeriod), sub: 'receitas pagas' },
+                      { label: 'A receber', value: formatCurrency(toReceive), sub: `${openReceitas.length} em aberto` },
+                      { label: 'Atrasado', value: formatCurrency(overdue), tone: overdue > 0 ? 'text-danger-fg' : undefined, sub: overdue > 0 ? 'receitas vencidas' : 'em dia' },
+                    ]
+                  : []),
+              ]}
+            />
+            {commercial && r.won.length > 0 && (
+              <ul className="mt-6">
+                {[...r.won]
+                  .sort((a, b) => contractValue(b) - contractValue(a))
+                  .map((l) => (
+                    <li key={l.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-0.5 border-t border-hairline py-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_120px_170px]">
+                      <span className="truncate text-body text-ink">{l.name}</span>
+                      <span className="order-3 col-span-2 truncate text-[12.5px] text-faint md:order-none md:col-span-1">
+                        {l.payment_plan ? planSummary(l.payment_plan.rows) : 'forma de pagamento não definida'}
+                      </span>
+                      <span className="text-right text-body tabular text-ink">{formatMoney(contractValue(l))}</span>
+                      {finance && <span className="hidden text-right text-[12.5px] tabular text-success-fg md:block">{formatMoney(receivedByLead(l))} recebido</span>}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         {/* Últimos 12 meses: três gráficos pequenos de uma série cada (sem legenda de cores) */}
         <section aria-labelledby="meses">
