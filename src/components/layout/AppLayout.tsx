@@ -410,8 +410,8 @@ function MobileAppBar({ title, onSearch, isHome }: { title: string; onSearch: ()
   return (
     <div
       className={cn(
-        'sticky top-0 z-30 flex items-center gap-1 bg-canvas/[0.94] pl-5 pr-2 backdrop-blur-[12px] transition-[height] duration-200 md:hidden',
-        scrolled ? 'h-12 shadow-[0_1px_0_rgb(var(--line))]' : 'h-[52px]',
+        'sticky top-0 z-30 flex items-center gap-1 border-b border-line bg-surface/[0.92] pl-5 pr-2 backdrop-blur-[12px] transition-[height] duration-200 md:hidden',
+        scrolled ? 'h-12' : 'h-[56px]',
       )}
     >
       <div className="min-w-0 flex-1">

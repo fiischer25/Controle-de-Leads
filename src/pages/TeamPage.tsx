@@ -190,7 +190,7 @@ export default function TeamPage() {
           {selectedTasks.length === 0 ? (
             <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhuma tarefa aberta.</p>
           ) : (
-            <div className="-mx-5 -mb-3 overflow-hidden border-t border-hairline-surface md:-mx-6">
+            <div className="-mx-4 -mb-2 overflow-hidden border-t border-hairline-surface md:-mx-6 md:-mb-3">
               <div className="divide-y divide-hairline-surface md:[&>div]:px-6">
                 {selectedTasks.map((x) => (
                   <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />
