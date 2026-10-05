@@ -238,7 +238,7 @@ export default function ProjectDetailPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Switch checked={hideDone} onChange={setHideDone} label={<span className="text-[13px] text-muted">Ocultar concluídas</span>} />
               {tasks.length === 0 && (
-                <ActionLink onClick={() => applyTemplates(project.id, project.start_date, project.manager_id).catch(toast.error)}>
+                <ActionLink onClick={() => applyTemplates(project.id, project.manager_id).catch(toast.error)}>
                   Gerar tarefas do modelo “{type?.name}”
                 </ActionLink>
               )}

@@ -3,7 +3,7 @@ import { CalendarDays, ChevronDown, ChevronRight, Flag, ListChecks, MoreVertical
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { SWATCHES, TASK_PRIORITY, TASK_STATUS_ORDER } from '../../lib/constants';
-import { businessDaysBetween, entryMinutes } from '../../lib/domain';
+import { businessDaysBetween, datesForDuration, entryMinutes } from '../../lib/domain';
 import { TASK_STATUS_STYLE } from '../../lib/status';
 import type { Project, Task, TaskStatus } from '../../lib/types';
 import { byPosition, cn, formatDateShort, formatMinutes, formatNumber, today } from '../../lib/utils';
@@ -201,9 +201,11 @@ export function ProjectTasksTable({
                         </div>
                       )}
                     </Popover>
-                    <span className="text-[12.5px] tabular text-stone-700">
-                      {task.start_date && task.due_date ? daysLabel(businessDaysBetween(task.start_date, task.due_date)) : '—'}
-                    </span>
+                    <DurationCell
+                      days={task.start_date && task.due_date ? businessDaysBetween(task.start_date, task.due_date) : null}
+                      label={`Duração de ${task.title}`}
+                      onChange={(n) => updateTask(task.id, datesForDuration(task, n)).catch(toast.error)}
+                    />
                     <DateCell value={task.start_date} label={`Início de ${task.title}`} className="text-stone-600" onChange={(d) => setDates(task, { start_date: d })} />
                     <DateCell value={task.due_date} label={`Fim de ${task.title}`} className={dateCls(task)} onChange={(d) => setDates(task, { due_date: d })} />
                     <span className="text-right text-[12.5px] tabular text-stone-600">{task.estimated_hours ? `${formatNumber(task.estimated_hours, 1)}h` : '—'}</span>
@@ -369,6 +371,46 @@ function DateCell({ value, label, className, onChange }: { value: string | null;
       className={cn('flex h-7 items-center rounded-md text-left text-[12.5px] tabular hover:bg-stone-100', className)}
     >
       {value ? formatDateShort(value) : <CalendarDays className="h-3.5 w-3.5 text-stone-400" />}
+    </button>
+  );
+}
+
+/** Duração em dias úteis: sai do início e do fim; editada, recalcula o fim (ou o início, se só houver fim). */
+function DurationCell({ days, label, onChange }: { days: number | null; label: string; onChange: (n: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const commit = () => {
+    const n = Number(input.current?.value);
+    setEditing(false);
+    if (input.current?.value && Number.isFinite(n) && n >= 1 && Math.round(n) !== days) onChange(n);
+  };
+  if (editing) {
+    return (
+      <input
+        ref={input}
+        type="number"
+        min={1}
+        autoFocus
+        defaultValue={days ?? ''}
+        aria-label={label}
+        className="h-7 w-full min-w-0 rounded-md border border-line bg-surface px-1.5 text-[12.5px] tabular text-ink outline-none focus:border-stone-400"
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      aria-label={days != null ? `${label}: ${daysLabel(days)}` : `Definir ${label.charAt(0).toLowerCase()}${label.slice(1)}`}
+      title="Calculada pelo início e fim; altere para recalcular o fim"
+      className="flex h-7 items-center rounded-md text-left text-[12.5px] tabular text-stone-700 hover:bg-stone-100"
+    >
+      {days != null ? daysLabel(days) : <span className="text-stone-400">—</span>}
     </button>
   );
 }

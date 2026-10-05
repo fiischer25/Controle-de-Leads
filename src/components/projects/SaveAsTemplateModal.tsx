@@ -88,8 +88,8 @@ export function SaveAsTemplateModal({ project, tasks, onClose }: { project: Proj
         <p className="mt-1 pl-6 text-[12.5px] text-faint">Desmarcado, as tarefas ficam com o responsável de cada projeto novo.</p>
       </div>
       <div className="mt-5 rounded-[12px] bg-canvas px-4 py-3 text-[13px] text-muted">
-        Etapas, ordem, checklist, observações, prioridade e horas estimadas são copiados. A duração de cada tarefa vem das datas
-        dela (em dias úteis), e tarefas que andam juntas continuam em paralelo.
+        Etapas, ordem, checklist, observações, prioridade e horas estimadas são copiados. Datas e duração não vão para o modelo:
+        em cada projeto novo elas são definidas por quem cuida dele.
         {mode === 'replace' && current > 0 && (
           <span className="mt-1.5 block text-warning-fg">
             As {current} tarefas-modelo atuais de “{typeName}” serão substituídas. Projetos já criados não mudam.

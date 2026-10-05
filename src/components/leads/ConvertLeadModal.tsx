@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Check, CheckCircle2, Circle } from 'lucide-react';
 import { useData, type ClientInput } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
-import { templatesEndDate } from '../../lib/domain';
 import type { Lead } from '../../lib/types';
 import { cn, maskPhone, suggestProjectName, today } from '../../lib/utils';
 import { ClientFields, emptyClient, REQUIRED_CLIENT_FIELDS, validateClient, type ClientErrors } from '../clients/ClientFields';
@@ -15,7 +14,7 @@ import { Button, Checkbox, Modal } from '../ui';
  * e do projeto estiverem preenchidos. Cria cliente + projeto + tarefas do modelo.
  */
 export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
-  const { db, convertLead, can } = useData();
+  const { convertLead, can } = useData();
   const toast = useToast();
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2>(1);
@@ -27,14 +26,13 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
   const typeId = lead.project_type_id ?? '';
   const [project, setProject] = useState<ProjectDraft>(() => {
     const start = today();
-    const tpl = db.task_templates.filter((t) => t.project_type_id === typeId);
     return {
       name: suggestProjectName(lead.name, lead.category === 'Residencial' || !lead.category ? 'CASA' : 'PROJETO'),
       project_type_id: typeId,
       manager_id: null,
       member_ids: [],
       start_date: start,
-      due_date: templatesEndDate(tpl, start),
+      due_date: null,
       area_m2: lead.area_m2,
       site_address: null,
       site_city: lead.city,

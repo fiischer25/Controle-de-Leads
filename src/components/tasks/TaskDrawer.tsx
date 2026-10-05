@@ -4,7 +4,7 @@ import { Play, Plus, Square, Trash2, X } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { TASK_PRIORITY, TASK_PRIORITY_ORDER, TASK_STATUS, TASK_STATUS_ORDER } from '../../lib/constants';
-import { entryMinutes, totalMinutes } from '../../lib/domain';
+import { businessDaysBetween, datesForDuration, entryMinutes, totalMinutes } from '../../lib/domain';
 import type { Task, TaskPriority } from '../../lib/types';
 import { cn, formatClock, formatDate, formatDateTime, formatMinutes, formatRelative, today, toDateKey, uid } from '../../lib/utils';
 import { Avatar, Button, Checkbox, ConfirmDialog, Drawer, DueBadge, Field, IconButton, Input, Select, Textarea, UserSelect } from '../ui';
@@ -152,6 +152,20 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
             </Field>
             <Field label="Prazo">
               <Input type="date" value={task.due_date ?? ''} onChange={(e) => save({ due_date: e.target.value || null })} />
+            </Field>
+            <Field label="Duração (dias úteis)" hint="Sai do início e do prazo; alterar recalcula o prazo.">
+              <Input
+                key={`${task.start_date}-${task.due_date}`}
+                type="number"
+                min={1}
+                defaultValue={task.start_date && task.due_date ? businessDaysBetween(task.start_date, task.due_date) : ''}
+                onBlur={(e) => {
+                  const n = Number(e.target.value);
+                  const cur = task.start_date && task.due_date ? businessDaysBetween(task.start_date, task.due_date) : null;
+                  if (e.target.value && n >= 1 && Math.round(n) !== cur) save(datesForDuration(task, n));
+                }}
+                aria-label="Duração (dias úteis)"
+              />
             </Field>
             <Field label="Horas estimadas">
               <Input
