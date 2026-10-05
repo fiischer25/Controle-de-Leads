@@ -15,6 +15,9 @@ function translateError(message: string): string {
   if (/failed to send a request to the edge function|requested function was not found/i.test(message)) {
     return 'Não foi possível falar com a função do servidor. Confira no Supabase, em Edge Functions, se ela foi publicada com o nome exato indicado no guia.';
   }
+  if (/start_with_previous|estimated_hours|checklist|assignee_id|priority/i.test(message) && /task_templates/i.test(message) && /column|schema cache/i.test(message)) {
+    return 'O banco ainda não tem os detalhes das tarefas-modelo. No Supabase, abra o SQL Editor e execute a migração 20261008000000_task_templates_details.sql.';
+  }
   if (/bank_ref|attachments/i.test(message) && /column|schema cache/i.test(message)) {
     return 'O banco ainda não tem a importação de extrato e os comprovantes. No Supabase, abra o SQL Editor e execute a migração 20261007000000_finance_import_files.sql.';
   }

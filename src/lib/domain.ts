@@ -1,9 +1,33 @@
 import type { Project, Task, TaskTemplate, TimeEntry } from './types';
 import { addBusinessDays, byPosition, nextBusinessDay, nowIso, uid } from './utils';
 
+export interface ScheduledTemplate {
+  template: TaskTemplate;
+  start: string;
+  due: string;
+}
+
 /**
- * Gera as tarefas de um projeto a partir das tarefas-modelo do tipo de projeto.
- * As tarefas são encadeadas em sequência, em dias úteis, a partir da data de início.
+ * Datas das tarefas-modelo a partir de `startDate`, em dias úteis: cada tarefa começa depois
+ * da anterior, ou junto com ela quando marcada "começa junto com a anterior".
+ */
+export function scheduleTemplates(templates: TaskTemplate[], startDate: string): ScheduledTemplate[] {
+  let cursor = nextBusinessDay(startDate);
+  let prevStart = cursor;
+  return [...templates].sort(byPosition).map((tpl, i) => {
+    const start = tpl.start_with_previous && i > 0 ? prevStart : cursor;
+    const due = addBusinessDays(start, Math.max(1, tpl.duration_days) - 1);
+    const after = addBusinessDays(due, 1);
+    if (after > cursor) cursor = after;
+    prevStart = start;
+    return { template: tpl, start, due };
+  });
+}
+
+/**
+ * Gera as tarefas de um projeto a partir das tarefas-modelo do tipo de projeto: datas em dias
+ * úteis a partir do início, checklist, observações, prioridade, horas e responsável do modelo
+ * (ou o responsável do projeto quando o modelo não define ou a pessoa está inativa).
  */
 export function buildProjectTasks(opts: {
   templates: TaskTemplate[];
@@ -11,27 +35,26 @@ export function buildProjectTasks(opts: {
   startDate: string;
   assigneeId: string | null;
   createdBy: string | null;
+  /** Pessoas ativas: responsável do modelo fora desta lista é trocado pelo do projeto. */
+  activeUserIds?: Set<string>;
 }): Task[] {
   const now = nowIso();
-  let cursor = nextBusinessDay(opts.startDate);
-  return [...opts.templates].sort(byPosition).map((tpl, i) => {
-    const start = cursor;
-    const due = addBusinessDays(start, Math.max(1, tpl.duration_days) - 1);
-    cursor = addBusinessDays(due, 1);
+  return scheduleTemplates(opts.templates, opts.startDate).map(({ template: tpl, start, due }, i) => {
+    const own = tpl.assignee_id && (!opts.activeUserIds || opts.activeUserIds.has(tpl.assignee_id)) ? tpl.assignee_id : null;
     return {
       id: uid(),
       project_id: opts.projectId,
       phase: tpl.phase,
       title: tpl.title,
       description: tpl.description,
-      assignee_id: opts.assigneeId,
+      assignee_id: own ?? opts.assigneeId,
       status: 'todo',
-      priority: 'media',
+      priority: tpl.priority ?? 'media',
       start_date: start,
       due_date: due,
-      estimated_hours: null,
+      estimated_hours: tpl.estimated_hours ?? null,
       position: i,
-      checklist: [],
+      checklist: (tpl.checklist ?? []).filter((t) => t.trim()).map((text) => ({ id: uid(), text: text.trim(), done: false })),
       completed_at: null,
       created_by: opts.createdBy,
       created_at: now,
@@ -42,9 +65,21 @@ export function buildProjectTasks(opts: {
 
 /** Data de término prevista ao aplicar os modelos a partir de `startDate`. */
 export function templatesEndDate(templates: TaskTemplate[], startDate: string): string | null {
-  if (templates.length === 0) return null;
-  const total = templates.reduce((acc, t) => acc + Math.max(1, t.duration_days), 0);
-  return addBusinessDays(startDate, total - 1);
+  const s = scheduleTemplates(templates, startDate);
+  if (s.length === 0) return null;
+  return s.reduce((max, x) => (x.due > max ? x.due : max), s[0].due);
+}
+
+/** Dias úteis entre duas datas, contando as duas pontas (seg→sex = 5). */
+export function businessDaysBetween(start: string, end: string): number {
+  if (end < start) return 0;
+  let n = 0;
+  let k = nextBusinessDay(start);
+  while (k <= end) {
+    n++;
+    k = addBusinessDays(k, 1);
+  }
+  return n;
 }
 
 export function projectProgress(tasks: Task[]): number {

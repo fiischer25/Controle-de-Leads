@@ -36,6 +36,24 @@ export function defaultSources(): LeadSource[] {
 
 type PhaseSpec = [phase: string, tasks: Array<[title: string, days: number]>];
 
+/** Checklists iniciais das tarefas-modelo (editáveis em Configurações → Tipos de projeto e tarefas). */
+const CHECKLISTS: Record<string, string[]> = {
+  'Briefing com o cliente': ['Enviar questionário de briefing', 'Reunião de briefing', 'Registrar programa de necessidades', 'Confirmar orçamento e prazo esperados'],
+  'Levantamento métrico e cadastral': ['Agendar visita técnica', 'Medir ambientes e níveis', 'Registrar instalações existentes', 'Desenhar o levantamento no CAD/Revit'],
+  'Levantamento fotográfico e legislação': ['Fotos do terreno/imóvel e entorno', 'Consultar zoneamento e recuos', 'Levantar matrícula e documentos do imóvel'],
+  'Programa de necessidades': ['Listar ambientes e áreas', 'Validar com o cliente'],
+  'Apresentação do estudo preliminar': ['Preparar prancha/apresentação', 'Reunião com o cliente', 'Registrar ajustes pedidos'],
+  'Apresentação do anteprojeto': ['Preparar imagens e plantas', 'Reunião com o cliente', 'Registrar aprovação ou ajustes'],
+  'Projeto legal para aprovação': ['Plantas no padrão da prefeitura', 'Memorial e quadro de áreas', 'ART/RRT emitida', 'Documentos do proprietário'],
+  'Compatibilização com projetos complementares': ['Estrutural', 'Elétrico', 'Hidrossanitário', 'Ar-condicionado', 'Registrar interferências resolvidas'],
+  'Revisão final e conferência': ['Conferir cotas e níveis', 'Conferir carimbos e revisões', 'Gerar PDFs e DWGs finais'],
+  'Entrega do projeto ao cliente': ['Enviar arquivos finais', 'Reunião de entrega', 'Termo de entrega assinado'],
+  'Briefing e referências do cliente': ['Questionário de briefing', 'Pasta de referências', 'Validar orçamento previsto'],
+  'Levantamento do espaço': ['Medição dos ambientes', 'Fotos', 'Pontos elétricos e hidráulicos existentes'],
+  'Detalhamento de marcenaria': ['Plantas e vistas de cada móvel', 'Especificar ferragens e acabamentos', 'Revisar com o marceneiro'],
+  'Especificações e lista de compras': ['Revestimentos', 'Louças e metais', 'Iluminação', 'Mobiliário e decoração'],
+};
+
 const ARQ: PhaseSpec[] = [
   ['Levantamento', [
     ['Briefing com o cliente', 2],
@@ -132,6 +150,11 @@ export function defaultProjectTypes(): { types: ProjectType[]; templates: TaskTe
           description: null,
           duration_days,
           position: pos++,
+          checklist: CHECKLISTS[title] ?? [],
+          assignee_id: null,
+          priority: 'media',
+          estimated_hours: null,
+          start_with_previous: false,
         });
       }
     }

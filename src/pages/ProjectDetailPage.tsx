@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ProjectFinanceTab } from '../components/finance/ProjectFinanceTab';
+import { ProjectTasksTable } from '../components/projects/ProjectTasksTable';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { useToast } from '../context/ToastContext';
 import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
 import { orderedPhases, totalMinutes } from '../lib/domain';
@@ -68,6 +70,8 @@ export default function ProjectDetailPage() {
   const [newTask, setNewTask] = useState<{ phase: string | null } | null>(null);
   const [quick, setQuick] = useState<Record<string, string>>({});
   const [hideDone, setHideDone] = useState(false);
+  // Tela larga: tabela por etapas (como a referência); celular e tablet: lista
+  const wide = useMediaQuery('(min-width: 1180px)');
 
   if (!summary) {
     return (
@@ -240,7 +244,10 @@ export default function ProjectDetailPage() {
             {tasks.length === 0 && (
               <EmptyState title="Nenhuma tarefa neste projeto" description="Gere as tarefas a partir do modelo ou crie manualmente." className="py-12" />
             )}
-            {phases.map((p, i) => {
+            {wide && tasks.length > 0 && (
+              <ProjectTasksTable project={project} tasks={tasks} phases={phases} hideDone={hideDone} onOpen={openTask} />
+            )}
+            {!wide && phases.map((p, i) => {
               const pt = tasks.filter((t) => (t.phase || 'Geral') === p).sort(byPosition);
               const visible = hideDone ? pt.filter((t) => t.status !== 'done') : pt;
               const done = pt.filter((t) => t.status === 'done').length;

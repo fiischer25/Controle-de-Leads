@@ -460,13 +460,17 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       const templates = dbRef.current.task_templates.filter((t) => t.project_type_id === project.project_type_id);
       const existing = dbRef.current.tasks.filter((t) => t.project_id === projectId);
       const offset = existing.length ? Math.max(...existing.map((t) => t.position)) + 1 : 0;
-      const tasks = buildProjectTasks({ templates, projectId, startDate, assigneeId, createdBy: userId }).map((t) => ({
+      const activeUserIds = new Set(dbRef.current.profiles.filter((p) => p.active).map((p) => p.id));
+      const tasks = buildProjectTasks({ templates, projectId, startDate, assigneeId, createdBy: userId, activeUserIds }).map((t) => ({
         ...t,
         position: t.position + offset,
       }));
       await insertRows('tasks', tasks);
-      if (assigneeId && tasks.length) {
-        await notify(assigneeId, 'Novas tarefas atribuídas', `${tasks.length} tarefas do projeto ${project.name} estão com você.`, `/projetos/${projectId}`);
+      // Cada responsável recebe um aviso com quantas tarefas ficaram com ele
+      const perPerson = new Map<string, number>();
+      for (const t of tasks) if (t.assignee_id) perPerson.set(t.assignee_id, (perPerson.get(t.assignee_id) ?? 0) + 1);
+      for (const [person, n] of perPerson) {
+        await notify(person, 'Novas tarefas atribuídas', `${n} ${n === 1 ? 'tarefa' : 'tarefas'} do projeto ${project.name} ${n === 1 ? 'está' : 'estão'} com você.`, `/projetos/${projectId}`);
       }
     },
     [insertRows, notify, userId],
@@ -491,10 +495,11 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       };
       const [saved] = await insertRows('projects', [project]);
       const templates = dbRef.current.task_templates.filter((t) => t.project_type_id === saved.project_type_id);
-      const tasks = buildProjectTasks({ templates, projectId: saved.id, startDate: saved.start_date, assigneeId: default_assignee_id, createdBy: userId });
+      const activeUserIds = new Set(dbRef.current.profiles.filter((p) => p.active).map((p) => p.id));
+      const tasks = buildProjectTasks({ templates, projectId: saved.id, startDate: saved.start_date, assigneeId: default_assignee_id, createdBy: userId, activeUserIds });
       await insertRows('tasks', tasks);
       await log('project', saved.id, 'created', `criou o projeto ${saved.name}`);
-      const people = new Set([saved.manager_id, ...saved.member_ids, default_assignee_id].filter(Boolean) as string[]);
+      const people = new Set([saved.manager_id, ...saved.member_ids, default_assignee_id, ...tasks.map((t) => t.assignee_id)].filter(Boolean) as string[]);
       for (const person of people) {
         await notify(person, 'Você está em um novo projeto', `${me.name} incluiu você no projeto ${saved.name}.`, `/projetos/${saved.id}`);
       }

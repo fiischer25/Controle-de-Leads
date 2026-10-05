@@ -5,22 +5,22 @@ import {
   ArrowUp,
   Copy,
   Download,
-  GripVertical,
   Plus,
   Trash2,
   Upload,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { WhatsAppSettings } from './settings/WhatsAppSettings';
+import { TemplatesEditor } from './settings/TemplatesEditor';
 import { DailyAlertsSettings } from './settings/DailyAlertsSettings';
 import { useData } from '../context/DataContext';
 import { stageColor } from '../lib/status';
 import { useToast } from '../context/ToastContext';
 import { STAGE_KIND, SWATCHES } from '../lib/constants';
-import type { LeadSource, LeadStage, ProjectType, StageKind, TableName, TaskTemplate } from '../lib/types';
+import type { LeadSource, LeadStage, ProjectType, StageKind, TableName } from '../lib/types';
 import { TABLES } from '../lib/types';
 import { byPosition, cn, downloadFile, nowIso, toCalendarEmbedUrl, today, uid } from '../lib/utils';
-import { Badge, Button, Card, CardHeader, Checkbox, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, Select, Tabs, Textarea } from '../components/ui';
+import { Button, Card, CardHeader, Checkbox, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, Select, Tabs, Textarea } from '../components/ui';
 
 type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'whatsapp' | 'avisos' | 'dados';
 
@@ -107,14 +107,14 @@ function ProjectTypesSettings() {
   };
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
+    <div className="space-y-5">
       <Card className="h-fit overflow-hidden">
         <CardHeader title="Tipos de projeto" subtitle="Ex.: Arquitetura, Interiores" action={<Button size="xs" variant="dark" icon={<Plus className="h-3.5 w-3.5" />} onClick={addType}>Novo</Button>} />
-        <ul className="divide-y divide-line/70 border-t border-line/70">
+        <ul className="grid border-t border-line/70 sm:grid-cols-2 xl:grid-cols-4">
           {types.map((t, i) => {
             const count = db.task_templates.filter((x) => x.project_type_id === t.id).length;
             return (
-              <li key={t.id} className={cn('group flex items-center gap-2 px-3 py-2.5', selected?.id === t.id ? 'bg-brand-50/60' : 'hover:bg-stone-50')}>
+              <li key={t.id} className={cn('group flex items-center gap-2 border-b border-line/70 px-3 py-2.5 sm:border-r', selected?.id === t.id ? 'bg-brand-50/60' : 'hover:bg-stone-50')}>
                 <button className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setSelectedId(t.id)}>
                   <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
                   <span className="min-w-0">
@@ -123,8 +123,8 @@ function ProjectTypesSettings() {
                   </span>
                 </button>
                 <div className="flex opacity-0 group-hover:opacity-100">
-                  <IconButton label="Subir" className="h-6 w-6" onClick={() => reorder(types, i, -1)} disabled={i === 0}><ArrowUp className="h-3.5 w-3.5" /></IconButton>
-                  <IconButton label="Descer" className="h-6 w-6" onClick={() => reorder(types, i, 1)} disabled={i === types.length - 1}><ArrowDown className="h-3.5 w-3.5" /></IconButton>
+                  <IconButton label="Mover para a esquerda" className="h-6 w-6" onClick={() => reorder(types, i, -1)} disabled={i === 0}><ArrowUp className="h-3.5 w-3.5 -rotate-90" /></IconButton>
+                  <IconButton label="Mover para a direita" className="h-6 w-6" onClick={() => reorder(types, i, 1)} disabled={i === types.length - 1}><ArrowDown className="h-3.5 w-3.5 -rotate-90" /></IconButton>
                 </div>
               </li>
             );
@@ -189,111 +189,6 @@ function ProjectTypesSettings() {
         />
       )}
     </div>
-  );
-}
-
-function TemplatesEditor({ type }: { type: ProjectType }) {
-  const { db, insertRows, patch, removeRows } = useData();
-  const toast = useToast();
-  const templates = useMemo(() => db.task_templates.filter((t) => t.project_type_id === type.id).sort(byPosition), [db.task_templates, type.id]);
-  const phases = [...new Set(templates.map((t) => t.phase))];
-  const [draft, setDraft] = useState({ phase: phases[phases.length - 1] ?? 'Levantamento', title: '', days: '2' });
-  const reorder = useReorder('task_templates');
-  const totalDays = templates.reduce((a, t) => a + Math.max(1, t.duration_days), 0);
-
-  const add = async () => {
-    if (!draft.title.trim() || !draft.phase.trim()) return;
-    const phase = draft.phase.trim();
-    const inPhase = templates.filter((t) => t.phase === phase);
-    let position: number;
-    if (inPhase.length) {
-      const last = inPhase[inPhase.length - 1];
-      const next = templates[templates.indexOf(last) + 1];
-      position = next ? (last.position + next.position) / 2 : last.position + 1;
-    } else {
-      position = templates.length ? templates[templates.length - 1].position + 1 : 0;
-    }
-    const tpl: TaskTemplate = { id: uid(), project_type_id: type.id, phase, title: draft.title.trim(), description: null, duration_days: Math.max(1, Number(draft.days) || 1), position };
-    try {
-      await insertRows('task_templates', [tpl]);
-      setDraft({ ...draft, title: '' });
-    } catch (e) {
-      toast.error(e);
-    }
-  };
-
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader
-        title={`Tarefas-modelo · ${type.name}`}
-        subtitle={`${templates.length} tarefas em ${phases.length} etapas · ${totalDays} dias úteis estimados`}
-      />
-      <p className="-mt-1 px-5 pb-3 text-xs text-stone-500">
-        Estas tarefas são criadas automaticamente em cada novo projeto deste tipo, encadeadas em sequência a partir da data de início.
-      </p>
-      <div className="border-t border-line/70">
-        {phases.map((phase) => (
-          <div key={phase}>
-            <div className="flex items-center gap-2 bg-stone-50 px-5 py-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-stone-600">{phase}</span>
-              <Badge>{templates.filter((t) => t.phase === phase).length}</Badge>
-            </div>
-            <ul className="divide-y divide-line/70">
-              {templates.filter((t) => t.phase === phase).map((t) => {
-                const i = templates.indexOf(t);
-                return (
-                  <li key={t.id} className="group grid grid-cols-[16px_1fr_150px_90px_auto] items-center gap-2 px-5 py-1.5">
-                    <GripVertical className="h-4 w-4 text-stone-300" />
-                    <input
-                      defaultValue={t.title}
-                      key={`t${t.id}${t.title}`}
-                      onBlur={(e) => e.target.value.trim() && e.target.value !== t.title && patch('task_templates', t.id, { title: e.target.value.trim() }).catch(toast.error)}
-                      className="rounded-xs bg-transparent px-2 py-1 text-sm outline-none hover:bg-stone-50 focus:bg-surface focus:ring-2 focus:ring-brand-500/20"
-                      aria-label="Título"
-                    />
-                    <input
-                      list="phase-list"
-                      defaultValue={t.phase}
-                      key={`p${t.id}${t.phase}`}
-                      onBlur={(e) => e.target.value.trim() && e.target.value !== t.phase && patch('task_templates', t.id, { phase: e.target.value.trim() }).catch(toast.error)}
-                      className="rounded-xs bg-transparent px-2 py-1 text-xs text-stone-600 outline-none hover:bg-stone-50 focus:bg-surface focus:ring-2 focus:ring-brand-500/20"
-                      aria-label="Etapa"
-                    />
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min={1}
-                        defaultValue={t.duration_days}
-                        key={`d${t.id}${t.duration_days}`}
-                        onBlur={(e) => Number(e.target.value) !== t.duration_days && patch('task_templates', t.id, { duration_days: Math.max(1, Number(e.target.value) || 1) }).catch(toast.error)}
-                        className="w-12 rounded-xs bg-transparent px-2 py-1 text-right text-sm outline-none hover:bg-stone-50 focus:bg-surface focus:ring-2 focus:ring-brand-500/20"
-                        aria-label="Duração em dias"
-                      />
-                      <span className="text-xs text-stone-400">dias</span>
-                    </div>
-                    <div className="flex opacity-40 group-hover:opacity-100">
-                      <IconButton label="Subir" className="h-6 w-6" onClick={() => reorder(templates, i, -1)} disabled={i === 0}><ArrowUp className="h-3.5 w-3.5" /></IconButton>
-                      <IconButton label="Descer" className="h-6 w-6" onClick={() => reorder(templates, i, 1)} disabled={i === templates.length - 1}><ArrowDown className="h-3.5 w-3.5" /></IconButton>
-                      <IconButton label="Remover" className="h-6 w-6 hover:text-danger-fg" onClick={() => removeRows('task_templates', [t.id]).catch(toast.error)}><Trash2 className="h-3.5 w-3.5" /></IconButton>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-        <datalist id="phase-list">{phases.map((p) => <option key={p} value={p} />)}</datalist>
-      </div>
-      <form
-        onSubmit={(e) => { e.preventDefault(); add(); }}
-        className="grid gap-2 border-t border-line bg-stone-50/60 p-4 sm:grid-cols-[180px_1fr_90px_auto]"
-      >
-        <Input list="phase-list" value={draft.phase} onChange={(e) => setDraft({ ...draft, phase: e.target.value })} placeholder="Etapa" aria-label="Etapa" />
-        <Input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Nova tarefa (ex.: Projeto luminotécnico)" aria-label="Tarefa" />
-        <Input type="number" min={1} value={draft.days} onChange={(e) => setDraft({ ...draft, days: e.target.value })} aria-label="Dias" title="Duração em dias úteis" />
-        <Button type="submit" variant="dark" icon={<Plus className="h-4 w-4" />} disabled={!draft.title.trim()}>Adicionar</Button>
-      </form>
-    </Card>
   );
 }
 
