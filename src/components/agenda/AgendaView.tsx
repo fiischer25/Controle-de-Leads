@@ -236,7 +236,7 @@ export function AgendaView({ mine = false }: { mine?: boolean } = {}) {
             </div>
 
             <aside className="space-y-10">
-              <section aria-labelledby="dia">
+              <section aria-labelledby="dia" className="panel">
                 <SectionHeader
                   id="dia"
                   title={`${WEEKDAYS_SHORT[selectedDate.getDay()]}, ${selectedDate.getDate()} de ${MONTHS_FULL[selectedDate.getMonth()].toLowerCase()}`}
@@ -267,7 +267,7 @@ export function AgendaView({ mine = false }: { mine?: boolean } = {}) {
                   </ul>
                 )}
               </section>
-              <section aria-labelledby="mostrar">
+              <section aria-labelledby="mostrar" className="panel">
                 <SectionHeader id="mostrar" title="Mostrar" />
                 <div className="flex flex-col gap-2.5 border-t border-hairline pt-3">
                   {(Object.keys(KIND_META) as Kind[]).filter((k) => k !== 'lead' || canCommercial).map((k) => (

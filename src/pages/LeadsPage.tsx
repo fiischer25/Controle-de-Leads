@@ -277,7 +277,7 @@ export default function LeadsPage() {
         {!desktop ? null : view === 'kanban' ? (
           /* Desktop: quadro arrastável */
           <div className="scrollbar-thin -mx-8 overflow-x-auto px-8 pb-6 xl:-mx-16 xl:px-16">
-            <div className="flex gap-6">
+            <div className="flex gap-4">
               {stages.map((stage) => {
                 const items = byStage[stage.id] ?? [];
                 const total = sum(items.map((l) => l.proposal_value ?? 0));
@@ -288,7 +288,10 @@ export default function LeadsPage() {
                   <section
                     key={stage.id}
                     aria-label={stage.name}
-                    className="group/col flex w-[272px] shrink-0 flex-col"
+                    className={cn(
+                      'group/col flex w-[284px] shrink-0 flex-col rounded-[16px] p-3',
+                      stage.kind === 'won' ? 'bg-success-bg/70' : stage.kind === 'lost' ? 'bg-ink/[0.035]' : 'bg-ink/[0.025]',
+                    )}
                     onDragOver={(e) => {
                       e.preventDefault();
                       if (!(e.target as HTMLElement).closest('[data-lead-card]') && (dropTarget?.stage !== stage.id || dropTarget.before !== null)) {
@@ -532,7 +535,7 @@ function LeadCard({
       tabIndex={0}
       aria-label={lead.name}
       className={cn(
-        'group cursor-pointer rounded-lg border border-line bg-surface p-3.5 transition-[border-color,box-shadow,opacity] duration-150 hover:border-stone-300 hover:shadow-sm',
+        'group cursor-pointer rounded-[12px] border border-line bg-surface p-3.5 shadow-xs transition-[border-color,box-shadow,opacity] duration-150 hover:border-stone-300 hover:shadow-card',
         dragging && 'opacity-40',
       )}
     >

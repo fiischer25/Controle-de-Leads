@@ -48,7 +48,7 @@ export function FinanceProfitability() {
 
   return (
     <div className="flex flex-col gap-12">
-      <section aria-labelledby="rent-projetos">
+      <section aria-labelledby="rent-projetos" className="panel">
         <SectionHeader
           id="rent-projetos"
           title="Resultado por projeto"
@@ -146,7 +146,7 @@ function MemberCosts() {
   };
 
   return (
-    <section aria-labelledby="custo-hora" className="max-w-2xl">
+    <section aria-labelledby="custo-hora" className="panel max-w-2xl">
       <SectionHeader id="custo-hora" title="Custo por hora da equipe" />
       <p className="mb-3 text-[12.5px] text-muted">
         Quanto cada hora da pessoa custa ao escritório: salário ou retirada + encargos e benefícios, dividido pelas horas trabalhadas no mês

@@ -24,14 +24,14 @@ export function KpiCard({
 }) {
   const pct = progress && progress.max > 0 ? Math.min(100, Math.round((progress.value / progress.max) * 100)) : 0;
   return (
-    <div className="rounded-xl border border-line bg-surface p-5 shadow-xs">
-      <div className="flex items-center justify-between gap-2 text-[12.5px] font-medium uppercase tracking-[0.06em] text-faint">
+    <div className="metric-tile px-5">
+      <div className="flex items-center justify-between gap-2 text-[12.5px] font-medium text-muted">
         {label}
         {icon && <span className="text-faint">{icon}</span>}
       </div>
       <div
         className={cn(
-          'mt-2 font-display text-[28px] font-semibold leading-none tabular tracking-tight',
+          'mt-2 font-display text-[28px] font-semibold leading-8 tabular tracking-[-0.015em]',
           tone === 'success' ? 'text-success-fg' : tone === 'danger' ? 'text-danger-fg' : 'text-ink',
         )}
         title={value}
@@ -125,7 +125,7 @@ export function ReceivablesByMonth({
   const max = Math.max(1, ...months.map((m) => m.total));
   if (months.length === 0) return <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhuma receita em aberto nos próximos 12 meses.</p>;
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+    <div className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
       <div className="grid grid-cols-[minmax(0,1fr)_90px_140px_minmax(0,1.2fr)_90px] gap-4 border-b border-line bg-subtle px-4 py-2.5 text-[12px] font-medium text-faint">
         <span>Mês</span>
         <span className="text-right">Parcelas</span>

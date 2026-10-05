@@ -194,7 +194,7 @@ export default function ProjectsPage() {
             className="py-16"
           />
         ) : (
-          <>
+          <div className="panel pb-2 pt-3">
             <div className={`hidden gap-6 border-b border-hairline pb-2.5 text-[12.5px] text-faint md:grid ${cols}`}>
               <span>Projeto</span>
               <span>Etapa</span>
@@ -255,7 +255,7 @@ export default function ProjectsPage() {
             <p className="mt-3 text-[12.5px] text-faint">
               {filtered.length} {filtered.length === 1 ? 'projeto' : 'projetos'}
             </p>
-          </>
+          </div>
         )}
       </div>
 

@@ -238,7 +238,7 @@ export default function OfficeDashboardPage() {
             </div>
 
             <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-3 lg:gap-12">
-              <section aria-labelledby="por-etapa">
+              <section aria-labelledby="por-etapa" className="panel">
                 <SectionHeader id="por-etapa" title="Projetos por etapa" aside={<span className="text-[12.5px] text-faint">etapa atual</span>} />
                 <div className="space-y-4 border-t border-hairline pt-4">
                   {charts.phases.length === 0 && <p className="text-[13px] text-faint">Sem projetos ativos.</p>}
@@ -247,7 +247,7 @@ export default function OfficeDashboardPage() {
                   ))}
                 </div>
               </section>
-              <section aria-labelledby="por-status">
+              <section aria-labelledby="por-status" className="panel">
                 <SectionHeader id="por-status" title="Tarefas dos projetos" aside={<span className="text-[12.5px] text-faint">projetos ativos</span>} />
                 <div className="space-y-4 border-t border-hairline pt-4">
                   {charts.byStatus.map(({ status, count }) => (
@@ -265,7 +265,7 @@ export default function OfficeDashboardPage() {
                   ))}
                 </div>
               </section>
-              <section aria-labelledby="entregas" className="md:col-span-2 lg:col-span-1">
+              <section aria-labelledby="entregas" className="panel md:col-span-2 lg:col-span-1">
                 <SectionHeader id="entregas" title="Entregas previstas" aside={<span className="text-[12.5px] text-faint">{charts.in30} nos próximos 30 dias</span>} />
                 <div className="border-t border-hairline pt-4">
                   <MonthBars title="Por mês de prazo" total={charts.monthsTotal} months={charts.months} caption="nos próximos 6 meses" />
@@ -292,7 +292,7 @@ export default function OfficeDashboardPage() {
 
             <div className="grid gap-12 lg:grid-cols-[340px_1fr] lg:gap-16">
               <FunnelSection rows={home.funnel} total={home.funnelTotal} conversion={home.kpis.conversion} />
-              <section aria-labelledby="retornos-equipe">
+              <section aria-labelledby="retornos-equipe" className="panel">
                 <SectionHeader
                   id="retornos-equipe"
                   title="Retornos pendentes"

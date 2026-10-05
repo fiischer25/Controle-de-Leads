@@ -37,8 +37,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['"Inter Tight"', 'Inter', 'sans-serif'],
+        sans: ['"Inter Variable"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['"Inter Tight Variable"', '"Inter Tight"', '"Inter Variable"', 'Inter', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       fontSize: {
@@ -65,6 +65,8 @@ export default {
       },
       boxShadow: {
         xs: '0 1px 0 rgb(18 17 16 / 0.04)',
+        /* Cartões e painéis: sombra quase imperceptível, só para destacar do fundo */
+        card: '0 1px 2px rgb(18 17 16 / 0.035), 0 8px 24px -12px rgb(18 17 16 / 0.08)',
         sm: '0 1px 2px rgb(18 17 16 / 0.05)',
         surface: '0 1px 2px rgb(18 17 16 / 0.04), 0 0 0 1px rgb(18 17 16 / 0.04)',
         md: '0 6px 16px -4px rgb(18 17 16 / 0.10)',

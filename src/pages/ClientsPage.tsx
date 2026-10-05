@@ -110,7 +110,7 @@ export default function ClientsPage() {
             className="py-16"
           />
         ) : (
-          <>
+          <div className="panel pb-2 pt-3">
             <div className={`hidden gap-6 border-b border-hairline pb-2.5 text-[12.5px] text-faint md:grid ${cols}`}>
               <span>Cliente</span>
               <span>Contato</span>
@@ -167,7 +167,7 @@ export default function ClientsPage() {
             <p className="mt-3 text-[12.5px] text-faint">
               {rows.length} {rows.length === 1 ? 'cliente' : 'clientes'}
             </p>
-          </>
+          </div>
         )}
       </div>
       {creating && <ClientFormModal onClose={() => setCreating(false)} onSaved={(c) => navigate(`/clientes/${c.id}`)} />}

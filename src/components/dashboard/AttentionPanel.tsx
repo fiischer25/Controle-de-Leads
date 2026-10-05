@@ -129,7 +129,7 @@ function AttentionQueue({
 
   if (items.length === 0) {
     return (
-      <div className="rounded-[16px] bg-surface shadow-surface">
+      <div className="rounded-[16px] border border-line bg-surface shadow-card">
         <EmptyState
           tone="success"
           icon={<CheckCircle2 strokeWidth={1.6} />}
@@ -143,7 +143,7 @@ function AttentionQueue({
   }
 
   return (
-    <div className="overflow-hidden rounded-[16px] bg-surface pb-1.5 shadow-surface">
+    <div className="overflow-hidden rounded-[16px] border border-line bg-surface pb-1.5 shadow-card">
       {GROUP_ORDER.map((group) => {
         const list = items.filter((i) => i.group === group);
         if (list.length === 0) return null;

@@ -43,7 +43,7 @@ export function TodayColumn({
     if (a.href && (!a.href.startsWith('/projetos') || can('projetos'))) navigate(a.href);
   };
   return (
-    <section aria-labelledby="hoje" className={className}>
+    <section aria-labelledby="hoje" className={cn('panel', className)}>
       <div className="mb-4 flex items-baseline justify-between">
         <h2 id="hoje" className="font-display text-section text-ink">Hoje</h2>
         <ActionLink to="/?aba=agenda" muted>Agenda</ActionLink>
@@ -134,7 +134,7 @@ export function ProjectsSection({
   const rowCls =
     'grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2.5 border-t border-hairline py-4 transition-colors md:grid-cols-[180px_minmax(0,1fr)_44px_130px_56px] md:gap-x-6';
   return (
-    <section aria-labelledby="projetos">
+    <section aria-labelledby="projetos" className="panel">
       <div className="mb-4 flex items-baseline justify-between">
         <h2 id="projetos" className="font-display text-section text-ink">
           {title}
@@ -203,7 +203,7 @@ export function TeamSection({ team }: { team: TeamRow[] }) {
   const linkable = can('equipe');
   if (team.length === 0) return null;
   return (
-    <section aria-labelledby="equipe" className="hidden md:block">
+    <section aria-labelledby="equipe" className="panel hidden md:block">
       <div className="mb-4 flex items-baseline justify-between">
         <h2 id="equipe" className="font-display text-section text-ink">Equipe esta semana</h2>
         <span className="text-[13px] text-faint">de {WEEK_HOURS}h</span>
@@ -254,7 +254,7 @@ export function TeamSection({ team }: { team: TeamRow[] }) {
 export function FunnelSection({ rows, total, conversion }: { rows: FunnelRow[]; total: number; conversion: number | null }) {
   const count = rows.reduce((acc, r) => acc + r.count, 0);
   return (
-    <section aria-labelledby="funil">
+    <section aria-labelledby="funil" className="panel">
       <div className="mb-4 flex items-baseline justify-between">
         <h2 id="funil" className="font-display text-section text-ink">Funil</h2>
         <ActionLink to="/oportunidades" muted>Abrir</ActionLink>

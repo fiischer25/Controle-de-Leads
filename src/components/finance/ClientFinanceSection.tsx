@@ -46,7 +46,7 @@ export function ClientFinanceSection({ client, lead, projectIds }: { client: Cli
   if (!finance && !plan && !can('comercial')) return null;
 
   return (
-    <section aria-labelledby="cliente-financeiro">
+    <section aria-labelledby="cliente-financeiro" className="panel">
       <SectionHeader
         id="cliente-financeiro"
         title="Financeiro"

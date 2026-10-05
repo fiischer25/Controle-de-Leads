@@ -236,7 +236,7 @@ export default function ReportsPage() {
         />
 
         {(commercial || finance) && (
-          <section aria-labelledby="valores">
+          <section aria-labelledby="valores" className="panel">
             <SectionHeader id="valores" title="Valores" aside={<span className="text-[12.5px] text-faint">{PERIODS.find((p) => p.id === period)?.label}</span>} />
             <MetricRow
               items={[
@@ -275,7 +275,7 @@ export default function ReportsPage() {
         )}
 
         {/* Últimos 12 meses: três gráficos pequenos de uma série cada (sem legenda de cores) */}
-        <section aria-labelledby="meses">
+        <section aria-labelledby="meses" className="panel">
           <SectionHeader
             id="meses"
             title="Últimos 12 meses"
@@ -323,7 +323,7 @@ export default function ReportsPage() {
 
         {commercial && (
           <div className="grid gap-12 lg:grid-cols-[1fr_340px] lg:gap-16">
-            <section aria-labelledby="origem">
+            <section aria-labelledby="origem" className="panel">
               <SectionHeader id="origem" title="Como os clientes chegam" aside={<span className="text-[12.5px] text-faint">leads que entraram no período</span>} />
               <div className="grid grid-cols-[minmax(0,1fr)_56px_56px_64px_80px] gap-4 border-b border-hairline pb-2.5 text-right text-[12.5px] text-faint">
                 <span className="text-left">Origem</span>
@@ -350,7 +350,7 @@ export default function ReportsPage() {
             </section>
 
             <div className="space-y-12">
-              <section aria-labelledby="perdas">
+              <section aria-labelledby="perdas" className="panel">
                 <SectionHeader id="perdas" title="Motivos de perda" />
                 <div className="space-y-4 border-t border-hairline pt-4">
                   {r.lostReasons.length === 0 && <p className="text-[13px] text-faint">Nenhuma perda no período.</p>}
@@ -359,7 +359,7 @@ export default function ReportsPage() {
                   ))}
                 </div>
               </section>
-              <section aria-labelledby="cidades">
+              <section aria-labelledby="cidades" className="panel">
                 <SectionHeader id="cidades" title="Leads por cidade" />
                 <div className="space-y-4 border-t border-hairline pt-4">
                   {r.cities.length === 0 && <p className="text-[13px] text-faint">Sem dados.</p>}
@@ -373,7 +373,7 @@ export default function ReportsPage() {
         )}
 
         <div className="grid gap-12 lg:grid-cols-3 lg:gap-12">
-          <section aria-labelledby="h-pessoa">
+          <section aria-labelledby="h-pessoa" className="panel">
             <SectionHeader id="h-pessoa" title="Horas por pessoa" />
             <div className="space-y-4 border-t border-hairline pt-4">
               {r.byMember.length === 0 && <p className="text-[13px] text-faint">Nenhuma hora registrada.</p>}
@@ -398,7 +398,7 @@ export default function ReportsPage() {
               })}
             </div>
           </section>
-          <section aria-labelledby="h-projeto">
+          <section aria-labelledby="h-projeto" className="panel">
             <SectionHeader id="h-projeto" title="Horas por projeto" aside={<span className="text-[12.5px] text-faint">top 10</span>} />
             <div className="space-y-4 border-t border-hairline pt-4">
               {r.byProject.length === 0 && <p className="text-[13px] text-faint">Nenhuma hora registrada.</p>}
@@ -415,7 +415,7 @@ export default function ReportsPage() {
               ))}
             </div>
           </section>
-          <section aria-labelledby="h-tipo">
+          <section aria-labelledby="h-tipo" className="panel">
             <SectionHeader id="h-tipo" title="Horas por tipo" />
             <div className="space-y-4 border-t border-hairline pt-4">
               {r.byType.length === 0 && <p className="text-[13px] text-faint">Nenhuma hora registrada.</p>}

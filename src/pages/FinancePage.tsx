@@ -177,7 +177,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
   return (
     <div className="flex flex-col gap-12 md:gap-14">
       <div>
-        <div className="mb-3 text-[13px] font-medium text-muted">{monthLabel(month)}</div>
+        <div className="mb-3 text-[12px] font-medium uppercase tracking-[0.08em] text-faint">{monthLabel(month)}</div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
             label="Saldo em contas"
@@ -237,7 +237,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
 
       <section aria-labelledby="fluxo">
         <SectionHeader id="fluxo" title="Fluxo de caixa" aside={<span className="text-[12.5px] text-faint">realizado nos meses passados · previsto nos próximos</span>} />
-        <div className="rounded-xl border border-line bg-surface p-5">
+        <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card">
           <CashFlowChart months={data.flow} />
         </div>
       </section>
@@ -252,7 +252,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
       </section>
 
       <div className="grid gap-12 lg:grid-cols-[1fr_320px] lg:gap-16">
-        <section aria-labelledby="vencimentos" className="min-w-0">
+        <section aria-labelledby="vencimentos" className="panel min-w-0">
           <SectionHeader
             id="vencimentos"
             title="Vencidos e próximos 30 dias"
@@ -264,7 +264,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
         <div className="space-y-12">
           <section aria-labelledby="saldos">
             <SectionHeader id="saldos" title="Saldos" aside={<ActionLink onClick={() => onTab('contas')} muted>Contas</ActionLink>} />
-            <ul className="overflow-hidden rounded-xl border border-line bg-surface">
+            <ul className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
               {fin.accounts
                 .filter((a) => a.active)
                 .map((a) => (
@@ -284,7 +284,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
               {fin.accounts.length === 0 && <li className="px-4 py-3 text-[13px] text-faint">Cadastre as contas do escritório.</li>}
             </ul>
           </section>
-          <section aria-labelledby="por-categoria" className="min-w-0">
+          <section aria-labelledby="por-categoria" className="panel min-w-0">
             <SectionHeader id="por-categoria" title="Despesas do mês" aside={<span className="text-[12.5px] text-faint">por categoria</span>} />
             <div className="space-y-4 border-t border-hairline pt-4">
               {data.categories.length === 0 && <p className="text-[13px] text-faint">Nenhuma despesa com vencimento neste mês.</p>}
@@ -470,8 +470,8 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
 /** Total da lista de lançamentos (cartão compacto). */
 function TotalCard({ label, value, sub, tone = 'neutral' }: { label: string; value: string; sub?: string; tone?: 'neutral' | 'success' | 'danger' }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3">
-      <div className="text-[12px] font-medium uppercase tracking-[0.06em] text-faint">{label}</div>
+    <div className="metric-tile py-3">
+      <div className="text-[12.5px] font-medium text-muted">{label}</div>
       <div className={cn('mt-1 text-[19px] font-semibold tabular', tone === 'success' ? 'text-success-fg' : tone === 'danger' ? 'text-danger-fg' : 'text-ink')}>{value}</div>
       {sub && <div className="text-[12px] text-muted">{sub}</div>}
     </div>
