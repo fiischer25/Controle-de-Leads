@@ -35,7 +35,30 @@ const REQUIRED: Array<{ file: string; label: string; probe: (b: SupabaseBackend)
     label: 'Parcelas em R$ e edição do contrato depois do ganho',
     probe: (b) => b.probeRpc('create_lead_receivables', { p_lead: NO_LEAD, p_replace: false }),
   },
+  {
+    file: '20261014000000_finance_access_repair.sql',
+    label: 'Permissões do Financeiro (administrador com acesso total)',
+    probe: (b) => b.probeRpc('airos_my_access', {}),
+  },
 ];
+
+/** O que o banco enxerga do usuário logado (função airos_my_access, migração 20261014). */
+export interface MyAccess {
+  uid: string | null;
+  role: string | null;
+  active: boolean | null;
+  permissions: string[] | null;
+  financeiro: boolean;
+  comercial: boolean;
+  finance_policies: number;
+}
+
+export async function myAccess(): Promise<MyAccess | null> {
+  if (backend.mode !== 'supabase') return null;
+  const b = backend as unknown as SupabaseBackend;
+  const { data, error } = await b.client.rpc('airos_my_access');
+  return error ? null : (data as MyAccess);
+}
 
 /** Recomendadas: dependem dos dados (podem ter sido ajustadas à mão em Configurações). */
 function optionalChecks(db: Db): SchemaItem[] {

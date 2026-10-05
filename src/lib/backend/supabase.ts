@@ -10,6 +10,9 @@ function translateError(message: string): string {
   if (/invalid login credentials/i.test(message)) return 'E-mail ou senha inválidos.';
   if (/email not confirmed/i.test(message)) return 'E-mail ainda não confirmado. Verifique sua caixa de entrada.';
   if (/banned/i.test(message)) return 'Este usuário está desativado. Fale com o administrador.';
+  if (/row-level security/i.test(message) && /finance_/i.test(message)) {
+    return 'O banco recusou a gravação no Financeiro. Se você é administrador, abra Configurações → Banco de dados e aplique “Permissões do Financeiro”; se não, peça ao administrador o acesso ao módulo Financeiro.';
+  }
   if (/row-level security/i.test(message)) return 'Você não tem permissão para esta ação.';
   if (/already (been )?registered|already exists/i.test(message)) return 'Já existe um usuário com este e-mail.';
   if (/failed to send a request to the edge function|requested function was not found/i.test(message)) {

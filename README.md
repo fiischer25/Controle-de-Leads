@@ -105,7 +105,8 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - **Valores do contrato em todo o sistema:** as parcelas do ganho aparecem no Financeiro, na aba
   Financeiro do projeto, na tela do **cliente** (contrato, recebido, a receber, atrasado, parcelas,
   “Lançar valor” e “Marcar como recebido”), nos **Relatórios** (contratos fechados, ticket médio,
-  recebido, a receber e atrasado) e no dashboard do escritório.
+  recebido, a receber e atrasado) e no dashboard do escritório. Na Visão geral do Financeiro, **A receber por
+  mês** lista cada parcela em aberto no mês do vencimento (próximos 12 meses).
 
 **Resumo diário no WhatsApp**
 - No horário escolhido (Configurações → **Resumo diário**), cada pessoa com telefone recebe uma
@@ -180,8 +181,9 @@ Para uso real pela equipe, configure o Supabase.
    `supabase/migrations/20261009000000_lead_payment_plan.sql`,
    `supabase/migrations/20261010000000_arq_int_templates.sql`,
    `supabase/migrations/20261011000000_crm_defaults.sql`,
-   `supabase/migrations/20261012000000_won_lost_stages.sql` e
-   `supabase/migrations/20261013000000_payment_plan_values.sql`
+   `supabase/migrations/20261012000000_won_lost_stages.sql`,
+   `supabase/migrations/20261013000000_payment_plan_values.sql` e
+   `supabase/migrations/20261014000000_finance_access_repair.sql`
    (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
    (podem rodar mais de uma vez sem problema).
    Em **Configurações → Banco de dados** (administrador) o sistema confere quais atualizações já

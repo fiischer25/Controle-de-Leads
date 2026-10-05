@@ -3,7 +3,7 @@ import { CheckCircle2, Circle, Copy, Download, RefreshCw, XCircle } from 'lucide
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { backend } from '../../lib/backend';
-import { checkSchema, migrationSql, type SchemaItem } from '../../lib/schemaCheck';
+import { checkSchema, migrationSql, myAccess, type MyAccess, type SchemaItem } from '../../lib/schemaCheck';
 import { cn, downloadFile } from '../../lib/utils';
 import { Button, Card, CardHeader, EmptyState } from '../../components/ui';
 
@@ -15,6 +15,7 @@ export function DatabaseSettings() {
   const { db, refresh } = useData();
   const toast = useToast();
   const [items, setItems] = useState<SchemaItem[] | null>(null);
+  const [access, setAccess] = useState<MyAccess | null>(null);
   const [busy, setBusy] = useState(false);
 
   const run = useCallback(async () => {
@@ -22,6 +23,7 @@ export function DatabaseSettings() {
     try {
       await refresh();
       setItems(await checkSchema(db));
+      setAccess(await myAccess());
     } catch (e) {
       toast.error(e);
     } finally {
@@ -70,6 +72,24 @@ export function DatabaseSettings() {
           {missing.length
             ? `Faltam ${missing.length} ${missing.length === 1 ? 'atualização' : 'atualizações'}. Para cada uma, em ordem: “Copiar SQL” → Supabase → SQL Editor → New query → colar → Run (se perguntar sobre RLS, “Run without RLS”). Depois clique em “Verificar de novo”.`
             : 'Tudo certo: o banco tem todas as atualizações necessárias.'}
+        </div>
+      )}
+      {access && (
+        <div className="mx-5 mb-4 rounded-lg border border-line px-4 py-3 text-[13px]">
+          <div className="font-medium text-ink">Seu usuário no banco</div>
+          <div className="mt-1 grid gap-x-6 gap-y-0.5 text-muted sm:grid-cols-2">
+            <span>Login: {access.uid ? 'reconhecido' : <b className="text-danger-fg">não reconhecido (saia e entre de novo)</b>}</span>
+            <span>
+              Perfil: {access.role === 'admin' ? 'administrador' : access.role ?? <b className="text-danger-fg">não encontrado</b>}
+              {access.active === false && <b className="text-danger-fg"> · inativo</b>}
+            </span>
+            <span>
+              Financeiro: {access.financeiro ? <span className="text-success-fg">liberado</span> : <b className="text-danger-fg">bloqueado</b>}
+            </span>
+            <span>
+              Regras do Financeiro: {access.finance_policies >= 4 ? <span className="text-success-fg">ok</span> : <b className="text-danger-fg">faltando</b>}
+            </span>
+          </div>
         </div>
       )}
       <ul className="divide-y divide-line/70 border-t border-line/70">
