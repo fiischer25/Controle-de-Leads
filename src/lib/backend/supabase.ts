@@ -18,6 +18,9 @@ function translateError(message: string): string {
   if (/payment_plan|lead_id/i.test(message) && /column|schema cache/i.test(message)) {
     return 'O banco ainda não tem a forma de pagamento do fechamento. No Supabase, execute a migração 20261009000000_lead_payment_plan.sql.';
   }
+  if (/task_templates_duration_days_check/i.test(message)) {
+    return 'O banco ainda não aceita tarefas-modelo sem duração. No Supabase, execute a migração 20261010000000_arq_int_templates.sql.';
+  }
   if (/start_with_previous|estimated_hours|checklist|assignee_id|priority/i.test(message) && /task_templates/i.test(message) && /column|schema cache/i.test(message)) {
     return 'O banco ainda não tem os detalhes das tarefas-modelo. No Supabase, abra o SQL Editor e execute a migração 20261008000000_task_templates_details.sql.';
   }

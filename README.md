@@ -33,15 +33,15 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 
 **Projetos**
 - A conversão cria o cliente e o projeto (ex.: `CASA J.D.`) do tipo escolhido — Arquitetura,
-  Interiores, Arquitetura e Interiores… — já com **todas as tarefas do modelo** daquele tipo,
-  agendadas em sequência (dias úteis) a partir da data de início.
+  Interiores, Arquitetura e Interiores… — já com **todas as tarefas do modelo** daquele tipo, sem
+  datas: o início e o fim de cada tarefa são definidos no projeto.
 - Lista de projetos com status, cliente, pessoas à frente, etapa atual, progresso e prazo
   (vencidos / a vencer), em cards ou tabela, com filtros e exportação.
-- Tela do projeto: tarefas em tabela por etapa (nº, checklist, status, duração, início e fim — clique
-  para escolher a data —, horas estimadas e realizadas, responsável, prioridade), **cronograma (Gantt)**, equipe e horas por pessoa,
+- Tela do projeto: tarefas em tabela por etapa (nº, checklist, status, início e fim — clique para
+  escolher a data —, duração em dias úteis calculada pelas datas e editável (recalcula o fim), horas estimadas e realizadas, responsável, prioridade), **cronograma (Gantt)**, equipe e horas por pessoa,
   dados do cliente, links (Drive, pranchas…), anotações e histórico de atividades.
 - **Usar como modelo:** as tarefas de um projeto (etapas, ordem, checklist, observações, prioridade,
-  horas, duração pelas datas e tarefas em paralelo) viram as tarefas-modelo de um tipo existente ou
+  horas; sem datas) viram as tarefas-modelo de um tipo existente ou
   de um tipo novo; depois é só ajustar em Configurações. Projetos já criados não mudam.
 
 **Tarefas**
@@ -124,10 +124,9 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   backup em JSON, layout responsivo (celular) e **modo escuro** (menu da conta → Tema).
 
 **Configurações (administrador ou quem tiver o módulo)**
-- Tipos de projeto e suas **tarefas-modelo**, em tabela por etapas: nº, duração, início e fim
-  simulados, horas estimadas, quem fica à frente, prioridade, **checklist** e **observações** de cada
-  tarefa (copiados para cada novo projeto), tarefas em paralelo, tarefas com **duração 0** (entram no
-  projeto sem datas, como reuniões e visitas, e o início e o fim são preenchidos depois) e etapas que se renomeiam e reordenam.
+- Tipos de projeto e suas **tarefas-modelo**, em tabela por etapas: nº, horas estimadas, quem fica à
+  frente, prioridade, **checklist** e **observações** de cada tarefa (copiados para cada novo projeto) e
+  etapas que se renomeiam e reordenam. Sem datas nem duração: isso é definido em cada projeto.
 - Modelo **Arquitetura e Interiores** do escritório: LD - Levantamento de Dados, EP - Estudo
   Preliminar, C3D - Concepção 3D, PI - Projeto de Interiores, PL - Projeto Legal, PCE - Projetos
   Complementares Engenharia, CO - Compatibilização, PE - Projeto Executivo, PEI - Projeto Executivo

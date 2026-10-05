@@ -1,25 +1,19 @@
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Flag, Link2, ListChecks, Plus, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Flag, ListChecks, Plus, Trash2, X } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { SWATCHES, TASK_PRIORITY, TASK_PRIORITY_ORDER } from '../../lib/constants';
-import { businessDaysBetween, scheduleTemplates } from '../../lib/domain';
 import type { ProjectType, TaskPriority, TaskTemplate } from '../../lib/types';
-import { byPosition, cn, formatDateShort, formatNumber, today, uid } from '../../lib/utils';
+import { byPosition, cn, formatNumber, uid } from '../../lib/utils';
 import { useMediaQuery } from '../../lib/useMediaQuery';
-import { Avatar, Button, Card, Checkbox, ConfirmDialog, Field, IconButton, Input, Modal, Select, Textarea } from '../../components/ui';
+import { Avatar, Button, Card, ConfirmDialog, Field, IconButton, Input, Modal, Select, Textarea } from '../../components/ui';
 
 /** Cor da etapa pela ordem (como as bolinhas da referência). */
 const phaseColor = (i: number) => SWATCHES[i % SWATCHES.length];
-/** Duração digitada → dias úteis (vazio ou 0 = sem datas; início e fim definidos no projeto). */
-const toDays = (value: string | number) => {
-  const n = Number(value);
-  return value === '' || !Number.isFinite(n) ? 0 : Math.max(0, Math.round(n));
-};
 
 /**
- * Tarefas-modelo de um tipo de projeto, em tabela por etapas: nº, duração, início e fim
- * (simulados a partir de uma data), horas estimadas, responsável, prioridade e checklist.
+ * Tarefas-modelo de um tipo de projeto, em tabela por etapas: nº, checklist, horas estimadas,
+ * responsável e prioridade. Sem datas nem duração: início e fim são definidos em cada projeto.
  * Cada tarefa abre um formulário com checklist e observações.
  */
 export function TemplatesEditor({ type }: { type: ProjectType }) {
@@ -28,19 +22,13 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
   const wide = useMediaQuery('(min-width: 1024px)');
   const templates = useMemo(() => db.task_templates.filter((t) => t.project_type_id === type.id).sort(byPosition), [db.task_templates, type.id]);
   const phases = useMemo(() => [...new Set(templates.map((t) => t.phase))], [templates]);
-  const [simStart, setSimStart] = useState(today());
-  const schedule = useMemo(() => new Map(scheduleTemplates(templates, simStart).map((s) => [s.template.id, s])), [templates, simStart]);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<{ template?: TaskTemplate; phase?: string } | null>(null);
   const [renaming, setRenaming] = useState<{ from: string; to: string } | null>(null);
-  const [adding, setAdding] = useState<{ phase: string; title: string; days: string } | null>(null);
+  const [adding, setAdding] = useState<{ phase: string; title: string } | null>(null);
   const [newPhase, setNewPhase] = useState<{ name: string; title: string } | null>(null);
   const [deletingPhase, setDeletingPhase] = useState<string | null>(null);
 
-  // Só as tarefas com duração entram na agenda simulada (duração 0 = datas definidas no projeto)
-  const all = [...schedule.values()].filter((s): s is { template: TaskTemplate; start: string; due: string } => !!s.start && !!s.due);
-  const end = all.reduce((m, s) => (s.due > m ? s.due : m), all[0]?.due ?? simStart);
-  const totalDays = all.length ? businessDaysBetween(all[0].start, end) : 0;
   const run = (p: Promise<unknown>) => p.catch(toast.error);
 
   /** Nova posição no fim de uma etapa (ou no fim da lista, para etapa nova). */
@@ -56,7 +44,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
     if (!adding?.title.trim()) return;
     const tpl: TaskTemplate = {
       id: uid(), project_type_id: type.id, phase: adding.phase, title: adding.title.trim(), description: null,
-      duration_days: toDays(adding.days), position: positionAtEndOf(adding.phase),
+      duration_days: 0, position: positionAtEndOf(adding.phase),
     };
     try {
       await insertRows('task_templates', [tpl]);
@@ -70,7 +58,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
     if (!newPhase?.name.trim() || !newPhase.title.trim()) return;
     const tpl: TaskTemplate = {
       id: uid(), project_type_id: type.id, phase: newPhase.name.trim(), title: newPhase.title.trim(), description: null,
-      duration_days: 1, position: templates.length ? templates[templates.length - 1].position + 1 : 0,
+      duration_days: 0, position: templates.length ? templates[templates.length - 1].position + 1 : 0,
     };
     try {
       await insertRows('task_templates', [tpl]);
@@ -113,7 +101,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
     await run(patch('task_templates', other.id, { position: t.position }));
   };
 
-  const cols = 'grid grid-cols-[44px_minmax(240px,1fr)_64px_80px_64px_64px_72px_150px_92px_92px] items-center gap-x-2';
+  const cols = 'grid grid-cols-[44px_minmax(240px,1fr)_72px_80px_160px_100px_92px] items-center gap-x-2';
 
   return (
     <Card className="overflow-hidden">
@@ -121,14 +109,10 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
         <div>
           <h3 className="font-display text-[15px] font-semibold text-ink">Tarefas-modelo · {type.name}</h3>
           <p className="mt-0.5 text-[12.5px] text-muted">
-            {templates.length} tarefas em {phases.length} etapas · {totalDays} dias úteis. Criadas em cada novo projeto deste tipo, com checklist,
-            observações e responsável.
+            {templates.length} tarefas em {phases.length} etapas. Criadas em cada novo projeto deste tipo, com checklist, observações e
+            responsável; início, fim e duração são definidos no projeto.
           </p>
         </div>
-        <label className="flex items-center gap-2 text-[12.5px] text-muted">
-          Simular datas a partir de
-          <Input type="date" value={simStart} onChange={(e) => e.target.value && setSimStart(e.target.value)} className="h-8 w-auto" aria-label="Data de início da simulação" />
-        </label>
       </div>
 
       {wide && (
@@ -136,9 +120,6 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
           <span>Nº</span>
           <span>Etapas / tarefas</span>
           <span className="text-center">Checklist</span>
-          <span>Duração</span>
-          <span>Início</span>
-          <span>Fim</span>
           <span className="text-right">Horas est.</span>
           <span>Responsável</span>
           <span>Prioridade</span>
@@ -149,9 +130,6 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
       <div className={cn(!wide && 'border-t border-line/70')}>
         {phases.map((phase, pi) => {
           const items = templates.filter((t) => t.phase === phase);
-          const sched = all.filter((s) => s.template.phase === phase);
-          const pStart = sched.reduce((m, s) => (s.start < m ? s.start : m), sched[0]?.start ?? '');
-          const pEnd = sched.reduce((m, s) => (s.due > m ? s.due : m), sched[0]?.due ?? '');
           const hours = items.reduce((a, t) => a + (t.estimated_hours ?? 0), 0);
           const open = !collapsed[phase];
           return (
@@ -182,7 +160,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                       {phase}
                     </button>
                   )}
-                  <IconButton label={`Adicionar tarefa em ${phase}`} size="xs" onClick={() => setAdding({ phase, title: '', days: '2' })}>
+                  <IconButton label={`Adicionar tarefa em ${phase}`} size="xs" onClick={() => setAdding({ phase, title: '' })}>
                     <Plus className="h-3.5 w-3.5" />
                   </IconButton>
                   <span className="shrink-0 text-[12px] text-stone-500">
@@ -191,9 +169,6 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                 </span>
                 {wide && (
                   <>
-                    <span className="text-[12.5px] tabular text-stone-600">{pStart ? `${businessDaysBetween(pStart, pEnd)} dias` : ''}</span>
-                    <span className="text-[12.5px] tabular text-stone-600">{pStart && formatDateShort(pStart)}</span>
-                    <span className="text-[12.5px] tabular text-stone-600">{pEnd && formatDateShort(pEnd)}</span>
                     <span className="text-right text-[12.5px] tabular text-stone-600">{hours ? `${formatNumber(hours, 1)}h` : ''}</span>
                     <span />
                     <span />
@@ -215,7 +190,6 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
               {/* Tarefas da etapa */}
               {open &&
                 items.map((t, ti) => {
-                  const s = schedule.get(t.id);
                   const person = t.assignee_id ? maps.profiles[t.assignee_id] : null;
                   const pr = TASK_PRIORITY[t.priority ?? 'media'];
                   const checklist = t.checklist ?? [];
@@ -228,9 +202,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                         <span className="block truncate text-[13.5px] text-ink group-hover:underline group-hover:decoration-stone-300 group-hover:underline-offset-4">{t.title}</span>
                         {!wide && (
                           <span className="block truncate text-[12px] text-stone-500">
-                            {t.duration_days} {t.duration_days === 1 ? 'dia' : 'dias'}
-                            {s?.start && s.due ? ` · ${formatDateShort(s.start)} → ${formatDateShort(s.due)}` : ' · datas no projeto'}
-                            {checklist.length > 0 && ` · checklist ${checklist.length}`}
+                            {checklist.length > 0 ? `checklist ${checklist.length}` : 'sem checklist'}
                             {person && ` · ${person.name.split(' ')[0]}`}
                           </span>
                         )}
@@ -242,20 +214,6 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                             <ListChecks className="h-3.5 w-3.5" />
                             {checklist.length}
                           </span>
-                          <span className="flex items-center gap-1 text-[12.5px] tabular text-stone-700">
-                            {t.duration_days} {t.duration_days === 1 ? 'dia' : 'dias'}
-                            {t.start_with_previous && <Link2 className="h-3 w-3 text-stone-400" aria-label="Começa junto com a anterior" />}
-                          </span>
-                          {s?.start && s.due ? (
-                            <>
-                              <span className="text-[12.5px] tabular text-stone-600">{formatDateShort(s.start)}</span>
-                              <span className="text-[12.5px] tabular text-stone-600">{formatDateShort(s.due)}</span>
-                            </>
-                          ) : (
-                            <span className="col-span-2 text-[12px] text-stone-400" title="Duração 0: início e fim são preenchidos em cada projeto">
-                              definir no projeto
-                            </span>
-                          )}
                           <span className="text-right text-[12.5px] tabular text-stone-600">{t.estimated_hours ? `${formatNumber(t.estimated_hours, 1)}h` : '—'}</span>
                           <span className="flex min-w-0 items-center gap-1.5 text-[12.5px]">
                             {person ? (
@@ -297,8 +255,6 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                   }}
                 >
                   <Input value={adding.title} onChange={(e) => setAdding({ ...adding, title: e.target.value })} placeholder={`Nova tarefa em ${phase}`} className="h-8 min-w-0 flex-1" autoFocus aria-label="Título da nova tarefa" />
-                  <Input type="number" min={0} value={adding.days} onChange={(e) => setAdding({ ...adding, days: e.target.value })} className="h-8 w-20" aria-label="Duração em dias" title="Duração em dias úteis" />
-                  <span className="text-[12.5px] text-stone-500">dias</span>
                   <Button type="submit" size="sm" variant="primary" disabled={!adding.title.trim()}>
                     Adicionar
                   </Button>
@@ -396,8 +352,6 @@ function TemplateTaskModal({
   const [v, setV] = useState({
     title: template?.title ?? '',
     phase: template?.phase ?? defaultPhase ?? phases[0] ?? '',
-    duration_days: template?.duration_days ?? 2,
-    start_with_previous: template?.start_with_previous ?? false,
     assignee_id: template?.assignee_id ?? '',
     priority: (template?.priority ?? 'media') as TaskPriority,
     estimated_hours: template?.estimated_hours ?? null,
@@ -438,8 +392,9 @@ function TemplateTaskModal({
     const data: Partial<TaskTemplate> = {
       title: v.title.trim(),
       phase: v.phase.trim(),
-      duration_days: toDays(v.duration_days),
-      start_with_previous: v.start_with_previous,
+      // Datas e duração são definidas em cada projeto
+      duration_days: 0,
+      start_with_previous: false,
       assignee_id: v.assignee_id || null,
       priority: v.priority,
       estimated_hours: v.estimated_hours != null && v.estimated_hours > 0 ? v.estimated_hours : null,
@@ -498,15 +453,6 @@ function TemplateTaskModal({
             ))}
           </datalist>
         </Field>
-        <Field label="Duração (dias úteis)" hint="Deixe 0 para a tarefa entrar sem datas: início e fim são preenchidos no projeto.">
-          <Input type="number" min={0} value={v.duration_days} onChange={(e) => setV({ ...v, duration_days: Number(e.target.value) })} aria-label="Duração (dias úteis)" />
-        </Field>
-        <Checkbox
-          className="sm:col-span-2"
-          checked={v.start_with_previous}
-          onChange={(on) => setV({ ...v, start_with_previous: on })}
-          label="Começa junto com a tarefa anterior (em paralelo), em vez de depois dela"
-        />
         <Field label="Quem fica à frente" hint="Sem pessoa definida, fica com o responsável escolhido ao criar o projeto.">
           <Select value={v.assignee_id} onChange={(e) => setV({ ...v, assignee_id: e.target.value })} aria-label="Responsável">
             <option value="">Responsável do projeto</option>

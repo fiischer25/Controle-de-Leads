@@ -17,8 +17,8 @@ import type {
 import type { NewUserInput } from './backend/types';
 import { defaultFinanceAccount, defaultFinanceCategories, defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from './defaults';
 import { addMonthsKey, buildSeries, feePlan, splitByPercent, type EntryDraft } from './finance';
-import { buildProjectTasks, templatesEndDate } from './domain';
-import { addDays, nowIso, today, uid } from './utils';
+import { buildProjectTasks } from './domain';
+import { addBusinessDays, addDays, nowIso, today, uid } from './utils';
 
 type DemoData = { [K in TableName]?: Tables[K][] };
 
@@ -151,14 +151,15 @@ export async function buildDemoData(
     const projectId = uid();
     const tpl = templates.filter((x) => x.project_type_id === type(spec.type));
     const start = addDays(t, spec.startOffset);
-    const projectTasks = buildProjectTasks({ templates: tpl, projectId, startDate: start, assigneeId: spec.manager.id, createdBy: admin.id });
+    const projectTasks = buildProjectTasks({ templates: tpl, projectId, assigneeId: spec.manager.id, createdBy: admin.id });
     const doneCount = Math.round(projectTasks.length * spec.done);
-    let lastDue = start;
+    // Datas de demonstração: em projetos reais, início e fim são definidos por quem cuida do projeto
+    let cursor = start;
     projectTasks.forEach((task, idx) => {
       task.assignee_id = spec.members[idx % spec.members.length].id;
-      // Tarefa-modelo de duração 0 entra sem datas; as já feitas ganham a data da anterior
-      if (task.due_date) lastDue = task.due_date;
-      else if (idx <= doneCount) task.start_date = task.due_date = lastDue;
+      task.start_date = addBusinessDays(cursor, 0);
+      task.due_date = addBusinessDays(task.start_date, [3, 5, 2, 4, 6][idx % 5] - 1);
+      cursor = addBusinessDays(task.due_date, 1);
       if (idx < doneCount) {
         task.status = 'done';
         task.completed_at = `${task.due_date}T18:00:00.000Z`;
@@ -175,7 +176,7 @@ export async function buildDemoData(
       }
     });
     tasks.push(...projectTasks);
-    const due = templatesEndDate(tpl, start);
+    const due = projectTasks[projectTasks.length - 1]?.due_date ?? null;
     projects.push({
       id: projectId, code: `${settings.project_code_prefix}-${new Date().getFullYear()}-${String(i + 1).padStart(3, '0')}`,
       name: spec.project, client_id: client.id, project_type_id: type(spec.type),

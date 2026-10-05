@@ -2,9 +2,8 @@
 import { useMemo } from 'react';
 import { Layers } from 'lucide-react';
 import { useData, type ProjectInput } from '../../context/DataContext';
-import { templatesEndDate } from '../../lib/domain';
 import type { Profile } from '../../lib/types';
-import { byPosition, cn, formatDate } from '../../lib/utils';
+import { byPosition, cn } from '../../lib/utils';
 import { Avatar, Field, Input, Select, Textarea, UserSelect } from '../ui';
 
 export type ProjectDraft = Omit<ProjectInput, 'client_id' | 'lead_id'>;
@@ -74,17 +73,8 @@ export function ProjectFields({
     [db.task_templates, value.project_type_id],
   );
   const phases = [...new Set([...templates].sort(byPosition).map((t) => t.phase))];
-  const estimatedEnd = value.start_date ? templatesEndDate(templates, value.start_date) : null;
-
-  const changeType = (id: string) => {
-    const tpl = db.task_templates.filter((t) => t.project_type_id === id);
-    const end = value.start_date ? templatesEndDate(tpl, value.start_date) : null;
-    onChange({ ...value, project_type_id: id, due_date: end ?? value.due_date });
-  };
-  const changeStart = (d: string) => {
-    const end = d ? templatesEndDate(templates, d) : null;
-    onChange({ ...value, start_date: d, due_date: end ?? value.due_date });
-  };
+  const changeType = (id: string) => onChange({ ...value, project_type_id: id });
+  const changeStart = (d: string) => onChange({ ...value, start_date: d });
 
   return (
     <div className="space-y-5">
@@ -109,7 +99,6 @@ export function ProjectFields({
           label="Prazo de entrega"
           error={errors.due_date}
           className="sm:col-span-2"
-          hint={estimatedEnd ? `Previsto pelo cronograma: ${formatDate(estimatedEnd)}` : undefined}
         >
           <Input type="date" value={value.due_date ?? ''} onChange={(e) => set('due_date', e.target.value || null)} invalid={!!errors.due_date} />
         </Field>
@@ -154,6 +143,7 @@ export function ProjectFields({
             <Layers className="h-4 w-4 text-brand-600" />
             {templates.length} tarefas serão criadas automaticamente
           </div>
+          <p className="mt-1 text-xs text-stone-500">Elas entram sem datas: defina o início e o fim de cada uma na aba Tarefas do projeto.</p>
           {phases.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {phases.map((p, i) => (

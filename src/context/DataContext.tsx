@@ -124,7 +124,7 @@ interface DataApi {
   createProject(input: ProjectInput): Promise<Project>;
   updateProject(id: string, patch: Partial<Project>): Promise<void>;
   deleteProject(id: string): Promise<void>;
-  applyTemplates(projectId: string, startDate: string, assigneeId: string | null): Promise<void>;
+  applyTemplates(projectId: string, assigneeId: string | null): Promise<void>;
   /** Usa as tarefas do projeto como modelo: substitui as tarefas-modelo de um tipo ou cria um tipo novo. */
   saveProjectAsTemplate(projectId: string, target: { typeId: string } | { newTypeName: string }, keepAssignees: boolean): Promise<{ type: ProjectType; count: number }>;
 
@@ -520,14 +520,14 @@ export function DataProvider({ userId, children }: { userId: string; children: R
 
   // ------------------------------------------------------------------ projetos
   const applyTemplates = useCallback(
-    async (projectId: string, startDate: string, assigneeId: string | null) => {
+    async (projectId: string, assigneeId: string | null) => {
       const project = dbRef.current.projects.find((p) => p.id === projectId);
       if (!project) return;
       const templates = dbRef.current.task_templates.filter((t) => t.project_type_id === project.project_type_id);
       const existing = dbRef.current.tasks.filter((t) => t.project_id === projectId);
       const offset = existing.length ? Math.max(...existing.map((t) => t.position)) + 1 : 0;
       const activeUserIds = new Set(dbRef.current.profiles.filter((p) => p.active).map((p) => p.id));
-      const tasks = buildProjectTasks({ templates, projectId, startDate, assigneeId, createdBy: userId, activeUserIds }).map((t) => ({
+      const tasks = buildProjectTasks({ templates, projectId, assigneeId, createdBy: userId, activeUserIds }).map((t) => ({
         ...t,
         position: t.position + offset,
       }));
@@ -598,7 +598,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       const [saved] = await insertRows('projects', [project]);
       const templates = dbRef.current.task_templates.filter((t) => t.project_type_id === saved.project_type_id);
       const activeUserIds = new Set(dbRef.current.profiles.filter((p) => p.active).map((p) => p.id));
-      const tasks = buildProjectTasks({ templates, projectId: saved.id, startDate: saved.start_date, assigneeId: default_assignee_id, createdBy: userId, activeUserIds });
+      const tasks = buildProjectTasks({ templates, projectId: saved.id, assigneeId: default_assignee_id, createdBy: userId, activeUserIds });
       await insertRows('tasks', tasks);
       await log('project', saved.id, 'created', `criou o projeto ${saved.name}`);
       const people = new Set([saved.manager_id, ...saved.member_ids, default_assignee_id, ...tasks.map((t) => t.assignee_id)].filter(Boolean) as string[]);
