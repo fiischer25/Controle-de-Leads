@@ -126,6 +126,13 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
     const projected =
       fin.totalBalance + sum(dueByEnd.filter((e) => e.kind === 'receita').map((e) => e.amount)) - sum(dueByEnd.filter((e) => e.kind === 'despesa').map((e) => e.amount));
     const upcoming = open.filter((e) => e.due_date <= addDays(t, 30)).sort((a, b) => a.due_date.localeCompare(b.due_date));
+    // A receber por mês (este e os próximos 11): cada parcela no mês do vencimento
+    const ahead = monthsBack(monthKey(addMonthsKey(`${month}-01`, 11)), 12)
+      .map((key) => {
+        const items = open.filter((e) => e.kind === 'receita' && monthKey(e.due_date) === key && e.due_date >= `${month}-01`).sort((a, b) => a.due_date.localeCompare(b.due_date));
+        return { key, items, total: sum(items.map((e) => e.amount)) };
+      })
+      .filter((m) => m.items.length > 0);
     const months = monthsBack(month, 12).map((key) => {
       const m = monthTotals(fin.entries, key);
       const [, mm] = key.split('-').map(Number);
@@ -141,6 +148,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
       totals,
       projected: Math.round(projected * 100) / 100,
       upcoming,
+      ahead,
       months,
       categories: Object.entries(byCategory).sort((a, b) => b[1] - a[1]),
       overdueIn: sum(open.filter((e) => e.kind === 'receita' && e.due_date < t).map((e) => e.amount)),
@@ -199,6 +207,39 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
         </section>
       </div>
 
+      <section aria-labelledby="a-receber-mes">
+        <SectionHeader
+          id="a-receber-mes"
+          title="A receber por mês"
+          aside={<span className="text-[12.5px] text-faint">parcelas em aberto · próximos 12 meses · {formatMoney(sum(data.ahead.map((m) => m.total)))}</span>}
+        />
+        {data.ahead.length === 0 ? (
+          <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhuma receita em aberto nos próximos 12 meses.</p>
+        ) : (
+          <div className="space-y-8">
+            {data.ahead.map((m) => (
+              <div key={m.key}>
+                <div className="flex items-baseline justify-between gap-3 pb-1.5">
+                  <span className="font-display text-[14.5px] font-semibold text-ink">
+                    {monthLabel(m.key)}{' '}
+                    <span className="text-[12.5px] font-normal text-faint">
+                      · {m.items.length} {m.items.length === 1 ? 'parcela' : 'parcelas'}
+                    </span>
+                  </span>
+                  <span className="flex items-baseline gap-4">
+                    <span className="text-[13.5px] tabular text-ink">{formatMoney(m.total)}</span>
+                    <ActionLink to={`/financeiro?aba=lancamentos&mes=${m.key}`} muted>
+                      Ver o mês
+                    </ActionLink>
+                  </span>
+                </div>
+                <EntryList entries={m.items} onOpen={onOpen} compact />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-3 lg:gap-12">
         <section aria-labelledby="entradas" className="min-w-0">
           <SectionHeader id="entradas" title="Entradas" aside={<span className="text-[12.5px] text-faint">recebido por mês</span>} />
@@ -234,7 +275,9 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
   const { db, maps } = useData();
   const fin = useFinance();
   const t = today();
-  const [month, setMonth] = useState(monthKey(t));
+  const [params] = useSearchParams();
+  // ?mes=AAAA-MM abre direto no mês (link de "A receber por mês")
+  const [month, setMonth] = useState(/^\d{4}-\d{2}$/.test(params.get('mes') ?? '') ? params.get('mes')! : monthKey(t));
   const [kind, setKind] = useState<KindFilter>('todos');
   const [status, setStatus] = useState('');
   const [account, setAccount] = useState('');
