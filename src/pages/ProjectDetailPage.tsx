@@ -4,6 +4,9 @@ import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ProjectFinanceTab } from '../components/finance/ProjectFinanceTab';
 import { ProjectTasksTable } from '../components/projects/ProjectTasksTable';
+import { ClientFormModal } from '../components/clients/ClientFormModal';
+import { WonDealModal } from '../components/leads/WonDealModal';
+import { planSummary } from '../lib/paymentPlan';
 import { SaveAsTemplateModal } from '../components/projects/SaveAsTemplateModal';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useToast } from '../context/ToastContext';
@@ -19,6 +22,7 @@ import {
   formatDateShort,
   formatDateTime,
   formatMinutes,
+  formatMoney,
   formatNumber,
   formatRelative,
   today,
@@ -304,7 +308,7 @@ export default function ProjectDetailPage() {
 
         {tab === 'team' && <TeamTab project={project} tasks={tasks} />}
 
-        {tab === 'info' && <InfoTab project={project} />}
+        {tab === 'info' && <InfoTab project={project} onEditProject={() => setEditing(true)} />}
 
         {tab === 'finance' && can('financeiro') && <ProjectFinanceTab project={project} />}
 
@@ -444,10 +448,14 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function InfoTab({ project }: { project: Project }) {
-  const { maps, updateProject } = useData();
+function InfoTab({ project, onEditProject }: { project: Project; onEditProject: () => void }) {
+  const { maps, updateProject, closeDeal, can } = useData();
   const toast = useToast();
   const client = maps.clients[project.client_id];
+  // Oportunidade que originou o projeto (forma de pagamento do contrato)
+  const lead = project.lead_id ? maps.leads[project.lead_id] : null;
+  const [editingClient, setEditingClient] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(false);
   const [notes, setNotes] = useState(project.notes ?? '');
   const [link, setLink] = useState({ label: '', url: '' });
 
@@ -461,7 +469,7 @@ function InfoTab({ project }: { project: Project }) {
   return (
     <div className="grid gap-12 lg:grid-cols-3 lg:gap-12">
       <section aria-labelledby="info-projeto">
-        <SectionHeader id="info-projeto" title="Projeto" />
+        <SectionHeader id="info-projeto" title="Projeto" aside={<ActionLink onClick={onEditProject}>Editar</ActionLink>} />
         <dl>
           <InfoRow label="Área">{project.area_m2 ? `${formatNumber(project.area_m2)} m²` : '—'}</InfoRow>
           <InfoRow label="Início">{formatDate(project.start_date)}</InfoRow>
@@ -476,10 +484,24 @@ function InfoTab({ project }: { project: Project }) {
         </dl>
       </section>
       <section aria-labelledby="info-cliente">
-        <SectionHeader id="info-cliente" title="Cliente" aside={client && <ActionLink to={`/clientes/${client.id}`} muted>Abrir</ActionLink>} />
+        <SectionHeader
+          id="info-cliente"
+          title="Cliente"
+          aside={
+            client && (
+              <span className="flex items-center gap-4">
+                <ActionLink to={`/clientes/${client.id}`} muted>
+                  Abrir
+                </ActionLink>
+                <ActionLink onClick={() => setEditingClient(true)}>Editar</ActionLink>
+              </span>
+            )
+          }
+        />
         {client ? (
           <dl>
             <InfoRow label="Nome">{client.name}</InfoRow>
+            <InfoRow label="CPF / CNPJ">{client.document || '—'}</InfoRow>
             <InfoRow label="Telefone">{client.phone}</InfoRow>
             <InfoRow label="E-mail">
               <span className="break-all">{client.email}</span>
@@ -496,6 +518,31 @@ function InfoTab({ project }: { project: Project }) {
           <p className="text-[13px] text-faint">Cliente não encontrado.</p>
         )}
       </section>
+      {lead && (can('comercial') || can('financeiro')) && (
+        <section aria-labelledby="info-contrato">
+          <SectionHeader
+            id="info-contrato"
+            title="Contrato"
+            aside={<ActionLink onClick={() => setEditingPlan(true)}>{lead.payment_plan ? 'Editar' : 'Definir'}</ActionLink>}
+          />
+          {lead.payment_plan ? (
+            <dl>
+              <InfoRow label="Valor fechado">{formatMoney(lead.payment_plan.total)}</InfoRow>
+              <InfoRow label="Forma de pagamento">{planSummary(lead.payment_plan.rows)}</InfoRow>
+              {lead.payment_plan.rows.map((r, i) => (
+                <InfoRow key={i} label={r.label || `Parcela ${i + 1}`}>
+                  <span className="tabular">
+                    {formatMoney(r.value ?? (lead.payment_plan!.total * (Number(r.percent) || 0)) / 100)} · {Number(r.percent).toLocaleString('pt-BR')}% ·{' '}
+                    {formatDate(r.due_date)}
+                  </span>
+                </InfoRow>
+              ))}
+            </dl>
+          ) : (
+            <p className="text-[13px] text-faint">Forma de pagamento ainda não definida.</p>
+          )}
+        </section>
+      )}
       <section aria-labelledby="info-links">
         <SectionHeader id="info-links" title="Links e arquivos" />
         <ul>
@@ -542,6 +589,19 @@ function InfoTab({ project }: { project: Project }) {
           placeholder="Decisões do cliente, pendências, observações de obra…"
         />
       </section>
+      {editingClient && client && <ClientFormModal client={client} onClose={() => setEditingClient(false)} />}
+      {editingPlan && lead && (
+        <WonDealModal
+          lead={lead}
+          mode="edit"
+          onClose={() => setEditingPlan(false)}
+          onSubmit={async (plan, launch) => {
+            if (!plan) return;
+            const n = await closeDeal(lead.id, plan, launch, true);
+            toast.success(n > 0 ? `Contrato salvo e ${n} ${n === 1 ? 'parcela atualizada' : 'parcelas atualizadas'} no Financeiro.` : 'Contrato salvo.');
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,18 +1,22 @@
 import { useMemo } from 'react';
 import { Plus, X } from 'lucide-react';
 import { addMonthsKey, FEE_PRESETS, type FeePreset, type PlanRow } from '../../lib/finance';
-import { newPlanDraft, planAmounts, planPercentSum, type PlanDraft } from '../../lib/paymentPlan';
+import { newPlanDraft, planAmounts, planPercentSum, planTotal, rowPercent, type PlanDraft } from '../../lib/paymentPlan';
+import { MoneyInput } from './MoneyInput';
 import { formatMoney } from '../../lib/utils';
 import { Button, Field, IconButton, Input, Select } from '../ui';
 
 /**
  * Editor de forma de pagamento: modelo (30/40/30, 50/50, à vista, mensal), 1º vencimento e
- * tabela de parcelas editável (descrição, %, data, valor calculado).
+ * tabela de parcelas editável (descrição, %, data e valor). Digitando o valor em R$, o
+ * percentual é calculado; digitando o percentual, o valor é calculado.
  */
 export function PaymentPlanEditor({ total, value, onChange }: { total: number | null; value: PlanDraft; onChange: (v: PlanDraft) => void }) {
   const { preset, months, first, rows } = value;
-  const percentSum = planPercentSum(rows);
+  const percentSum = planPercentSum(rows, total);
   const amounts = useMemo(() => planAmounts(total, rows), [total, rows]);
+  const sum = planTotal(total, rows);
+  const closes = amounts.length > 0;
   const setRows = (next: PlanRow[]) => onChange({ ...value, rows: next });
   const setRow = (i: number, patch: Partial<PlanRow>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
@@ -59,7 +63,7 @@ export function PaymentPlanEditor({ total, value, onChange }: { total: number | 
       </div>
 
       <div className="mt-5">
-        <div className="grid grid-cols-[minmax(0,1fr)_72px_132px_110px_28px] gap-2 pb-2 text-[12.5px] text-faint">
+        <div className="grid grid-cols-[minmax(0,1fr)_80px_132px_132px_28px] gap-2 pb-2 text-[12.5px] text-faint">
           <span>Etapa / parcela</span>
           <span className="text-right">%</span>
           <span>Vencimento</span>
@@ -68,20 +72,26 @@ export function PaymentPlanEditor({ total, value, onChange }: { total: number | 
         </div>
         <ul className="space-y-2">
           {rows.map((r, i) => (
-            <li key={i} className="grid grid-cols-[minmax(0,1fr)_72px_132px_110px_28px] items-center gap-2">
+            <li key={i} className="grid grid-cols-[minmax(0,1fr)_80px_132px_132px_28px] items-center gap-2">
               <Input value={r.label} onChange={(e) => setRow(i, { label: e.target.value })} className="h-9" aria-label={`Descrição da parcela ${i + 1}`} />
               <Input
                 type="number"
                 min={0}
                 max={100}
                 step="0.01"
-                value={r.percent}
-                onChange={(e) => setRow(i, { percent: Number(e.target.value) })}
+                value={rowPercent(total, r)}
+                // Digitou o percentual: o valor passa a ser calculado
+                onChange={(e) => setRow(i, { percent: Number(e.target.value), amount: null })}
                 className="h-9 text-right"
                 aria-label={`Percentual da parcela ${i + 1}`}
               />
               <Input type="date" value={r.due_date} onChange={(e) => setRow(i, { due_date: e.target.value })} className="h-9" aria-label={`Vencimento da parcela ${i + 1}`} />
-              <span className="text-right text-[13px] tabular text-ink">{amounts[i] != null ? formatMoney(amounts[i]) : '—'}</span>
+              <MoneyInput
+                value={r.amount ?? amounts[i] ?? (total ? Math.round(total * (Number(r.percent) || 0)) / 100 : null)}
+                // Digitou o valor: o percentual passa a ser calculado
+                onChange={(v) => setRow(i, v == null ? { amount: null } : { amount: v, percent: total ? Math.round((v / total) * 10000) / 100 : r.percent })}
+                aria-label={`Valor da parcela ${i + 1}`}
+              />
               <IconButton label={`Remover parcela ${i + 1}`} size="xs" onClick={() => setRows(rows.filter((_, j) => j !== i))} disabled={rows.length === 1}>
                 <X className="h-3.5 w-3.5" />
               </IconButton>
@@ -97,7 +107,10 @@ export function PaymentPlanEditor({ total, value, onChange }: { total: number | 
           >
             Parcela
           </Button>
-          <span className={percentSum === 100 ? 'text-[12.5px] text-faint' : 'text-[12.5px] text-danger-fg'}>Soma: {percentSum}%</span>
+          <span className={closes ? 'text-[12.5px] tabular text-faint' : 'text-[12.5px] tabular text-danger-fg'}>
+            Soma: {formatMoney(sum)} · {percentSum.toLocaleString('pt-BR')}%
+            {!closes && total ? (total > sum ? ` · faltam ${formatMoney(Math.round((total - sum) * 100) / 100)}` : ` · passou ${formatMoney(Math.round((sum - total) * 100) / 100)}`) : ''}
+          </span>
         </div>
       </div>
     </div>

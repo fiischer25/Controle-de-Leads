@@ -218,7 +218,7 @@ export class SupabaseBackend implements Backend {
     const { data, error } = await this.client.rpc(name, args);
     if (error) {
       if (/could not find the function|PGRST202/i.test(`${error.message} ${error.code ?? ''}`)) {
-        throw new Error('O banco ainda não tem a forma de pagamento do fechamento. No Supabase, execute a migração 20261009000000_lead_payment_plan.sql.');
+        throw new Error('O banco ainda não tem a versão nova da forma de pagamento. No Supabase, execute a migração 20261013000000_payment_plan_values.sql.');
       }
       fail(error);
     }
