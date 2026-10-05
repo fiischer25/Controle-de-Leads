@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { contractPlan, rememberContract } from '../../lib/contract';
 import type { Lead, LeadPaymentPlan } from '../../lib/types';
+import { today } from '../../lib/utils';
 import { Button, Modal } from '../ui';
 import { ContractFields } from './ContractFields';
+import { ContractReader } from './ContractReader';
 import { useContract } from './useContract';
 
 /**
@@ -64,6 +67,20 @@ export function WonDealModal({
         </>
       }
     >
+      <ContractReader
+        className="mb-5"
+        description={
+          lead.client_id
+            ? 'Envie o contrato assinado (PDF, foto ou Word) e o sistema preenche o valor e as parcelas.'
+            : 'Envie o contrato assinado (PDF, foto ou Word): o sistema preenche o valor e as parcelas aqui e os dados do cliente no cadastro a seguir.'
+        }
+        onRead={(x, fileName) => {
+          const plan = contractPlan(x, today());
+          if (plan) c.apply(plan.total, plan.draft);
+          // Os dados do cliente e do projeto vão para o "Virar cliente", logo em seguida
+          rememberContract(lead.id, x, fileName);
+        }}
+      />
       <ContractFields c={c} autoFocus />
       {error && <p className="mt-3 text-[13px] text-danger-fg">{error}</p>}
     </Modal>
