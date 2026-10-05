@@ -143,6 +143,7 @@ export class SupabaseBackend implements Backend {
         const ctx = (error as { context?: Response }).context;
         const parsed = ctx ? await ctx.json() : null;
         if (parsed?.error) message = parsed.error;
+        else if (ctx?.status === 404 || /not.?found/i.test(parsed?.message ?? '')) message = `A função admin-users não está publicada no Supabase.`;
       } catch {
         /* resposta sem JSON */
       }
@@ -222,6 +223,7 @@ export class SupabaseBackend implements Backend {
         const ctx = (error as { context?: Response }).context;
         const parsed = ctx ? await ctx.json() : null;
         if (parsed?.error) message = parsed.error;
+        else if (ctx?.status === 404 || /not.?found/i.test(parsed?.message ?? '')) message = `A função ${name} não está publicada no Supabase.`;
       } catch {
         /* resposta sem JSON */
       }

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useData, type ClientInput } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
+import { applyContractToClient, contractPlan } from '../../lib/contract';
 import type { Client } from '../../lib/types';
-import { byPosition } from '../../lib/utils';
+import { byPosition, today } from '../../lib/utils';
 import { Button, Field, Input, Modal, Select, Tabs, UserSelect } from '../ui';
 import { ContractFields } from '../leads/ContractFields';
+import { ContractReader } from '../leads/ContractReader';
 import { useContract } from '../leads/useContract';
 import { ClientFields, validateClient, type ClientErrors } from './ClientFields';
 
@@ -106,6 +108,18 @@ export function ClientEditModal({ client, initialTab = 'dados', onClose }: { cli
         </>
       }
     >
+      {commercial && (
+        <ContractReader
+          className="mb-5"
+          description="Envie o contrato (PDF, foto ou Word) e o sistema atualiza os dados do cliente, o valor e as parcelas. Nada é salvo antes de você conferir."
+          onRead={(x) => {
+            setValue((v) => applyContractToClient(x, v));
+            setErrors({});
+            const plan = contractPlan(x, today());
+            if (plan) contract.apply(plan.total, plan.draft);
+          }}
+        />
+      )}
       {commercial && (
         <Tabs<ClientEditTab>
           className="mb-6"

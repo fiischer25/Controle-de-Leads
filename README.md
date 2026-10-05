@@ -37,6 +37,9 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   50% · 50%, à vista, mensal ou personalizado, com as datas. As parcelas entram sozinhas em
   **contas a receber** do Financeiro (categoria honorários), mesmo quando quem fecha só tem o módulo
   Comercial, e passam para o projeto quando o lead vira cliente. Editar depois não duplica.
+- **Preencher com o contrato:** no fechamento, envie o contrato assinado (PDF, foto ou Word) e o sistema
+  preenche o valor e as parcelas, e no cadastro seguinte os dados do cliente e da obra. Também funciona no
+  *Virar cliente* e em *Editar cliente*. Veja “Leitura de contratos” abaixo para ativar.
 - Em cada parcela dá para digitar o **valor em R$** (o percentual é calculado) ou o percentual (o
   valor é calculado); a soma precisa fechar com o valor do contrato. A forma de pagamento pode ser
   **editada depois** (na oportunidade ou na aba Informações do projeto): as parcelas no Financeiro
@@ -243,6 +246,22 @@ Observações:
 ativada, compartilhe a agenda do escritório com o e-mail da conta de serviço (“Fazer alterações nos eventos”)
 e guarde `GOOGLE_SERVICE_ACCOUNT_JSON` (o JSON da chave) e `GOOGLE_CALENDAR_ID` como segredos. Reuniões
 criadas no sistema ou pelo assistente passam a aparecer no Google Agenda do escritório.
+
+### Leitura de contratos
+Ao marcar uma oportunidade como ganha (e no **Virar cliente** e em **Editar cliente**), dá para enviar o
+contrato assinado em PDF, foto ou Word (.docx): o sistema lê e preenche os dados do cliente, o valor, as
+parcelas (com vencimentos) e a área/endereço da obra. Nada é salvo antes de a pessoa conferir. Para ativar:
+
+```bash
+npx supabase secrets set ANTHROPIC_API_KEY=...   # a mesma chave do assistente, se já tiver
+npx supabase functions deploy contract-extract
+```
+
+- Usa o Claude com saída estruturada (JSON fixo); se o modelo principal estiver indisponível ou recusar, a
+  API tenta automaticamente um modelo alternativo (*server-side fallback*).
+- Custo por contrato lido, cobrado pela Anthropic conforme o tamanho do arquivo (acompanhe o consumo em
+  console.anthropic.com).
+- Testes da função: `cd supabase/functions && deno test _shared/contract.test.ts`.
 
 ### Google Agenda
 Em **Configurações → Google Agenda**, cole o *código de incorporação* da agenda do escritório

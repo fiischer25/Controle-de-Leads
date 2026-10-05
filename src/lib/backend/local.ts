@@ -231,7 +231,13 @@ export class LocalBackend implements Backend {
     );
   }
 
-  async invokeFunction(): Promise<unknown> {
+  async invokeFunction(name: string, body: Record<string, unknown>): Promise<unknown> {
+    if (name === 'contract-extract') {
+      // Testes automatizados podem simular a leitura do contrato
+      const mock = (globalThis as { __AIROS_CONTRACT_MOCK__?: (body: Record<string, unknown>) => unknown }).__AIROS_CONTRACT_MOCK__;
+      if (mock) return { result: await mock(body) };
+      throw new Error('A leitura de contratos funciona com o sistema conectado ao Supabase (não no modo demonstração).');
+    }
     return null;
   }
 

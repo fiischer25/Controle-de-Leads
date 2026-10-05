@@ -37,6 +37,13 @@ export function useContract(lead: Lead | null) {
     };
   };
 
+  /** Preenche com o contrato lido: valor e, quando houver, as parcelas. */
+  const apply = (nextTotal: number, nextDraft: PlanDraft | null) => {
+    setTouched(true);
+    setTotal(nextTotal);
+    if (nextDraft) setDraft(nextDraft);
+  };
+
   const touch = <T,>(fn: (v: T) => void) => (v: T) => {
     setTouched(true);
     fn(v);
@@ -59,6 +66,7 @@ export function useContract(lead: Lead | null) {
     setLaunch,
     touched,
     build,
+    apply,
   };
 }
 
