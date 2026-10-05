@@ -4,7 +4,7 @@ import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ProjectFinanceTab } from '../components/finance/ProjectFinanceTab';
 import { ProjectTasksTable } from '../components/projects/ProjectTasksTable';
-import { ClientFormModal } from '../components/clients/ClientFormModal';
+import { ClientEditModal } from '../components/clients/ClientEditModal';
 import { WonDealModal } from '../components/leads/WonDealModal';
 import { planSummary } from '../lib/paymentPlan';
 import { SaveAsTemplateModal } from '../components/projects/SaveAsTemplateModal';
@@ -589,7 +589,7 @@ function InfoTab({ project, onEditProject }: { project: Project; onEditProject: 
           placeholder="Decisões do cliente, pendências, observações de obra…"
         />
       </section>
-      {editingClient && client && <ClientFormModal client={client} onClose={() => setEditingClient(false)} />}
+      {editingClient && client && <ClientEditModal client={client} onClose={() => setEditingClient(false)} />}
       {editingPlan && lead && (
         <WonDealModal
           lead={lead}

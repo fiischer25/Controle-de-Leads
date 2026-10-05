@@ -106,6 +106,8 @@ interface DataApi {
 
   // Leads
   createLead(input: LeadInput): Promise<Lead>;
+  /** Oportunidade do cliente (onde fica o contrato); cria uma já ganha se o cliente não tiver. */
+  ensureClientLead(clientId: string): Promise<Lead>;
   updateLead(id: string, patch: Partial<Lead>): Promise<void>;
   moveLead(id: string, stageId: string, beforeLeadId?: string | null, extra?: Partial<Lead>): Promise<void>;
   deleteLead(id: string): Promise<void>;
@@ -300,10 +302,11 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   const insertRows = useCallback(async <T extends TableName>(table: T, rows: Tables[T][]) => {
     if (rows.length === 0) return rows;
     const saved = await backend.insert(table, rows);
-    setDb((prev) => {
-      const ids = new Set(saved.map((r) => (r as { id: string }).id));
-      return { ...prev, [table]: [...prev[table].filter((r) => !ids.has((r as { id: string }).id)), ...saved] };
-    });
+    const ids = new Set(saved.map((r) => (r as { id: string }).id));
+    const merge = (prev: Db): Db => ({ ...prev, [table]: [...prev[table].filter((r) => !ids.has((r as { id: string }).id)), ...saved] });
+    // Já disponível para a próxima ação da mesma operação (antes da nova renderização)
+    dbRef.current = merge(dbRef.current);
+    setDb(merge);
     return saved;
   }, []);
 
@@ -388,6 +391,56 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       return saved;
     },
     [insertRows, log, notify, userId, me.name],
+  );
+
+  const ensureClientLead = useCallback(
+    async (clientId: string) => {
+      const client = dbRef.current.clients.find((c) => c.id === clientId);
+      if (!client) throw new Error('Cliente não encontrado.');
+      const existing =
+        (client.lead_id && dbRef.current.leads.find((l) => l.id === client.lead_id)) || dbRef.current.leads.find((l) => l.client_id === clientId);
+      if (existing) {
+        if (client.lead_id !== existing.id) await patch('clients', clientId, { lead_id: existing.id });
+        return existing;
+      }
+      const stages = dbRef.current.lead_stages;
+      const won = stages.find((s) => s.kind === 'won') ?? stages[0];
+      if (!won) throw new Error('Cadastre as etapas do funil em Configurações.');
+      const now = nowIso();
+      const lead: Lead = {
+        id: uid(),
+        name: client.name,
+        phone: client.phone,
+        email: client.email || null,
+        city: client.city,
+        state: client.state,
+        area_m2: null,
+        category: null,
+        project_type_id: dbRef.current.projects.find((p) => p.client_id === clientId)?.project_type_id ?? null,
+        source_id: null,
+        referred_by: null,
+        proposal_value: null,
+        stage_id: won.id,
+        owner_id: userId,
+        position: 0,
+        next_contact_date: null,
+        expected_close_date: null,
+        lost_reason: null,
+        notes: 'Criada a partir do cadastro do cliente para registrar o contrato.',
+        stage_changed_at: client.created_at,
+        closed_at: client.created_at,
+        client_id: clientId,
+        converted_at: client.created_at,
+        created_by: userId,
+        created_at: client.created_at,
+        updated_at: now,
+      };
+      const [saved] = await insertRows('leads', [lead]);
+      await patch('clients', clientId, { lead_id: saved.id });
+      await log('lead', saved.id, 'created', `registrou o contrato de ${client.name}`);
+      return saved;
+    },
+    [insertRows, patch, log, userId],
   );
 
   const updateLead = useCallback(
@@ -898,7 +951,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   const api: DataApi = {
     db: visibleDb, loading, me, isAdmin, settings, maps, refresh,
     insertRows, patch, removeRows, log, notify,
-    createLead, updateLead, moveLead, deleteLead, addInteraction, convertLead, closeDeal,
+    createLead, ensureClientLead, updateLead, moveLead, deleteLead, addInteraction, convertLead, closeDeal,
     createClient: (input) => createClient(input), updateClient, deleteClient,
     createProject, updateProject, deleteProject, applyTemplates, saveProjectAsTemplate,
     createTask, updateTask, deleteTask, addComment, startTimer, stopTimer, addTimeEntry, deleteTimeEntry, runningEntry,

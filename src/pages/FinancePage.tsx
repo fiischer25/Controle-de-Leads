@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, FileText, Plus, Upload } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, Download, FileText, Plus, Scale, Upload, Wallet } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { addMonthsKey, entryDate, monthKey, monthsBack, monthTotals, sum } from '../lib/finance';
 import type { FinanceEntry, FinanceKind } from '../lib/types';
 import { addDays, cn, downloadFile, formatCurrency, formatDate, formatMoney, matches, MONTHS_FULL, toCsv, today } from '../lib/utils';
-import { ActionLink, BarRow, Button, FilterPick, IconButton, MetricRow, PageHeader, SearchField, SectionHeader, Tabs, Toolbar } from '../components/ui';
-import { MonthBars } from '../components/charts/MonthBars';
+import { ActionLink, BarRow, Button, FilterPick, IconButton, PageHeader, SearchField, SectionHeader, Tabs, Toolbar } from '../components/ui';
 import { EntryFormModal } from '../components/finance/EntryFormModal';
 import { EntryList } from '../components/finance/EntryList';
+import { CashFlowChart, KpiCard, ReceivablesByMonth } from '../components/finance/FinanceOverviewParts';
 import { ACCOUNT_KIND_LABEL, useFinance } from '../components/finance/useFinance';
 import { FinanceAccounts } from '../components/finance/FinanceAccounts';
 import { FinanceProfitability } from '../components/finance/FinanceProfitability';
@@ -129,14 +129,28 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
     // A receber por mês (este e os próximos 11): cada parcela no mês do vencimento
     const ahead = monthsBack(monthKey(addMonthsKey(`${month}-01`, 11)), 12)
       .map((key) => {
-        const items = open.filter((e) => e.kind === 'receita' && monthKey(e.due_date) === key && e.due_date >= `${month}-01`).sort((a, b) => a.due_date.localeCompare(b.due_date));
+        const items = open
+          .filter((e) => e.kind === 'receita' && monthKey(e.due_date) === key && e.due_date >= `${month}-01`)
+          .sort((a, b) => a.due_date.localeCompare(b.due_date));
         return { key, items, total: sum(items.map((e) => e.amount)) };
       })
       .filter((m) => m.items.length > 0);
-    const months = monthsBack(month, 12).map((key) => {
-      const m = monthTotals(fin.entries, key);
+    // Fluxo de caixa: 5 meses realizados, o mês atual (realizado + em aberto) e 6 previstos
+    const flow = monthsBack(monthKey(addMonthsKey(`${month}-01`, 6)), 12).map((key) => {
       const [, mm] = key.split('-').map(Number);
-      return { key, label: MONTHS_FULL[mm - 1].slice(0, 3), in: m.inPaid, out: m.outPaid };
+      const m = monthTotals(fin.entries, key);
+      const forecast = key > month;
+      const current = key === month;
+      const pendingIn = sum(open.filter((e) => e.kind === 'receita' && monthKey(e.due_date) === key).map((e) => e.amount));
+      const pendingOut = sum(open.filter((e) => e.kind === 'despesa' && monthKey(e.due_date) === key).map((e) => e.amount));
+      return {
+        key,
+        label: MONTHS_FULL[mm - 1].slice(0, 3),
+        in: forecast ? pendingIn : current ? m.inPaid + pendingIn : m.inPaid,
+        out: forecast ? pendingOut : current ? m.outPaid + pendingOut : m.outPaid,
+        forecast,
+        current,
+      };
     });
     const byCategory: Record<string, number> = {};
     for (const e of fin.entries) {
@@ -149,10 +163,11 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
       projected: Math.round(projected * 100) / 100,
       upcoming,
       ahead,
-      months,
+      flow,
       categories: Object.entries(byCategory).sort((a, b) => b[1] - a[1]),
       overdueIn: sum(open.filter((e) => e.kind === 'receita' && e.due_date < t).map((e) => e.amount)),
       overdueOut: sum(open.filter((e) => e.kind === 'despesa' && e.due_date < t).map((e) => e.amount)),
+      receivable: sum(open.filter((e) => e.kind === 'receita').map((e) => e.amount)),
     };
   }, [fin.entries, fin.totalBalance, month, t]);
 
@@ -161,19 +176,82 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
 
   return (
     <div className="flex flex-col gap-12 md:gap-14">
-      <MetricRow
-        label={monthLabel(month)}
-        items={[
-          { label: 'Saldo em contas', value: formatCurrency(fin.totalBalance), sub: `fim do mês: ${formatCurrency(data.projected)}`, hint: formatMoney(fin.totalBalance) },
-          { label: 'Recebido no mês', value: formatCurrency(data.totals.inPaid), sub: `de ${formatCurrency(data.totals.inPlanned)} previsto`, hint: formatMoney(data.totals.inPaid) },
-          { label: 'Pago no mês', value: formatCurrency(data.totals.outPaid), sub: `de ${formatCurrency(data.totals.outPlanned)} previsto`, hint: formatMoney(data.totals.outPaid) },
-          { label: 'Resultado do mês', value: formatCurrency(result), tone: result < 0 ? 'text-danger-fg' : undefined, sub: 'recebido − pago', hint: formatMoney(result) },
-          { label: 'A receber vencido', value: formatCurrency(data.overdueIn), tone: data.overdueIn ? 'text-danger-fg' : undefined, hint: formatMoney(data.overdueIn) },
-          { label: 'A pagar vencido', value: formatCurrency(data.overdueOut), tone: data.overdueOut ? 'text-danger-fg' : undefined, hint: formatMoney(data.overdueOut) },
-        ]}
-      />
+      <div>
+        <div className="mb-3 text-[13px] font-medium text-muted">{monthLabel(month)}</div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiCard
+            label="Saldo em contas"
+            value={formatCurrency(fin.totalBalance)}
+            tone={fin.totalBalance < 0 ? 'danger' : 'neutral'}
+            icon={<Wallet className="h-4 w-4" strokeWidth={1.6} />}
+            sub={
+              <>
+                Previsto no fim do mês: <b className="font-medium text-ink">{formatCurrency(data.projected)}</b>
+              </>
+            }
+          />
+          <KpiCard
+            label="Entradas do mês"
+            value={formatCurrency(data.totals.inPaid)}
+            tone="success"
+            icon={<ArrowDownLeft className="h-4 w-4" strokeWidth={1.6} />}
+            progress={{ value: data.totals.inPaid, max: data.totals.inPlanned, tone: 'success' }}
+            sub={`recebido de ${formatCurrency(data.totals.inPlanned)} previsto`}
+          />
+          <KpiCard
+            label="Saídas do mês"
+            value={formatCurrency(data.totals.outPaid)}
+            tone="danger"
+            icon={<ArrowUpRight className="h-4 w-4" strokeWidth={1.6} />}
+            progress={{ value: data.totals.outPaid, max: data.totals.outPlanned, tone: 'danger' }}
+            sub={`pago de ${formatCurrency(data.totals.outPlanned)} previsto`}
+          />
+          <KpiCard
+            label="Resultado do mês"
+            value={`${result < 0 ? '−' : ''}${formatCurrency(Math.abs(result))}`}
+            tone={result < 0 ? 'danger' : result > 0 ? 'success' : 'neutral'}
+            icon={<Scale className="h-4 w-4" strokeWidth={1.6} />}
+            sub="recebido − pago"
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
+          <button
+            type="button"
+            onClick={() => onTab('lancamentos')}
+            className="rounded-full border border-success-line bg-success-bg px-3 py-1.5 text-success-fg hover:brightness-95"
+          >
+            Total a receber em aberto: <b className="font-semibold">{formatMoney(data.receivable)}</b>
+          </button>
+          {data.overdueIn > 0 && (
+            <button type="button" onClick={() => onTab('lancamentos')} className="rounded-full border border-danger-line bg-danger-bg px-3 py-1.5 text-danger-fg hover:brightness-95">
+              A receber vencido: <b className="font-semibold">{formatMoney(data.overdueIn)}</b>
+            </button>
+          )}
+          {data.overdueOut > 0 && (
+            <button type="button" onClick={() => onTab('lancamentos')} className="rounded-full border border-danger-line bg-danger-bg px-3 py-1.5 text-danger-fg hover:brightness-95">
+              A pagar vencido: <b className="font-semibold">{formatMoney(data.overdueOut)}</b>
+            </button>
+          )}
+        </div>
+      </div>
 
-      <div className="grid gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
+      <section aria-labelledby="fluxo">
+        <SectionHeader id="fluxo" title="Fluxo de caixa" aside={<span className="text-[12.5px] text-faint">realizado nos meses passados · previsto nos próximos</span>} />
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <CashFlowChart months={data.flow} />
+        </div>
+      </section>
+
+      <section aria-labelledby="a-receber-mes">
+        <SectionHeader
+          id="a-receber-mes"
+          title="A receber por mês"
+          aside={<span className="text-[12.5px] text-faint">parcelas em aberto · próximos 12 meses · {formatMoney(sum(data.ahead.map((m) => m.total)))}</span>}
+        />
+        <ReceivablesByMonth months={data.ahead} onOpen={onOpen} monthLabel={monthLabel} />
+      </section>
+
+      <div className="grid gap-12 lg:grid-cols-[1fr_320px] lg:gap-16">
         <section aria-labelledby="vencimentos" className="min-w-0">
           <SectionHeader
             id="vencimentos"
@@ -183,86 +261,40 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
           <EntryList entries={data.upcoming.slice(0, 12)} onOpen={onOpen} compact empty="Nada vencido nem vencendo nos próximos 30 dias." />
           {data.upcoming.length > 12 && <p className="border-t border-hairline pt-3 text-[12.5px] text-faint">e mais {data.upcoming.length - 12}</p>}
         </section>
-        <section aria-labelledby="saldos">
-          <SectionHeader id="saldos" title="Saldos" aside={<ActionLink onClick={() => onTab('contas')} muted>Contas</ActionLink>} />
-          <ul>
-            {fin.accounts
-              .filter((a) => a.active)
-              .map((a) => (
-                <li key={a.id} className="flex items-baseline justify-between gap-3 border-t border-hairline py-3">
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-2 truncate text-[13.5px] text-ink">
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: a.color }} aria-hidden />
-                      {a.name}
+        <div className="space-y-12">
+          <section aria-labelledby="saldos">
+            <SectionHeader id="saldos" title="Saldos" aside={<ActionLink onClick={() => onTab('contas')} muted>Contas</ActionLink>} />
+            <ul className="overflow-hidden rounded-xl border border-line bg-surface">
+              {fin.accounts
+                .filter((a) => a.active)
+                .map((a) => (
+                  <li key={a.id} className="flex items-baseline justify-between gap-3 border-b border-line/70 px-4 py-3 last:border-b-0">
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-2 truncate text-[13.5px] text-ink">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: a.color }} aria-hidden />
+                        {a.name}
+                      </span>
+                      <span className="block pl-3.5 text-[12.5px] text-faint">{ACCOUNT_KIND_LABEL[a.kind]}</span>
                     </span>
-                    <span className="block pl-3.5 text-[12.5px] text-faint">{ACCOUNT_KIND_LABEL[a.kind]}</span>
-                  </span>
-                  <span className={cn('shrink-0 text-[13.5px] tabular', (fin.balances[a.id] ?? 0) < 0 ? 'text-danger-fg' : 'text-ink')}>
-                    {formatMoney(fin.balances[a.id] ?? 0)}
-                  </span>
-                </li>
-              ))}
-            {fin.accounts.length === 0 && <li className="border-t border-hairline py-3 text-[13px] text-faint">Cadastre as contas do escritório.</li>}
-          </ul>
-        </section>
-      </div>
-
-      <section aria-labelledby="a-receber-mes">
-        <SectionHeader
-          id="a-receber-mes"
-          title="A receber por mês"
-          aside={<span className="text-[12.5px] text-faint">parcelas em aberto · próximos 12 meses · {formatMoney(sum(data.ahead.map((m) => m.total)))}</span>}
-        />
-        {data.ahead.length === 0 ? (
-          <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhuma receita em aberto nos próximos 12 meses.</p>
-        ) : (
-          <div className="space-y-8">
-            {data.ahead.map((m) => (
-              <div key={m.key}>
-                <div className="flex items-baseline justify-between gap-3 pb-1.5">
-                  <span className="font-display text-[14.5px] font-semibold text-ink">
-                    {monthLabel(m.key)}{' '}
-                    <span className="text-[12.5px] font-normal text-faint">
-                      · {m.items.length} {m.items.length === 1 ? 'parcela' : 'parcelas'}
+                    <span className={cn('shrink-0 text-[14px] font-medium tabular', (fin.balances[a.id] ?? 0) < 0 ? 'text-danger-fg' : 'text-ink')}>
+                      {formatMoney(fin.balances[a.id] ?? 0)}
                     </span>
-                  </span>
-                  <span className="flex items-baseline gap-4">
-                    <span className="text-[13.5px] tabular text-ink">{formatMoney(m.total)}</span>
-                    <ActionLink to={`/financeiro?aba=lancamentos&mes=${m.key}`} muted>
-                      Ver o mês
-                    </ActionLink>
-                  </span>
-                </div>
-                <EntryList entries={m.items} onOpen={onOpen} compact />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-3 lg:gap-12">
-        <section aria-labelledby="entradas" className="min-w-0">
-          <SectionHeader id="entradas" title="Entradas" aside={<span className="text-[12.5px] text-faint">recebido por mês</span>} />
-          <div className="border-t border-hairline pt-4">
-            <MonthBars title="Últimos 12 meses" total={sum(data.months.map((m) => m.in))} months={data.months.map((m) => ({ key: m.key, label: m.label, value: m.in }))} caption="" format={formatCurrency} />
-          </div>
-        </section>
-        <section aria-labelledby="saidas" className="min-w-0">
-          <SectionHeader id="saidas" title="Saídas" aside={<span className="text-[12.5px] text-faint">pago por mês</span>} />
-          <div className="border-t border-hairline pt-4">
-            <MonthBars title="Últimos 12 meses" total={sum(data.months.map((m) => m.out))} months={data.months.map((m) => ({ key: m.key, label: m.label, value: m.out }))} caption="" format={formatCurrency} />
-          </div>
-        </section>
-        <section aria-labelledby="por-categoria" className="min-w-0 md:col-span-2 lg:col-span-1">
-          <SectionHeader id="por-categoria" title="Despesas do mês" aside={<span className="text-[12.5px] text-faint">por categoria</span>} />
-          <div className="space-y-4 border-t border-hairline pt-4">
-            {data.categories.length === 0 && <p className="text-[13px] text-faint">Nenhuma despesa com vencimento neste mês.</p>}
-            {data.categories.map(([id, value]) => {
-              const c = fin.categoryMap[id];
-              return <BarRow key={id} label={c?.name ?? 'Sem categoria'} value={value} max={maxCat} color={c?.color} display={formatCurrency(value)} title={formatMoney(value)} />;
-            })}
-          </div>
-        </section>
+                  </li>
+                ))}
+              {fin.accounts.length === 0 && <li className="px-4 py-3 text-[13px] text-faint">Cadastre as contas do escritório.</li>}
+            </ul>
+          </section>
+          <section aria-labelledby="por-categoria" className="min-w-0">
+            <SectionHeader id="por-categoria" title="Despesas do mês" aside={<span className="text-[12.5px] text-faint">por categoria</span>} />
+            <div className="space-y-4 border-t border-hairline pt-4">
+              {data.categories.length === 0 && <p className="text-[13px] text-faint">Nenhuma despesa com vencimento neste mês.</p>}
+              {data.categories.map(([id, value]) => {
+                const c = fin.categoryMap[id];
+                return <BarRow key={id} label={c?.name ?? 'Sem categoria'} value={value} max={maxCat} color={c?.color} display={formatCurrency(value)} title={formatMoney(value)} />;
+              })}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
@@ -406,25 +438,42 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
         }
       />
 
-      <div className="mt-6 flex flex-wrap gap-x-6 gap-y-1 text-[13px] text-muted">
-        <span>
-          Receitas <span className="tabular text-success-fg">{formatMoney(income)}</span>
-        </span>
-        <span>
-          Despesas <span className="tabular text-ink">{formatMoney(expense)}</span>
-        </span>
-        <span>
-          Saldo{' '}
-          <span className={cn('tabular font-medium', income - expense < 0 ? 'text-danger-fg' : 'text-ink')}>{formatMoney(Math.round((income - expense) * 100) / 100)}</span>
-        </span>
-        <span className="text-faint">
-          {rows.length} {rows.length === 1 ? 'lançamento' : 'lançamentos'}
-        </span>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <TotalCard
+          label="Receitas"
+          value={formatMoney(income)}
+          tone="success"
+          sub={`recebido ${formatMoney(sum(rows.filter((e) => e.kind === 'receita' && e.paid_at).map((e) => e.amount)))}`}
+        />
+        <TotalCard
+          label="Despesas"
+          value={formatMoney(expense)}
+          tone="danger"
+          sub={`pago ${formatMoney(sum(rows.filter((e) => e.kind === 'despesa' && e.paid_at).map((e) => e.amount)))}`}
+        />
+        <TotalCard
+          label="Saldo"
+          value={formatMoney(Math.round((income - expense) * 100) / 100)}
+          tone={income - expense < 0 ? 'danger' : 'neutral'}
+          sub="receitas − despesas"
+        />
+        <TotalCard label="Lançamentos" value={String(rows.length)} sub={allMonths ? 'vencidos de todos os meses' : monthLabel(month)} />
       </div>
 
       <div className="mt-3">
         <EntryList entries={rows} onOpen={onOpen} empty={allMonths ? 'Nenhum lançamento vencido.' : 'Nenhum lançamento neste mês com esses filtros.'} />
       </div>
+    </div>
+  );
+}
+
+/** Total da lista de lançamentos (cartão compacto). */
+function TotalCard({ label, value, sub, tone = 'neutral' }: { label: string; value: string; sub?: string; tone?: 'neutral' | 'success' | 'danger' }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface px-4 py-3">
+      <div className="text-[12px] font-medium uppercase tracking-[0.06em] text-faint">{label}</div>
+      <div className={cn('mt-1 text-[19px] font-semibold tabular', tone === 'success' ? 'text-success-fg' : tone === 'danger' ? 'text-danger-fg' : 'text-ink')}>{value}</div>
+      {sub && <div className="text-[12px] text-muted">{sub}</div>}
     </div>
   );
 }
