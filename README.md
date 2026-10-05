@@ -126,7 +126,8 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 **Configurações (administrador ou quem tiver o módulo)**
 - Tipos de projeto e suas **tarefas-modelo**, em tabela por etapas: nº, duração, início e fim
   simulados, horas estimadas, quem fica à frente, prioridade, **checklist** e **observações** de cada
-  tarefa (copiados para cada novo projeto), tarefas em paralelo e etapas que se renomeiam e reordenam.
+  tarefa (copiados para cada novo projeto), tarefas em paralelo, tarefas de **0 dia** (acontecem no dia
+  sem empurrar a próxima, como reuniões e visitas) e etapas que se renomeiam e reordenam.
 - Modelo **Arquitetura e Interiores** do escritório: LD - Levantamento de Dados, EP - Estudo
   Preliminar, C3D - Concepção 3D, PI - Projeto de Interiores, PL - Projeto Legal, PCE - Projetos
   Complementares Engenharia, CO - Compatibilização, PE - Projeto Executivo, PEI - Projeto Executivo

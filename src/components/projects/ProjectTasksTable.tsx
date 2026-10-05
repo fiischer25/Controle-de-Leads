@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, Flag, ListChecks, MoreVertical, Plus, X } fr
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { SWATCHES, TASK_PRIORITY, TASK_STATUS_ORDER } from '../../lib/constants';
-import { businessDaysBetween, entryMinutes } from '../../lib/domain';
+import { businessDaysBetween, entryMinutes, taskDays } from '../../lib/domain';
 import { TASK_STATUS_STYLE } from '../../lib/status';
 import type { Project, Task, TaskStatus } from '../../lib/types';
 import { byPosition, cn, formatDateShort, formatMinutes, formatNumber, today } from '../../lib/utils';
@@ -195,7 +195,7 @@ export function ProjectTasksTable({
                       )}
                     </Popover>
                     <span className="text-[12.5px] tabular text-stone-700">
-                      {task.start_date && task.due_date ? daysLabel(businessDaysBetween(task.start_date, task.due_date)) : '—'}
+                      {taskDays(task) != null ? daysLabel(taskDays(task)!) : '—'}
                     </span>
                     <span className="text-[12.5px] tabular text-stone-600">{task.start_date ? formatDateShort(task.start_date) : '—'}</span>
                     <span className={cn('text-[12.5px] tabular', dateCls(task))}>{task.due_date ? formatDateShort(task.due_date) : '—'}</span>

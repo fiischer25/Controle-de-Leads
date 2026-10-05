@@ -16,8 +16,10 @@ export function scheduleTemplates(templates: TaskTemplate[], startDate: string):
   let prevStart = cursor;
   return [...templates].sort(byPosition).map((tpl, i) => {
     const start = tpl.start_with_previous && i > 0 ? prevStart : cursor;
-    const due = addBusinessDays(start, Math.max(1, tpl.duration_days) - 1);
-    const after = addBusinessDays(due, 1);
+    // 0 dia: acontece no dia e não empurra a próxima tarefa (ex.: reunião, visita)
+    const days = Math.max(0, tpl.duration_days);
+    const due = days === 0 ? start : addBusinessDays(start, days - 1);
+    const after = days === 0 ? start : addBusinessDays(due, 1);
     if (after > cursor) cursor = after;
     prevStart = start;
     return { template: tpl, start, due };
@@ -55,6 +57,8 @@ export function buildProjectTasks(opts: {
       estimated_hours: tpl.estimated_hours ?? null,
       position: i,
       checklist: (tpl.checklist ?? []).filter((t) => t.trim()).map((text) => ({ id: uid(), text: text.trim(), done: false })),
+      // Só grava o campo quando é 0 dia (a coluna vem da migração 20261010)
+      ...(tpl.duration_days === 0 ? { zero_days: true } : {}),
       completed_at: null,
       created_by: opts.createdBy,
       created_at: now,
@@ -108,6 +112,17 @@ export function orderedPhases(tasks: Task[]): string[] {
   return seen;
 }
 
+/** Tarefa de 0 dia (marcada assim pelo modelo) enquanto começa e termina no mesmo dia. */
+export function isZeroDays(t: Pick<Task, 'zero_days' | 'start_date' | 'due_date'>): boolean {
+  return !!t.zero_days && !!t.due_date && (!t.start_date || t.start_date === t.due_date);
+}
+
+/** Duração exibida da tarefa, em dias úteis. */
+export function taskDays(t: Pick<Task, 'zero_days' | 'start_date' | 'due_date'>): number | null {
+  if (isZeroDays(t)) return 0;
+  return t.start_date && t.due_date ? businessDaysBetween(t.start_date, t.due_date) : null;
+}
+
 /**
  * Tarefas de um projeto viram tarefas-modelo (projeto usado como modelo): mantém etapas e ordem,
  * checklist, observações, prioridade e horas; a duração vem das datas (dias úteis) e uma tarefa
@@ -120,14 +135,15 @@ export function tasksToTemplates(tasks: Task[], projectTypeId: string, keepAssig
     const start = t.start_date ?? t.due_date;
     const prevStart = prev ? (prev.start_date ?? prev.due_date) : null;
     const prevEnd = prev ? (prev.due_date ?? prevStart) : null;
-    const parallel = !!(start && prevStart && prevEnd && (start <= prevStart || start < prevEnd));
+    // Depois de uma tarefa de 0 dia, começar no mesmo dia já é a sequência normal
+    const parallel = !!(start && prevStart && prevEnd && !isZeroDays(prev) && (start <= prevStart || start < prevEnd));
     return {
       id: uid(),
       project_type_id: projectTypeId,
       phase: t.phase || 'Geral',
       title: t.title,
       description: t.description,
-      duration_days: start && t.due_date ? Math.max(1, businessDaysBetween(start, t.due_date)) : 1,
+      duration_days: isZeroDays(t) ? 0 : start && t.due_date ? Math.max(1, businessDaysBetween(start, t.due_date)) : 1,
       position: i,
       checklist: t.checklist.map((c) => c.text.trim()).filter(Boolean),
       assignee_id: keepAssignees ? t.assignee_id : null,

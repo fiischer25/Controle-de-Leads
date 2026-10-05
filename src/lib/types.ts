@@ -207,6 +207,8 @@ export interface Task {
   estimated_hours: number | null;
   position: number;
   checklist: ChecklistItem[];
+  /** Tarefa de 0 dia (migração 20261010): acontece no dia sem ocupar duração. */
+  zero_days?: boolean | null;
   completed_at: string | null;
   created_by: string | null;
   created_at: string;

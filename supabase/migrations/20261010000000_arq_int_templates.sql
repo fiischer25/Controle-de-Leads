@@ -8,7 +8,17 @@
 -- nem nos outros tipos). Rodar de novo desfaz ajustes feitos depois em Configurações.
 -- Requer a migração 20261008000000_task_templates_details.sql.
 --
+-- Também libera tarefas de 0 dia (acontecem no dia, sem empurrar a próxima), como
+-- "Reunião com o Cliente" e "Visita ao Terreno".
+--
 -- Como aplicar: Supabase → SQL Editor → cole este arquivo inteiro → Run.
+
+-- Duração 0 permitida nas tarefas-modelo
+alter table public.task_templates drop constraint if exists task_templates_duration_days_check;
+alter table public.task_templates add constraint task_templates_duration_days_check check (duration_days >= 0);
+
+-- Tarefa do projeto criada a partir de uma tarefa-modelo de 0 dia
+alter table public.tasks add column if not exists zero_days boolean;
 
 -- Cria o tipo, se ainda não existir
 insert into public.project_types (name, description, color, active, position)
@@ -32,8 +42,8 @@ select
 from (values
   ('LD - Levantamento de Dados', 'Coleta de Documentos', 12, 0, '["Matrícula atualizada do imóvel","IPTU / inscrição imobiliária","Guia amarela (consulta de zoneamento)","Levantamento topográfico","Documentos pessoais do proprietário"]', 'alta', false),
   ('LD - Levantamento de Dados', 'Levantamento do Programa de Necessidades (Briefing)', 2, 1, '["Aplicar questionário de briefing","Registrar o programa de necessidades"]', 'alta', false),
-  ('LD - Levantamento de Dados', 'Reunião com o Cliente', 1, 2, '["Agendar a reunião","Apresentar etapas, prazos e forma de trabalho","Registrar as decisões da reunião"]', 'media', false),
-  ('LD - Levantamento de Dados', 'Visita ao Terreno', 1, 3, '["Fotos do terreno e do entorno","Conferir medidas, níveis e orientação solar"]', 'media', false),
+  ('LD - Levantamento de Dados', 'Reunião com o Cliente', 0, 2, '["Agendar a reunião","Apresentar etapas, prazos e forma de trabalho","Registrar as decisões da reunião"]', 'media', false),
+  ('LD - Levantamento de Dados', 'Visita ao Terreno', 0, 3, '["Fotos do terreno e do entorno","Conferir medidas, níveis e orientação solar"]', 'media', false),
   ('EP - Estudo Preliminar', 'Estudo de Planta Layout', 30, 4, '["Implantação no terreno","Setorização e fluxos","Planta layout do térreo","Planta layout do pavimento superior","Pré-dimensionamento dos ambientes","Verificar recuos, taxa de ocupação e coeficiente","Quadro de áreas","Estudo de cobertura","Apresentação ao cliente"]', 'media', false),
   ('EP - Estudo Preliminar', 'Revisões do Estudo Preliminar', 20, 5, '["Aprovação do estudo preliminar pelo cliente"]', 'baixa', false),
   ('C3D - Concepção 3D', 'Modelagem 3D da volumetria', 10, 6, '["Modelar a volumetria a partir do layout aprovado","Definir cobertura e aberturas"]', 'media', false),

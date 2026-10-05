@@ -128,8 +128,8 @@ export const ARQ_INT: RichPhaseSpec[] = [
   ['LD - Levantamento de Dados', [
     { title: 'Coleta de Documentos', days: 12, priority: 'alta', checklist: ['Matrícula atualizada do imóvel', 'IPTU / inscrição imobiliária', 'Guia amarela (consulta de zoneamento)', 'Levantamento topográfico', 'Documentos pessoais do proprietário'] },
     { title: 'Levantamento do Programa de Necessidades (Briefing)', days: 2, priority: 'alta', checklist: ['Aplicar questionário de briefing', 'Registrar o programa de necessidades'] },
-    { title: 'Reunião com o Cliente', days: 1, checklist: ['Agendar a reunião', 'Apresentar etapas, prazos e forma de trabalho', 'Registrar as decisões da reunião'] },
-    { title: 'Visita ao Terreno', days: 1, checklist: ['Fotos do terreno e do entorno', 'Conferir medidas, níveis e orientação solar'] },
+    { title: 'Reunião com o Cliente', days: 0, checklist: ['Agendar a reunião', 'Apresentar etapas, prazos e forma de trabalho', 'Registrar as decisões da reunião'] },
+    { title: 'Visita ao Terreno', days: 0, checklist: ['Fotos do terreno e do entorno', 'Conferir medidas, níveis e orientação solar'] },
   ]],
   ['EP - Estudo Preliminar', [
     { title: 'Estudo de Planta Layout', days: 30, checklist: ['Implantação no terreno', 'Setorização e fluxos', 'Planta layout do térreo', 'Planta layout do pavimento superior', 'Pré-dimensionamento dos ambientes', 'Verificar recuos, taxa de ocupação e coeficiente', 'Quadro de áreas', 'Estudo de cobertura', 'Apresentação ao cliente'] },

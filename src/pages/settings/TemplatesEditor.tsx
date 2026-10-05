@@ -11,6 +11,11 @@ import { Avatar, Button, Card, Checkbox, ConfirmDialog, Field, IconButton, Input
 
 /** Cor da etapa pela ordem (como as bolinhas da referência). */
 const phaseColor = (i: number) => SWATCHES[i % SWATCHES.length];
+/** Duração digitada → dias úteis (0 = acontece no dia, sem ocupar duração). */
+const toDays = (value: string | number) => {
+  const n = Number(value);
+  return value === '' || !Number.isFinite(n) ? 1 : Math.max(0, Math.round(n));
+};
 
 /**
  * Tarefas-modelo de um tipo de projeto, em tabela por etapas: nº, duração, início e fim
@@ -50,7 +55,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
     if (!adding?.title.trim()) return;
     const tpl: TaskTemplate = {
       id: uid(), project_type_id: type.id, phase: adding.phase, title: adding.title.trim(), description: null,
-      duration_days: Math.max(1, Number(adding.days) || 1), position: positionAtEndOf(adding.phase),
+      duration_days: toDays(adding.days), position: positionAtEndOf(adding.phase),
     };
     try {
       await insertRows('task_templates', [tpl]);
@@ -283,7 +288,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                   }}
                 >
                   <Input value={adding.title} onChange={(e) => setAdding({ ...adding, title: e.target.value })} placeholder={`Nova tarefa em ${phase}`} className="h-8 min-w-0 flex-1" autoFocus aria-label="Título da nova tarefa" />
-                  <Input type="number" min={1} value={adding.days} onChange={(e) => setAdding({ ...adding, days: e.target.value })} className="h-8 w-20" aria-label="Duração em dias" title="Duração em dias úteis" />
+                  <Input type="number" min={0} value={adding.days} onChange={(e) => setAdding({ ...adding, days: e.target.value })} className="h-8 w-20" aria-label="Duração em dias" title="Duração em dias úteis" />
                   <span className="text-[12.5px] text-stone-500">dias</span>
                   <Button type="submit" size="sm" variant="primary" disabled={!adding.title.trim()}>
                     Adicionar
@@ -424,7 +429,7 @@ function TemplateTaskModal({
     const data: Partial<TaskTemplate> = {
       title: v.title.trim(),
       phase: v.phase.trim(),
-      duration_days: Math.max(1, Math.round(Number(v.duration_days) || 1)),
+      duration_days: toDays(v.duration_days),
       start_with_previous: v.start_with_previous,
       assignee_id: v.assignee_id || null,
       priority: v.priority,
@@ -485,7 +490,7 @@ function TemplateTaskModal({
           </datalist>
         </Field>
         <Field label="Duração (dias úteis)">
-          <Input type="number" min={1} value={v.duration_days} onChange={(e) => setV({ ...v, duration_days: Number(e.target.value) })} />
+          <Input type="number" min={0} value={v.duration_days} onChange={(e) => setV({ ...v, duration_days: Number(e.target.value) })} aria-label="Duração (dias úteis)" />
         </Field>
         <Checkbox
           className="sm:col-span-2"
