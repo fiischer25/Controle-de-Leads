@@ -40,6 +40,9 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Tela do projeto: tarefas em tabela por etapa (nº, checklist, status, duração, início, fim, horas
   estimadas e realizadas, responsável, prioridade), **cronograma (Gantt)**, equipe e horas por pessoa,
   dados do cliente, links (Drive, pranchas…), anotações e histórico de atividades.
+- **Usar como modelo:** as tarefas de um projeto (etapas, ordem, checklist, observações, prioridade,
+  horas, duração pelas datas e tarefas em paralelo) viram as tarefas-modelo de um tipo existente ou
+  de um tipo novo; depois é só ajustar em Configurações. Projetos já criados não mudam.
 
 **Tarefas**
 - Cada tarefa tem responsável, data de início e fim, status, prioridade, estimativa, checklist e
@@ -124,6 +127,10 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Tipos de projeto e suas **tarefas-modelo**, em tabela por etapas: nº, duração, início e fim
   simulados, horas estimadas, quem fica à frente, prioridade, **checklist** e **observações** de cada
   tarefa (copiados para cada novo projeto), tarefas em paralelo e etapas que se renomeiam e reordenam.
+- Modelo **Arquitetura e Interiores** do escritório: LD - Levantamento de Dados, EP - Estudo
+  Preliminar, C3D - Concepção 3D, PI - Projeto de Interiores, PL - Projeto Legal, PCE - Projetos
+  Complementares Engenharia, CO - Compatibilização, PE - Projeto Executivo, PEI - Projeto Executivo
+  de Interiores e VL - Visita em Lojas (23 tarefas com checklist; migração `20261010000000_arq_int_templates.sql`).
 - Etapas do funil, origens de leads, Google Agenda do escritório, dias de alerta de prazo e prefixo
   dos códigos.
 
@@ -150,8 +157,9 @@ Para uso real pela equipe, configure o Supabase.
    `supabase/migrations/20261005000000_whatsapp_alerts.sql`,
    `supabase/migrations/20261006000000_finance.sql`,
    `supabase/migrations/20261007000000_finance_import_files.sql`,
-   `supabase/migrations/20261008000000_task_templates_details.sql` e
-   `supabase/migrations/20261009000000_lead_payment_plan.sql`
+   `supabase/migrations/20261008000000_task_templates_details.sql`,
+   `supabase/migrations/20261009000000_lead_payment_plan.sql` e
+   `supabase/migrations/20261010000000_arq_int_templates.sql`
    (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
    (podem rodar mais de uma vez sem problema).
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):

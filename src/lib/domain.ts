@@ -108,6 +108,36 @@ export function orderedPhases(tasks: Task[]): string[] {
   return seen;
 }
 
+/**
+ * Tarefas de um projeto viram tarefas-modelo (projeto usado como modelo): mantém etapas e ordem,
+ * checklist, observações, prioridade e horas; a duração vem das datas (dias úteis) e uma tarefa
+ * que começa antes da anterior terminar fica "junto com a anterior".
+ */
+export function tasksToTemplates(tasks: Task[], projectTypeId: string, keepAssignees: boolean): TaskTemplate[] {
+  const ordered = orderedPhases(tasks).flatMap((p) => tasks.filter((t) => (t.phase || 'Geral') === p).sort(byPosition));
+  return ordered.map((t, i) => {
+    const prev = ordered[i - 1];
+    const start = t.start_date ?? t.due_date;
+    const prevStart = prev ? (prev.start_date ?? prev.due_date) : null;
+    const prevEnd = prev ? (prev.due_date ?? prevStart) : null;
+    const parallel = !!(start && prevStart && prevEnd && (start <= prevStart || start < prevEnd));
+    return {
+      id: uid(),
+      project_type_id: projectTypeId,
+      phase: t.phase || 'Geral',
+      title: t.title,
+      description: t.description,
+      duration_days: start && t.due_date ? Math.max(1, businessDaysBetween(start, t.due_date)) : 1,
+      position: i,
+      checklist: t.checklist.map((c) => c.text.trim()).filter(Boolean),
+      assignee_id: keepAssignees ? t.assignee_id : null,
+      priority: t.priority,
+      estimated_hours: t.estimated_hours,
+      start_with_previous: parallel,
+    };
+  });
+}
+
 export function nextProjectCode(projects: Project[], prefix: string, year = new Date().getFullYear()): string {
   const base = `${prefix}-${year}-`;
   const max = projects

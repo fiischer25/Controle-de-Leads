@@ -153,7 +153,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
               {/* Linha da etapa */}
               <div className={cn(wide ? cols : 'flex items-center gap-2', 'bg-stone-50/70 px-4 py-2.5')}>
                 <span className="text-[13px] tabular text-stone-500">{pi + 1}</span>
-                <span className="flex min-w-0 items-center gap-2">
+                <span className={cn('flex min-w-0 items-center gap-2', wide && 'col-span-2')}>
                   <button type="button" onClick={() => setCollapsed((c) => ({ ...c, [phase]: open }))} aria-label={open ? `Recolher ${phase}` : `Expandir ${phase}`} className="text-stone-500 hover:text-ink">
                     {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   </button>
@@ -185,7 +185,6 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                 </span>
                 {wide && (
                   <>
-                    <span />
                     <span className="text-[12.5px] tabular text-stone-600">{pStart ? `${businessDaysBetween(pStart, pEnd)} dias` : ''}</span>
                     <span className="text-[12.5px] tabular text-stone-600">{pStart && formatDateShort(pStart)}</span>
                     <span className="text-[12.5px] tabular text-stone-600">{pEnd && formatDateShort(pEnd)}</span>

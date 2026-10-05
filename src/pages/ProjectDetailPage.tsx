@@ -4,6 +4,7 @@ import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ProjectFinanceTab } from '../components/finance/ProjectFinanceTab';
 import { ProjectTasksTable } from '../components/projects/ProjectTasksTable';
+import { SaveAsTemplateModal } from '../components/projects/SaveAsTemplateModal';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useToast } from '../context/ToastContext';
 import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
@@ -70,6 +71,7 @@ export default function ProjectDetailPage() {
   const [newTask, setNewTask] = useState<{ phase: string | null } | null>(null);
   const [quick, setQuick] = useState<Record<string, string>>({});
   const [hideDone, setHideDone] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   // Tela larga: tabela por etapas (como a referência); celular e tablet: lista
   const wide = useMediaQuery('(min-width: 1180px)');
 
@@ -240,6 +242,7 @@ export default function ProjectDetailPage() {
                   Gerar tarefas do modelo “{type?.name}”
                 </ActionLink>
               )}
+              {tasks.length > 0 && can('configuracoes') && <ActionLink onClick={() => setSavingTemplate(true)}>Usar como modelo</ActionLink>}
             </div>
             {tasks.length === 0 && (
               <EmptyState title="Nenhuma tarefa neste projeto" description="Gere as tarefas a partir do modelo ou crie manualmente." className="py-12" />
@@ -335,6 +338,7 @@ export default function ProjectDetailPage() {
           defaults={{ project_id: project.id, phase: newTask.phase, assignee_id: project.manager_id, start_date: today() }}
         />
       )}
+      {savingTemplate && <SaveAsTemplateModal project={project} tasks={tasks} onClose={() => setSavingTemplate(false)} />}
       {confirmDelete && (
         <ConfirmDialog
           title="Excluir projeto"

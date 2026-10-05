@@ -10,6 +10,7 @@ import { byPosition, cn, formatDateShort, formatMinutes, formatNumber, today } f
 import { Avatar, Badge, Button, ConfirmDialog, IconButton, Input, MenuItem, Popover } from '../ui';
 
 const phaseColor = (i: number) => SWATCHES[i % SWATCHES.length];
+const daysLabel = (n: number) => `${n} ${n === 1 ? 'dia' : 'dias'}`;
 const cols =
   'grid grid-cols-[48px_minmax(0,1fr)_56px_118px_64px_60px_60px_58px_70px_128px_84px_36px] items-center gap-x-2';
 
@@ -100,7 +101,7 @@ export function ProjectTasksTable({
           <div key={phase} className="border-b border-line/70 last:border-b-0">
             <div className={cn(cols, 'bg-stone-50/60 px-3 py-2.5')}>
               <span className="text-[13px] tabular text-stone-500">{pi + 1}</span>
-              <span className="flex min-w-0 items-center gap-2">
+              <span className="col-span-3 flex min-w-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setCollapsed((c) => ({ ...c, [phase]: open }))}
@@ -110,7 +111,9 @@ export function ProjectTasksTable({
                   {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </button>
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: phaseColor(pi) }} aria-hidden />
-                <span className="truncate text-[13.5px] font-semibold text-ink">{phase}</span>
+                <span className="truncate text-[13.5px] font-semibold text-ink" title={phase}>
+                  {phase}
+                </span>
                 <IconButton label={`Adicionar tarefa em ${phase}`} size="xs" onClick={() => setAdding({ phase, title: '' })}>
                   <Plus className="h-3.5 w-3.5" />
                 </IconButton>
@@ -118,9 +121,7 @@ export function ProjectTasksTable({
                   {done}/{all.length} {all.length === 1 ? 'tarefa' : 'tarefas'}
                 </span>
               </span>
-              <span />
-              <span />
-              <span className="text-[12.5px] tabular text-stone-600">{pStart && pEnd ? `${businessDaysBetween(pStart, pEnd)} dias` : ''}</span>
+              <span className="text-[12.5px] tabular text-stone-600">{pStart && pEnd ? daysLabel(businessDaysBetween(pStart, pEnd)) : ''}</span>
               <span className="text-[12.5px] tabular text-stone-600">{pStart ? formatDateShort(pStart) : ''}</span>
               <span className="text-[12.5px] tabular text-stone-600">{pEnd ? formatDateShort(pEnd) : ''}</span>
               <span className="text-right text-[12.5px] tabular text-stone-600">{est ? `${formatNumber(est, 1)}h` : ''}</span>
@@ -194,7 +195,7 @@ export function ProjectTasksTable({
                       )}
                     </Popover>
                     <span className="text-[12.5px] tabular text-stone-700">
-                      {task.start_date && task.due_date ? `${businessDaysBetween(task.start_date, task.due_date)} dias` : '—'}
+                      {task.start_date && task.due_date ? daysLabel(businessDaysBetween(task.start_date, task.due_date)) : '—'}
                     </span>
                     <span className="text-[12.5px] tabular text-stone-600">{task.start_date ? formatDateShort(task.start_date) : '—'}</span>
                     <span className={cn('text-[12.5px] tabular', dateCls(task))}>{task.due_date ? formatDateShort(task.due_date) : '—'}</span>

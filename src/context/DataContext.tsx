@@ -10,7 +10,8 @@ import {
 } from 'react';
 import { backend, type NewUserInput } from '../lib/backend';
 import { defaultFinanceAccount, defaultFinanceCategories, defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from '../lib/defaults';
-import { buildProjectTasks, nextProjectCode } from '../lib/domain';
+import { buildProjectTasks, nextProjectCode, tasksToTemplates } from '../lib/domain';
+import { SWATCHES } from '../lib/constants';
 import {
   TABLES,
   type ActivityLog,
@@ -22,6 +23,7 @@ import {
   type ModuleKey,
   type Profile,
   type Project,
+  type ProjectType,
   type TableName,
   type Tables,
   type Task,
@@ -123,6 +125,8 @@ interface DataApi {
   updateProject(id: string, patch: Partial<Project>): Promise<void>;
   deleteProject(id: string): Promise<void>;
   applyTemplates(projectId: string, startDate: string, assigneeId: string | null): Promise<void>;
+  /** Usa as tarefas do projeto como modelo: substitui as tarefas-modelo de um tipo ou cria um tipo novo. */
+  saveProjectAsTemplate(projectId: string, target: { typeId: string } | { newTypeName: string }, keepAssignees: boolean): Promise<{ type: ProjectType; count: number }>;
 
   // Tarefas
   createTask(input: TaskInput): Promise<Task>;
@@ -538,6 +542,42 @@ export function DataProvider({ userId, children }: { userId: string; children: R
     [insertRows, notify, userId],
   );
 
+  const saveProjectAsTemplate = useCallback(
+    async (projectId: string, target: { typeId: string } | { newTypeName: string }, keepAssignees: boolean) => {
+      const project = dbRef.current.projects.find((p) => p.id === projectId);
+      if (!project) throw new Error('Projeto não encontrado.');
+      const tasks = dbRef.current.tasks.filter((t) => t.project_id === projectId);
+      if (!tasks.length) throw new Error('O projeto não tem tarefas para usar como modelo.');
+      let type: ProjectType | undefined;
+      if ('typeId' in target) {
+        type = dbRef.current.project_types.find((t) => t.id === target.typeId);
+        if (!type) throw new Error('Tipo de projeto não encontrado.');
+      } else {
+        const name = target.newTypeName.trim();
+        if (!name) throw new Error('Informe o nome do novo tipo de projeto.');
+        const types = dbRef.current.project_types;
+        [type] = await insertRows('project_types', [
+          {
+            id: uid(),
+            name,
+            description: `Criado a partir do projeto ${project.name}`,
+            color: SWATCHES[types.length % SWATCHES.length],
+            active: true,
+            position: types.length ? Math.max(...types.map((t) => t.position)) + 1 : 0,
+          },
+        ]);
+      }
+      const old = dbRef.current.task_templates.filter((t) => t.project_type_id === type.id).map((t) => t.id);
+      const templates = tasksToTemplates(tasks, type.id, keepAssignees);
+      // Grava as novas antes de apagar as antigas: se algo falhar, o modelo anterior continua lá
+      await insertRows('task_templates', templates);
+      if (old.length) await removeRows('task_templates', old);
+      await log('project', projectId, 'template', `usou o projeto ${project.name} como modelo de “${type.name}” (${templates.length} tarefas)`);
+      return { type, count: templates.length };
+    },
+    [insertRows, removeRows, log],
+  );
+
   const createProject = useCallback(
     async (input: ProjectInput) => {
       const now = nowIso();
@@ -843,7 +883,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
     insertRows, patch, removeRows, log, notify,
     createLead, updateLead, moveLead, deleteLead, addInteraction, convertLead, closeDeal,
     createClient: (input) => createClient(input), updateClient, deleteClient,
-    createProject, updateProject, deleteProject, applyTemplates,
+    createProject, updateProject, deleteProject, applyTemplates, saveProjectAsTemplate,
     createTask, updateTask, deleteTask, addComment, startTimer, stopTimer, addTimeEntry, deleteTimeEntry, runningEntry,
     createEvent, updateEvent, deleteEvent,
     markNotificationsRead, createUser, updateUser, can,
