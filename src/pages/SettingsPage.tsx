@@ -214,7 +214,7 @@ function StagesSettings() {
 
   return (
     <Card className="max-w-3xl overflow-hidden">
-      <CardHeader title="Etapas do funil de oportunidades" subtitle="Colunas do kanban. Tenha pelo menos uma etapa “Fechado (ganho)” e uma “Perdido”." />
+      <CardHeader title="Etapas do funil de oportunidades" subtitle="Colunas do kanban. Tenha pelo menos uma etapa do tipo “Ganho” e uma “Perdido”." />
       <ul className="divide-y divide-line/70 border-t border-line/70">
         {stages.map((s, i) => {
           const count = db.leads.filter((l) => l.stage_id === s.id).length;

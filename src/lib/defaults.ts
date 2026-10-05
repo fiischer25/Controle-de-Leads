@@ -7,31 +7,47 @@ import { nowIso, uid } from './utils';
  * totalmente editada depois em Configurações.
  */
 
+/**
+ * Funil comercial padrão de CRM (mesmo da migração 20261011000000_crm_defaults.sql):
+ * entrada → contato → qualificação → reunião → proposta → negociação → ganho / perdido.
+ */
+export const DEFAULT_STAGES: Array<[string, LeadStage['kind'], string]> = [
+  ['Novo lead', 'open', '#e0d7ca'],
+  ['Em contato', 'open', '#d2c5b1'],
+  ['Qualificado', 'open', '#c0ae94'],
+  ['Reunião agendada', 'open', '#ab977a'],
+  ['Proposta em elaboração', 'open', '#968064'],
+  ['Proposta enviada', 'open', '#806c52'],
+  ['Negociação', 'open', '#6b5a44'],
+  ['Ganho', 'won', '#5d8263'],
+  ['Perdido', 'lost', '#b3aca2'],
+];
+
+/** Origens de lead mais usadas em CRMs (mesmas da migração 20261011000000_crm_defaults.sql). */
+export const DEFAULT_SOURCES = [
+  'Instagram (orgânico)',
+  'Facebook (orgânico)',
+  'Meta Ads (Instagram/Facebook pago)',
+  'Google Ads',
+  'Google (busca orgânica)',
+  'Google Meu Negócio',
+  'Site / formulário',
+  'WhatsApp',
+  'Indicação de cliente',
+  'Indicação de parceiro (construtora, corretor, engenheiro)',
+  'Cliente recorrente',
+  'Prospecção ativa',
+  'Eventos e feiras',
+  'Portais e marketplaces',
+  'Outros',
+];
+
 export function defaultStages(): LeadStage[] {
-  const stages: Array<[string, LeadStage['kind'], string]> = [
-    ['Novo lead', 'open', '#e0d7ca'],
-    ['Primeiro contato', 'open', '#c9baa4'],
-    ['Reunião agendada', 'open', '#ad9a7e'],
-    ['Proposta enviada', 'open', '#8f7c61'],
-    ['Negociação', 'open', '#76654e'],
-    ['Fechado', 'won', '#5d8263'],
-    ['Perdido', 'lost', '#b3aca2'],
-  ];
-  return stages.map(([name, kind, color], position) => ({ id: uid(), name, kind, color, position }));
+  return DEFAULT_STAGES.map(([name, kind, color], position) => ({ id: uid(), name, kind, color, position }));
 }
 
 export function defaultSources(): LeadSource[] {
-  return [
-    'Tráfego pago (Meta Ads)',
-    'Tráfego pago (Google Ads)',
-    'Instagram orgânico',
-    'Indicação',
-    'Site',
-    'WhatsApp',
-    'Cliente recorrente',
-    'Parceiro (construtora / corretor)',
-    'Outros',
-  ].map((name, position) => ({ id: uid(), name, active: true, position }));
+  return DEFAULT_SOURCES.map((name, position) => ({ id: uid(), name, active: true, position }));
 }
 
 type PhaseSpec = [phase: string, tasks: string[]];

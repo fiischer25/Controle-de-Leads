@@ -48,17 +48,17 @@ export async function buildDemoData(
   const type = (name: string) => types.find((x) => x.name === name)!.id;
 
   const leadRows: Array<Partial<Lead> & Pick<Lead, 'name' | 'city' | 'stage_id'>> = [
-    { name: 'Mariana Duarte', city: 'Curitiba', stage_id: stage('Novo lead'), area_m2: 180, project_type_id: type('Arquitetura'), source_id: source('Tráfego pago (Meta'), proposal_value: null, owner_id: carla.id },
+    { name: 'Mariana Duarte', city: 'Curitiba', stage_id: stage('Novo lead'), area_m2: 180, project_type_id: type('Arquitetura'), source_id: source('Meta Ads'), proposal_value: null, owner_id: carla.id },
     { name: 'Felipe Andrade', city: 'São José dos Pinhais', stage_id: stage('Novo lead'), area_m2: 90, project_type_id: type('Interiores'), source_id: source('Instagram'), owner_id: carla.id },
-    { name: 'Construtora Horizonte', city: 'Curitiba', stage_id: stage('Primeiro contato'), area_m2: 420, category: 'Comercial', project_type_id: type('Arquitetura'), source_id: source('Parceiro'), proposal_value: 68000, owner_id: admin.id },
-    { name: 'Patrícia Lemos', city: 'Pinhais', stage_id: stage('Primeiro contato'), area_m2: 140, project_type_id: type('Arquitetura e Interiores'), source_id: source('Indicação'), referred_by: 'Juliana Dias', owner_id: carla.id, next_contact_date: addDays(t, -2) },
-    { name: 'Rodrigo Tavares', city: 'Curitiba', stage_id: stage('Reunião agendada'), area_m2: 250, project_type_id: type('Arquitetura e Interiores'), source_id: source('Tráfego pago (Google'), proposal_value: 55000, owner_id: admin.id, next_contact_date: addDays(t, 1) },
+    { name: 'Construtora Horizonte', city: 'Curitiba', stage_id: stage('Qualificado'), area_m2: 420, category: 'Comercial', project_type_id: type('Arquitetura'), source_id: source('Indicação de parceiro'), proposal_value: 68000, owner_id: admin.id },
+    { name: 'Patrícia Lemos', city: 'Pinhais', stage_id: stage('Em contato'), area_m2: 140, project_type_id: type('Arquitetura e Interiores'), source_id: source('Indicação'), referred_by: 'Juliana Dias', owner_id: carla.id, next_contact_date: addDays(t, -2) },
+    { name: 'Rodrigo Tavares', city: 'Curitiba', stage_id: stage('Reunião agendada'), area_m2: 250, project_type_id: type('Arquitetura e Interiores'), source_id: source('Google Ads'), proposal_value: 55000, owner_id: admin.id, next_contact_date: addDays(t, 1) },
     { name: 'Clínica Sorriso Pleno', city: 'Araucária', stage_id: stage('Reunião agendada'), area_m2: 160, category: 'Comercial', project_type_id: type('Interiores'), source_id: source('Site'), proposal_value: 32000, owner_id: carla.id, next_contact_date: t },
-    { name: 'Luciana e Marcos Prado', city: 'Curitiba', stage_id: stage('Proposta enviada'), area_m2: 320, project_type_id: type('Arquitetura'), source_id: source('Indicação'), referred_by: 'Construtora Horizonte', proposal_value: 72000, owner_id: admin.id, next_contact_date: addDays(t, 3) },
-    { name: 'Thiago Moreira', city: 'Campo Largo', stage_id: stage('Proposta enviada'), area_m2: 110, project_type_id: type('Interiores'), source_id: source('Tráfego pago (Meta'), proposal_value: 18500, owner_id: carla.id, next_contact_date: addDays(t, -1) },
+    { name: 'Luciana e Marcos Prado', city: 'Curitiba', stage_id: stage('Proposta em elaboração'), area_m2: 320, project_type_id: type('Arquitetura'), source_id: source('Indicação'), referred_by: 'Construtora Horizonte', proposal_value: 72000, owner_id: admin.id, next_contact_date: addDays(t, 3) },
+    { name: 'Thiago Moreira', city: 'Campo Largo', stage_id: stage('Proposta enviada'), area_m2: 110, project_type_id: type('Interiores'), source_id: source('Meta Ads'), proposal_value: 18500, owner_id: carla.id, next_contact_date: addDays(t, -1) },
     { name: 'Escritório Vieira Advogados', city: 'Curitiba', stage_id: stage('Negociação'), area_m2: 200, category: 'Corporativo', project_type_id: type('Interiores'), source_id: source('WhatsApp'), proposal_value: 41000, owner_id: admin.id, next_contact_date: addDays(t, 2) },
-    { name: 'Gabriela Nunes', city: 'Curitiba', stage_id: stage('Fechado'), area_m2: 230, project_type_id: type('Arquitetura e Interiores'), source_id: source('Instagram'), proposal_value: 64000, owner_id: carla.id },
-    { name: 'Henrique Batista', city: 'Colombo', stage_id: stage('Perdido'), area_m2: 95, project_type_id: type('Interiores'), source_id: source('Tráfego pago (Meta'), proposal_value: 15000, owner_id: carla.id, lost_reason: 'Preço / orçamento' },
+    { name: 'Gabriela Nunes', city: 'Curitiba', stage_id: stage('Ganho'), area_m2: 230, project_type_id: type('Arquitetura e Interiores'), source_id: source('Instagram'), proposal_value: 64000, owner_id: carla.id },
+    { name: 'Henrique Batista', city: 'Colombo', stage_id: stage('Perdido'), area_m2: 95, project_type_id: type('Interiores'), source_id: source('Meta Ads'), proposal_value: 15000, owner_id: carla.id, lost_reason: 'Preço / orçamento' },
     { name: 'Renata Coelho', city: 'Curitiba', stage_id: stage('Perdido'), area_m2: 300, project_type_id: type('Arquitetura'), source_id: source('Site'), proposal_value: 80000, owner_id: admin.id, lost_reason: 'Adiou o projeto' },
   ];
 
@@ -66,7 +66,7 @@ export async function buildDemoData(
   const clientSpecs = [
     { name: 'João Dias', document: '529.982.247-25', city: 'Curitiba', type: 'Arquitetura', project: 'CASA J.D.', startOffset: -60, area: 280, manager: ana, members: [ana, bruno], done: 0.7, source: 'Indicação' },
     { name: 'Beatriz Fontana', document: '111.444.777-35', city: 'Curitiba', type: 'Interiores', project: 'APTO B.F.', startOffset: -45, area: 120, manager: bruno, members: [bruno], done: 0.85, source: 'Instagram' },
-    { name: 'Lucas Martins', document: '390.533.447-05', city: 'São José dos Pinhais', type: 'Arquitetura e Interiores', project: 'CASA L.M.', startOffset: -20, area: 350, manager: admin, members: [admin, ana, bruno], done: 0.25, source: 'Tráfego pago (Google' },
+    { name: 'Lucas Martins', document: '390.533.447-05', city: 'São José dos Pinhais', type: 'Arquitetura e Interiores', project: 'CASA L.M.', startOffset: -20, area: 350, manager: admin, members: [admin, ana, bruno], done: 0.25, source: 'Google Ads' },
     { name: 'Café Aroma LTDA', document: '11.222.333/0001-81', city: 'Curitiba', type: 'Interiores', project: 'CAFÉ AROMA', startOffset: -120, area: 85, manager: bruno, members: [bruno, ana], done: 1, source: 'Site' },
     { name: 'Sofia Almeida', document: '153.509.460-56', city: 'Pinhais', type: 'Arquitetura', project: 'CASA S.A.', startOffset: -3, area: 210, manager: ana, members: [ana], done: 0, source: 'Indicação' },
   ];
@@ -125,7 +125,7 @@ export async function buildDemoData(
     }
   });
 
-  const convertedStage = stage('Fechado');
+  const convertedStage = stage('Ganho');
   clientSpecs.forEach((spec, i) => {
     const created = iso(spec.startOffset - 10);
     const lead: Lead = {
