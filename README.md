@@ -37,6 +37,10 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   50% · 50%, à vista, mensal ou personalizado, com as datas. As parcelas entram sozinhas em
   **contas a receber** do Financeiro (categoria honorários), mesmo quando quem fecha só tem o módulo
   Comercial, e passam para o projeto quando o lead vira cliente. Editar depois não duplica.
+- Em cada parcela dá para digitar o **valor em R$** (o percentual é calculado) ou o percentual (o
+  valor é calculado); a soma precisa fechar com o valor do contrato. A forma de pagamento pode ser
+  **editada depois** (na oportunidade ou na aba Informações do projeto): as parcelas no Financeiro
+  são substituídas pelas novas, desde que nenhuma tenha sido recebida.
 - **Virar cliente**: abre sozinho logo depois de marcar como ganho (ou pelo botão no lead ganho), e só conclui com **todos os dados do
   cliente** (CPF/CNPJ validado, e-mail, telefone, endereço completo — CEP preenche o endereço).
 
@@ -49,6 +53,8 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 - Tela do projeto: tarefas em tabela por etapa (nº, checklist, status, início e fim — clique para
   escolher a data —, duração em dias úteis calculada pelas datas e editável (recalcula o fim), horas estimadas e realizadas, responsável, prioridade), **cronograma (Gantt)**, equipe e horas por pessoa,
   dados do cliente, links (Drive, pranchas…), anotações e histórico de atividades.
+- **Informações do projeto:** dados do projeto, do cliente (com CPF/CNPJ) e do contrato, cada um
+  com **Editar**.
 - **Usar como modelo:** as tarefas de um projeto (etapas, ordem, checklist, observações, prioridade,
   horas; sem datas) viram as tarefas-modelo de um tipo existente ou
   de um tipo novo; depois é só ajustar em Configurações. Projetos já criados não mudam.
@@ -169,8 +175,9 @@ Para uso real pela equipe, configure o Supabase.
    `supabase/migrations/20261008000000_task_templates_details.sql`,
    `supabase/migrations/20261009000000_lead_payment_plan.sql`,
    `supabase/migrations/20261010000000_arq_int_templates.sql`,
-   `supabase/migrations/20261011000000_crm_defaults.sql` e
-   `supabase/migrations/20261012000000_won_lost_stages.sql`
+   `supabase/migrations/20261011000000_crm_defaults.sql`,
+   `supabase/migrations/20261012000000_won_lost_stages.sql` e
+   `supabase/migrations/20261013000000_payment_plan_values.sql`
    (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
    (podem rodar mais de uma vez sem problema).
 3. **Função de administração da equipe** (permite ao admin cadastrar membros):

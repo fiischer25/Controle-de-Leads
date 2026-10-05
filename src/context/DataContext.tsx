@@ -115,7 +115,8 @@ interface DataApi {
    * Fechamento: salva a forma de pagamento no lead e, com `launch`, lança as parcelas em contas a
    * receber (uma única vez por oportunidade). Devolve quantas parcelas foram criadas.
    */
-  closeDeal(leadId: string, plan: LeadPaymentPlan, launch: boolean): Promise<number>;
+  /** replace: substitui as parcelas já lançadas desta oportunidade (se nenhuma foi recebida). */
+  closeDeal(leadId: string, plan: LeadPaymentPlan, launch: boolean, replace?: boolean): Promise<number>;
 
   // Clientes e projetos
   createClient(input: ClientInput): Promise<Client>;
@@ -155,6 +156,9 @@ interface DataApi {
 }
 
 const DataContext = createContext<DataApi | null>(null);
+
+const PAID_MESSAGE =
+  'A forma de pagamento foi salva, mas as parcelas no Financeiro não foram alteradas: já há parcela recebida desta oportunidade. Ajuste as demais no Financeiro.';
 
 export function DataProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const toast = useToast();
@@ -426,7 +430,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   );
 
   const closeDeal = useCallback(
-    async (leadId: string, plan: LeadPaymentPlan, launch: boolean) => {
+    async (leadId: string, plan: LeadPaymentPlan, launch: boolean, replace = false) => {
       const lead = dbRef.current.leads.find((l) => l.id === leadId);
       if (!lead) throw new Error('Oportunidade não encontrada.');
       await patch('leads', leadId, { payment_plan: plan, proposal_value: plan.total });
@@ -434,12 +438,17 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       if (!launch) return 0;
       if (backend.mode === 'supabase') {
         // Função segura do banco: funciona também para quem só tem o módulo Comercial
-        const created = Number(await backend.rpc('create_lead_receivables', { p_lead: leadId })) || 0;
+        const created = Number(await backend.rpc('create_lead_receivables', { p_lead: leadId, p_replace: replace })) || 0;
         if (canAccess(dbRef.current.profiles.find((p) => p.id === userId), 'financeiro')) await loadTable('finance_entries');
         return created;
       }
       // Modo demonstração: mesmas regras da função do banco
-      if (dbRef.current.finance_entries.some((e) => e.lead_id === leadId)) return 0;
+      const existing = dbRef.current.finance_entries.filter((e) => e.lead_id === leadId);
+      if (existing.length) {
+        if (!replace) return 0;
+        if (existing.some((e) => e.paid_at)) throw new Error(PAID_MESSAGE);
+        await removeRows('finance_entries', existing.map((e) => e.id));
+      }
       const amounts = planAmounts(plan.total, plan.rows);
       if (!amounts.length) return 0;
       const n = plan.rows.length;
@@ -476,7 +485,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       await insertRows('finance_entries', valid);
       return valid.length;
     },
-    [patch, log, insertRows, loadTable, userId],
+    [patch, log, insertRows, removeRows, loadTable, userId],
   );
 
   const deleteLead = useCallback(

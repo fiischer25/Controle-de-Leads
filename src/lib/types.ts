@@ -78,7 +78,8 @@ export interface TaskTemplate {
 /** Forma de pagamento combinada ao ganhar a oportunidade. */
 export interface LeadPaymentPlan {
   total: number;
-  rows: Array<{ label: string; percent: number; due_date: string }>;
+  /** amount: valor digitado em R$ (fixo); value: valor final gravado ao salvar. */
+  rows: Array<{ label: string; percent: number; due_date: string; amount?: number | null; value?: number }>;
   account_id: string | null;
   preset: string;
   defined_at: string;

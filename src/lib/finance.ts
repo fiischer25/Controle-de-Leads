@@ -147,6 +147,10 @@ export interface PlanRow {
   label: string;
   percent: number;
   due_date: string;
+  /** Valor digitado em R$ (fixo); sem ele, o valor sai do percentual. */
+  amount?: number | null;
+  /** Valor final da parcela, gravado ao salvar (usado ao lançar no Financeiro). */
+  value?: number;
 }
 
 export type FeePreset = 'avista' | '50-50' | '30-40-30' | 'mensal';

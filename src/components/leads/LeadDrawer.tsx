@@ -450,9 +450,14 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
           mode={winning.mode}
           onClose={() => setWinning(null)}
           onSubmit={async (plan: LeadPaymentPlan | null, launch: boolean) => {
-            const created = plan ? await closeDeal(lead.id, plan, launch) : 0;
+            const created = plan ? await closeDeal(lead.id, plan, launch, true) : 0;
             if (winning.stageId) await moveLead(lead.id, winning.stageId);
-            if (created > 0) toast.success(`${created} ${created === 1 ? 'parcela lançada' : 'parcelas lançadas'} em contas a receber.`);
+            if (created > 0)
+              toast.success(
+                winning.mode === 'edit'
+                  ? `Forma de pagamento salva e ${created} ${created === 1 ? 'parcela atualizada' : 'parcelas atualizadas'} no Financeiro.`
+                  : `${created} ${created === 1 ? 'parcela lançada' : 'parcelas lançadas'} em contas a receber.`,
+              );
             else if (plan) toast.success('Forma de pagamento salva.');
             // Acabou de ganhar: segue direto para o cadastro do cliente e do projeto
             if (winning.stageId && !lead.client_id) setConverting(true);

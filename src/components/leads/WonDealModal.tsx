@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useData } from '../../context/DataContext';
 import type { FeePreset } from '../../lib/finance';
-import { newPlanDraft, planSummary, validatePlan, type PlanDraft } from '../../lib/paymentPlan';
+import { finalizeRows, newPlanDraft, planSummary, validatePlan, type PlanDraft } from '../../lib/paymentPlan';
 import type { Lead, LeadPaymentPlan } from '../../lib/types';
 import { formatMoney, nowIso, today } from '../../lib/utils';
 import { Button, Checkbox, Field, Modal, Select } from '../ui';
@@ -38,7 +38,9 @@ export function WonDealModal({
   const [account, setAccount] = useState(existingPlan?.account_id ?? accounts[0]?.id ?? '');
   // Parcelas desta oportunidade já lançadas (visível só para quem tem o Financeiro)
   const launched = db.finance_entries.filter((e) => e.lead_id === lead.id);
-  const [launch, setLaunch] = useState(launched.length === 0);
+  const received = launched.filter((e) => e.paid_at).length;
+  // Já lançadas e nada recebido: salvar atualiza as parcelas no Financeiro
+  const [launch, setLaunch] = useState(received === 0);
   const [busy, setBusy] = useState<'plan' | 'skip' | null>(null);
   const [error, setError] = useState('');
 
@@ -54,13 +56,13 @@ export function WonDealModal({
         withPlan
           ? {
               total: total!,
-              rows: draft.rows.map((r) => ({ label: r.label.trim(), percent: Number(r.percent) || 0, due_date: r.due_date })),
+              rows: finalizeRows(total!, draft.rows),
               account_id: account || null,
               preset: draft.preset,
               defined_at: nowIso(),
             }
           : null,
-        withPlan && launch,
+        withPlan && launch && received === 0,
       );
       onClose();
     } catch (e) {
@@ -117,18 +119,27 @@ export function WonDealModal({
       </div>
 
       <div className="mt-5 rounded-[12px] bg-canvas px-4 py-3">
-        {launched.length > 0 ? (
+        {received > 0 ? (
           <p className="text-[13px] text-muted">
-            As {launched.length} parcelas desta oportunidade já estão no Financeiro ({formatMoney(launched.reduce((a, e) => a + e.amount, 0))}). Para mudar
-            valores ou datas, ajuste por lá.
+            {received} de {launched.length} parcelas desta oportunidade já foram recebidas, então as parcelas no Financeiro não são alteradas por
+            aqui: ajuste as demais por lá. A forma de pagamento abaixo é salva normalmente.
           </p>
         ) : (
           <>
-            <Checkbox checked={launch} onChange={setLaunch} label="Lançar as parcelas em contas a receber no Financeiro" />
+            <Checkbox
+              checked={launch}
+              onChange={setLaunch}
+              label={
+                launched.length > 0
+                  ? `Atualizar as ${launched.length} parcelas no Financeiro com estes valores e datas`
+                  : existingPlan
+                    ? 'Lançar ou atualizar as parcelas em contas a receber no Financeiro'
+                    : 'Lançar as parcelas em contas a receber no Financeiro'
+              }
+            />
             <p className="mt-1 pl-6 text-[12.5px] text-faint">
-              Entram na categoria de honorários, com as datas acima. Quando a oportunidade virar cliente e projeto, as parcelas passam para o
-              projeto automaticamente.
-              {existingPlan && ' Se já tiverem sido lançadas antes, não são duplicadas.'}
+              Entram na categoria de honorários, com as datas acima, e ficam ligadas ao cliente e ao projeto. Ao editar depois, as parcelas
+              lançadas são substituídas pelas novas, desde que nenhuma tenha sido recebida.
             </p>
           </>
         )}
