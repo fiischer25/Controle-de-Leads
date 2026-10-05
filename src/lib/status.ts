@@ -156,6 +156,15 @@ export function stageColor(stage: Pick<LeadStage, 'id' | 'kind'> | null | undefi
   return CSS_COLOR.brand(FUNNEL_SCALE[Math.min(step, FUNNEL_SCALE.length - 1)]);
 }
 
+/**
+ * Etapas na ordem do funil: as em andamento pela posição e, sempre no fim, "Ganho" e
+ * "Não ganho" (desfechos fixos do funil).
+ */
+export function funnelOrder<T extends Pick<LeadStage, 'kind' | 'position'>>(stages: T[]): T[] {
+  const rank = (s: T) => (s.kind === 'open' ? 0 : s.kind === 'won' ? 1 : 2);
+  return [...stages].sort((a, b) => rank(a) - rank(b) || a.position - b.position);
+}
+
 // ------------------------------------------------------------------ Avatares
 export interface AvatarTone {
   name: 'slate' | 'sage' | 'clay' | 'plum' | 'stone';

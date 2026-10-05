@@ -9,7 +9,7 @@ import { nowIso, uid } from './utils';
 
 /**
  * Funil comercial padrão de CRM (mesmo da migração 20261011000000_crm_defaults.sql):
- * entrada → contato → qualificação → reunião → proposta → negociação → ganho / perdido.
+ * entrada → contato → qualificação → reunião → proposta → negociação → ganho / não ganho.
  */
 export const DEFAULT_STAGES: Array<[string, LeadStage['kind'], string]> = [
   ['Novo lead', 'open', '#e0d7ca'],
@@ -20,7 +20,7 @@ export const DEFAULT_STAGES: Array<[string, LeadStage['kind'], string]> = [
   ['Proposta enviada', 'open', '#806c52'],
   ['Negociação', 'open', '#6b5a44'],
   ['Ganho', 'won', '#5d8263'],
-  ['Perdido', 'lost', '#b3aca2'],
+  ['Não ganho', 'lost', '#b3aca2'],
 ];
 
 /** Origens de lead mais usadas em CRMs (mesmas da migração 20261011000000_crm_defaults.sql). */

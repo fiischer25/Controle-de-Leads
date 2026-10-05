@@ -14,13 +14,13 @@ import { WhatsAppSettings } from './settings/WhatsAppSettings';
 import { TemplatesEditor } from './settings/TemplatesEditor';
 import { DailyAlertsSettings } from './settings/DailyAlertsSettings';
 import { useData } from '../context/DataContext';
-import { stageColor } from '../lib/status';
+import { funnelOrder, stageColor } from '../lib/status';
 import { useToast } from '../context/ToastContext';
 import { STAGE_KIND, SWATCHES } from '../lib/constants';
-import type { LeadSource, LeadStage, ProjectType, StageKind, TableName } from '../lib/types';
+import type { LeadSource, LeadStage, ProjectType, TableName } from '../lib/types';
 import { TABLES } from '../lib/types';
 import { byPosition, cn, downloadFile, nowIso, toCalendarEmbedUrl, today, uid } from '../lib/utils';
-import { Button, Card, CardHeader, Checkbox, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, Select, Tabs, Textarea } from '../components/ui';
+import { Button, Card, CardHeader, Checkbox, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, Tabs, Textarea } from '../components/ui';
 
 type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'whatsapp' | 'avisos' | 'dados';
 
@@ -198,7 +198,7 @@ function ProjectTypesSettings() {
 function StagesSettings() {
   const { db, insertRows, patch, removeRows } = useData();
   const toast = useToast();
-  const stages = useMemo(() => [...db.lead_stages].sort(byPosition), [db.lead_stages]);
+  const stages = useMemo(() => funnelOrder(db.lead_stages), [db.lead_stages]);
   const reorder = useReorder('lead_stages');
   const [name, setName] = useState('');
 
@@ -214,10 +214,16 @@ function StagesSettings() {
 
   return (
     <Card className="max-w-3xl overflow-hidden">
-      <CardHeader title="Etapas do funil de oportunidades" subtitle="Colunas do kanban. Tenha pelo menos uma etapa do tipo “Ganho” e uma “Perdido”." />
+      <CardHeader
+        title="Etapas do funil de oportunidades"
+        subtitle="Colunas do quadro, na ordem do funil. “Ganho” e “Não ganho” são fixas e ficam sempre no fim: ganho leva a virar cliente; não ganho pede o motivo."
+      />
       <ul className="divide-y divide-line/70 border-t border-line/70">
         {stages.map((s, i) => {
           const count = db.leads.filter((l) => l.stage_id === s.id).length;
+          const fixed = s.kind !== 'open';
+          // A única etapa de ganho / não ganho não pode ser excluída
+          const onlyOfKind = fixed && stages.filter((x) => x.kind === s.kind).length === 1;
           return (
             <li key={s.id} className="grid grid-cols-[auto_1fr_170px_auto] items-center gap-3 px-5 py-2.5">
               <span className="ml-1 h-2 w-2 rounded-full" style={{ backgroundColor: stageColor(s, stages) }} title="A cor segue a ordem do funil" aria-hidden />
@@ -225,15 +231,15 @@ function StagesSettings() {
                 <input key={s.name} defaultValue={s.name} onBlur={(e) => e.target.value.trim() && e.target.value !== s.name && patch('lead_stages', s.id, { name: e.target.value.trim() }).catch(toast.error)} className="w-full rounded-xs bg-transparent px-2 py-1 text-sm font-medium outline-none hover:bg-stone-50 focus:ring-2 focus:ring-brand-500/20" aria-label="Nome" />
                 <div className="px-2 text-xs text-stone-500">{count} oportunidade{count !== 1 ? 's' : ''}</div>
               </div>
-              <Select value={s.kind} onChange={(e) => patch('lead_stages', s.id, { kind: e.target.value as StageKind }).catch(toast.error)} className="h-8 py-1 text-xs">
-                {Object.entries(STAGE_KIND).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-              </Select>
+              <span className={cn('text-xs', fixed ? (s.kind === 'won' ? 'font-medium text-success-fg' : 'font-medium text-stone-600') : 'text-stone-500')}>
+                {fixed ? `Fixa · ${STAGE_KIND[s.kind]}` : STAGE_KIND.open}
+              </span>
               <div className="flex">
-                <IconButton label="Subir" onClick={() => reorder(stages, i, -1)} disabled={i === 0}><ArrowUp className="h-4 w-4" /></IconButton>
-                <IconButton label="Descer" onClick={() => reorder(stages, i, 1)} disabled={i === stages.length - 1}><ArrowDown className="h-4 w-4" /></IconButton>
+                <IconButton label="Subir" onClick={() => reorder(stages, i, -1)} disabled={fixed || i === 0}><ArrowUp className="h-4 w-4" /></IconButton>
+                <IconButton label="Descer" onClick={() => reorder(stages, i, 1)} disabled={fixed || stages[i + 1]?.kind !== 'open'}><ArrowDown className="h-4 w-4" /></IconButton>
                 <IconButton
-                  label={count ? 'Mova as oportunidades antes de excluir' : 'Excluir'}
-                  disabled={count > 0}
+                  label={onlyOfKind ? 'Etapa fixa do funil' : count ? 'Mova as oportunidades antes de excluir' : 'Excluir'}
+                  disabled={onlyOfKind || count > 0}
                   className="hover:text-danger-fg"
                   onClick={() => removeRows('lead_stages', [s.id]).catch(toast.error)}
                 >

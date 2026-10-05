@@ -1,9 +1,9 @@
 import { useMemo, useState, type DragEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowDown, ArrowUp, Check, Download, Plus } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Download, Plus, Trophy, XCircle } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
-import { stageColor } from '../lib/status';
+import { funnelOrder, stageColor } from '../lib/status';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import type { Lead, LeadStage } from '../lib/types';
 import {
@@ -57,7 +57,7 @@ export default function LeadsPage() {
   const desktop = useMediaQuery('(min-width: 768px)');
 
   const openLeadId = params.get('lead');
-  const stages = useMemo(() => [...db.lead_stages].sort(byPosition), [db.lead_stages]);
+  const stages = useMemo(() => funnelOrder(db.lead_stages), [db.lead_stages]);
   const t = today();
 
   const filtered = useMemo(() => {
@@ -172,6 +172,8 @@ export default function LeadsPage() {
     setQuery('');
   };
   const firstOpen = stages.find((s) => s.kind === 'open')?.id ?? '';
+  const wonStage = stages.find((s) => s.kind === 'won');
+  const lostStage = stages.find((s) => s.kind === 'lost');
   const currentMobile = mobileStage && byStage[mobileStage] ? mobileStage : firstOpen || stages[0]?.id;
   const pendingReturns = stats.overdue + stats.dueToday;
 
@@ -295,15 +297,27 @@ export default function LeadsPage() {
                     }}
                     onDrop={(e) => onDrop(e, stage.id)}
                   >
-                    <header className="flex items-start justify-between gap-2 border-b border-hairline pb-3">
+                    <header
+                      className={cn(
+                        'flex items-start justify-between gap-2 border-b pb-3',
+                        stage.kind === 'won' ? 'border-success-solid/40' : stage.kind === 'lost' ? 'border-stone-300' : 'border-hairline',
+                      )}
+                    >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: stageColor(stage, stages) }} aria-hidden />
-                          <h2 className="truncate text-[13.5px] font-medium text-ink">{stage.name}</h2>
+                          {stage.kind === 'won' ? (
+                            <Trophy className="h-3.5 w-3.5 shrink-0 text-success-fg" strokeWidth={1.8} aria-hidden />
+                          ) : stage.kind === 'lost' ? (
+                            <XCircle className="h-3.5 w-3.5 shrink-0 text-stone-500" strokeWidth={1.8} aria-hidden />
+                          ) : (
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: stageColor(stage, stages) }} aria-hidden />
+                          )}
+                          <h2 className={cn('truncate text-[13.5px] font-medium', stage.kind === 'won' ? 'text-success-fg' : 'text-ink')}>{stage.name}</h2>
                           <span className="text-[13px] tabular text-faint">{items.length}</span>
                         </div>
                         <div className="mt-1 pl-3.5 text-[12.5px] tabular text-faint">{total > 0 ? formatCurrency(total) : '—'}</div>
                       </div>
+                      {stage.kind === 'open' && (
                       <IconButton
                         label={`Nova oportunidade em ${stage.name}`}
                         size="xs"
@@ -312,6 +326,7 @@ export default function LeadsPage() {
                       >
                         <Plus className="h-4 w-4" strokeWidth={1.6} />
                       </IconButton>
+                      )}
                     </header>
                     <div
                       className="scrollbar-thin -mx-1 flex-1 space-y-2.5 overflow-y-auto px-1 pb-2 pt-3"
@@ -326,6 +341,8 @@ export default function LeadsPage() {
                             staleDays={settings.lead_stale_days}
                             onOpen={() => openLead(lead.id)}
                             onConvert={() => setConverting(lead)}
+                            onWin={wonStage ? () => performMove(lead.id, wonStage.id, null) : undefined}
+                            onLose={lostStage ? () => performMove(lead.id, lostStage.id, null) : undefined}
                             onDragStart={(e) => {
                               e.dataTransfer.setData('text/plain', lead.id);
                               e.dataTransfer.effectAllowed = 'move';
@@ -351,7 +368,7 @@ export default function LeadsPage() {
                         </div>
                       ))}
                       {isTarget && dropTarget?.before === null && dragged && (dragged.stage_id !== stage.id || items.length > 1) && placeholder}
-                      {items.length === 0 && !dragId && (
+                      {items.length === 0 && !dragId && stage.kind === 'open' && (
                         <button
                           type="button"
                           onClick={() => setCreatingIn(stage.id)}
@@ -359,6 +376,13 @@ export default function LeadsPage() {
                         >
                           Nenhuma oportunidade
                         </button>
+                      )}
+                      {items.length === 0 && !dragId && stage.kind !== 'open' && (
+                        <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-line-strong px-4 text-center text-[12.5px] leading-[18px] text-faint">
+                          {stage.kind === 'won'
+                            ? 'Arraste para cá (ou clique em “Ganhou”) quando fechar negócio: o lead vira cliente.'
+                            : 'Arraste para cá (ou clique em “Não ganhou”) quando não fechar: o motivo é registrado.'}
+                        </div>
                       )}
                     </div>
                   </section>
@@ -421,7 +445,8 @@ export default function LeadsPage() {
             const created = plan ? await closeDeal(lead.id, plan, launch) : 0;
             await moveLead(pendingWon.id, pendingWon.stage, pendingWon.before);
             if (created > 0) toast.success(`${lead.name} fechou! ${created} ${created === 1 ? 'parcela lançada' : 'parcelas lançadas'} em contas a receber.`);
-            else if (!lead.client_id) toast.success(`${lead.name} fechou! Complete os dados para virar cliente.`);
+            // Acabou de ganhar: segue direto para o cadastro do cliente e do projeto
+            if (!lead.client_id) setConverting(maps.leads[pendingWon.id] ?? lead);
           }}
         />
       )}
@@ -452,6 +477,8 @@ function LeadCard({
   staleDays,
   onOpen,
   onConvert,
+  onWin,
+  onLose,
   onDragStart,
   onDragEnd,
   onDragOverCard,
@@ -461,6 +488,8 @@ function LeadCard({
   staleDays: number;
   onOpen: () => void;
   onConvert: () => void;
+  onWin?: () => void;
+  onLose?: () => void;
   onDragStart?: (e: DragEvent) => void;
   onDragEnd?: () => void;
   onDragOverCard?: (e: DragEvent) => void;
@@ -530,6 +559,31 @@ function LeadCard({
           ))}
       </div>
       {stage?.kind === 'lost' && lead.lost_reason && <p className="mt-1.5 truncate text-[12px] text-faint">{lead.lost_reason}</p>}
+      {open && onWin && onLose && (
+        // Atalhos de desfecho: aparecem ao passar o mouse (ou com o foco no card)
+        <div className="mt-2.5 hidden gap-1.5 border-t border-hairline pt-2.5 group-focus-within:flex group-hover:flex">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onWin();
+            }}
+            className="flex flex-1 items-center justify-center gap-1 rounded-md py-1 text-[12.5px] font-medium text-success-fg hover:bg-success-bg"
+          >
+            <Trophy className="h-3.5 w-3.5" strokeWidth={1.8} /> Ganhou
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onLose();
+            }}
+            className="flex flex-1 items-center justify-center gap-1 rounded-md py-1 text-[12.5px] text-stone-600 hover:bg-subtle"
+          >
+            <XCircle className="h-3.5 w-3.5" strokeWidth={1.8} /> Não ganhou
+          </button>
+        </div>
+      )}
     </article>
   );
 }

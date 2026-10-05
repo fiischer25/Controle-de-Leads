@@ -58,8 +58,8 @@ export async function buildDemoData(
     { name: 'Thiago Moreira', city: 'Campo Largo', stage_id: stage('Proposta enviada'), area_m2: 110, project_type_id: type('Interiores'), source_id: source('Meta Ads'), proposal_value: 18500, owner_id: carla.id, next_contact_date: addDays(t, -1) },
     { name: 'Escritório Vieira Advogados', city: 'Curitiba', stage_id: stage('Negociação'), area_m2: 200, category: 'Corporativo', project_type_id: type('Interiores'), source_id: source('WhatsApp'), proposal_value: 41000, owner_id: admin.id, next_contact_date: addDays(t, 2) },
     { name: 'Gabriela Nunes', city: 'Curitiba', stage_id: stage('Ganho'), area_m2: 230, project_type_id: type('Arquitetura e Interiores'), source_id: source('Instagram'), proposal_value: 64000, owner_id: carla.id },
-    { name: 'Henrique Batista', city: 'Colombo', stage_id: stage('Perdido'), area_m2: 95, project_type_id: type('Interiores'), source_id: source('Meta Ads'), proposal_value: 15000, owner_id: carla.id, lost_reason: 'Preço / orçamento' },
-    { name: 'Renata Coelho', city: 'Curitiba', stage_id: stage('Perdido'), area_m2: 300, project_type_id: type('Arquitetura'), source_id: source('Site'), proposal_value: 80000, owner_id: admin.id, lost_reason: 'Adiou o projeto' },
+    { name: 'Henrique Batista', city: 'Colombo', stage_id: stage('Não ganho'), area_m2: 95, project_type_id: type('Interiores'), source_id: source('Meta Ads'), proposal_value: 15000, owner_id: carla.id, lost_reason: 'Preço / orçamento' },
+    { name: 'Renata Coelho', city: 'Curitiba', stage_id: stage('Não ganho'), area_m2: 300, project_type_id: type('Arquitetura'), source_id: source('Site'), proposal_value: 80000, owner_id: admin.id, lost_reason: 'Adiou o projeto' },
   ];
 
   // Clientes que já viraram projeto

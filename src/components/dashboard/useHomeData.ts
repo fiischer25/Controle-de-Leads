@@ -3,11 +3,10 @@ import { useData } from '../../context/DataContext';
 import { useProjectSummaries, type ProjectSummary } from '../projects/useProjectSummaries';
 import { projectRail, templatePhasesByType } from '../projects/rail';
 import { isProjectActive, totalMinutes } from '../../lib/domain';
-import { stageColor } from '../../lib/status';
+import { funnelOrder, stageColor } from '../../lib/status';
 import type { Lead, LeadStage, Profile, Task } from '../../lib/types';
 import {
   addDays,
-  byPosition,
   diffDays,
   formatCurrency,
   formatDateShort,
@@ -327,7 +326,7 @@ export function useHomeData(scope: 'me' | 'office' = 'me') {
       .map((summary) => ({ summary, ...projectRail(summary, templatesByType[summary.project.project_type_id]) }));
 
     // ------------------------------------------------------------ funil
-    const stagesSorted = [...db.lead_stages].sort(byPosition);
+    const stagesSorted = funnelOrder(db.lead_stages);
     const funnel: FunnelRow[] = stagesSorted
       .filter((s) => s.kind === 'open')
       .map((stage) => {

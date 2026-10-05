@@ -3,6 +3,7 @@ import { useData, type LeadInput } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { BR_STATES, LEAD_CATEGORIES } from '../../lib/constants';
 import type { Lead, LeadCategory } from '../../lib/types';
+import { funnelOrder } from '../../lib/status';
 import { byPosition, digitsOnly, maskPhone, normalize } from '../../lib/utils';
 import { Button, Field, Input, Modal, Select, Textarea, UserSelect } from '../ui';
 import { MoneyInput } from '../finance/MoneyInput';
@@ -20,7 +21,7 @@ export function LeadFormModal({
 }) {
   const { db, me, createLead, updateLead } = useData();
   const toast = useToast();
-  const stages = [...db.lead_stages].sort(byPosition);
+  const stages = funnelOrder(db.lead_stages);
   const [v, setV] = useState<LeadInput>(() => ({
     name: lead?.name ?? '',
     phone: lead?.phone ?? '',

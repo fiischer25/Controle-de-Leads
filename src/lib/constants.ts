@@ -26,7 +26,7 @@ export const TASK_PRIORITY_ORDER: TaskPriority[] = ['baixa', 'media', 'alta', 'u
 export const STAGE_KIND: Record<StageKind, string> = {
   open: 'Em andamento',
   won: 'Ganho',
-  lost: 'Perdido',
+  lost: 'Não ganho',
 };
 
 export const LEAD_CATEGORIES: LeadCategory[] = ['Residencial', 'Comercial', 'Corporativo', 'Institucional', 'Outro'];
