@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Flag, ListChecks, MoreVertical, Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CalendarDays, ChevronDown, ChevronRight, Flag, ListChecks, MoreVertical, Plus, X } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { SWATCHES, TASK_PRIORITY, TASK_STATUS_ORDER } from '../../lib/constants';
-import { businessDaysBetween, entryMinutes, taskDays } from '../../lib/domain';
+import { businessDaysBetween, entryMinutes } from '../../lib/domain';
 import { TASK_STATUS_STYLE } from '../../lib/status';
 import type { Project, Task, TaskStatus } from '../../lib/types';
 import { byPosition, cn, formatDateShort, formatMinutes, formatNumber, today } from '../../lib/utils';
@@ -67,6 +67,13 @@ export function ProjectTasksTable({
   };
 
   const setStatus = (task: Task, status: TaskStatus) => updateTask(task.id, { status }).catch(toast.error);
+  /** Datas digitadas na tabela; mantém o fim depois do início. */
+  const setDates = (task: Task, patch: { start_date?: string | null; due_date?: string | null }) => {
+    const next = { ...patch };
+    if (next.start_date && task.due_date && next.start_date > task.due_date) next.due_date = next.start_date;
+    if (next.due_date && task.start_date && next.due_date < task.start_date) next.start_date = next.due_date;
+    return updateTask(task.id, next).catch(toast.error);
+  };
   const dateCls = (task: Task) => (task.status !== 'done' && task.due_date && task.due_date < t ? 'text-danger-fg' : 'text-stone-600');
 
   return (
@@ -195,10 +202,10 @@ export function ProjectTasksTable({
                       )}
                     </Popover>
                     <span className="text-[12.5px] tabular text-stone-700">
-                      {taskDays(task) != null ? daysLabel(taskDays(task)!) : '—'}
+                      {task.start_date && task.due_date ? daysLabel(businessDaysBetween(task.start_date, task.due_date)) : '—'}
                     </span>
-                    <span className="text-[12.5px] tabular text-stone-600">{task.start_date ? formatDateShort(task.start_date) : '—'}</span>
-                    <span className={cn('text-[12.5px] tabular', dateCls(task))}>{task.due_date ? formatDateShort(task.due_date) : '—'}</span>
+                    <DateCell value={task.start_date} label={`Início de ${task.title}`} className="text-stone-600" onChange={(d) => setDates(task, { start_date: d })} />
+                    <DateCell value={task.due_date} label={`Fim de ${task.title}`} className={dateCls(task)} onChange={(d) => setDates(task, { due_date: d })} />
                     <span className="text-right text-[12.5px] tabular text-stone-600">{task.estimated_hours ? `${formatNumber(task.estimated_hours, 1)}h` : '—'}</span>
                     <span className="text-right text-[12.5px] tabular text-stone-600">{minutesByTask[task.id] ? formatMinutes(minutesByTask[task.id]) : '—'}</span>
                     <span className="flex min-w-0 items-center gap-1.5 text-[12.5px]">
@@ -312,5 +319,56 @@ export function ProjectTasksTable({
         />
       )}
     </div>
+  );
+}
+
+/** Data clicável na tabela: mostra a data (ou um calendário quando vazia) e abre o seletor; grava ao escolher a data. */
+function DateCell({ value, label, className, onChange }: { value: string | null; label: string; className?: string; onChange: (d: string | null) => void }) {
+  const [editing, setEditing] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!editing) return;
+    try {
+      input.current?.showPicker?.();
+    } catch {
+      /* alguns navegadores só abrem o seletor com clique */
+    }
+  }, [editing]);
+  const commit = () => {
+    const next = input.current?.value || null;
+    setEditing(false);
+    if (next !== value) onChange(next);
+  };
+  if (editing) {
+    return (
+      <input
+        ref={input}
+        type="date"
+        autoFocus
+        defaultValue={value ?? ''}
+        aria-label={label}
+        className="h-7 w-full min-w-0 rounded-md border border-line bg-surface px-1 text-[12px] tabular text-ink outline-none focus:border-stone-400"
+        // Data completa escolhida no calendário (ou ano digitado por inteiro) já grava
+        onChange={(e) => {
+          if (/^2\d{3}-\d{2}-\d{2}$/.test(e.target.value)) commit();
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      aria-label={value ? `${label}: ${formatDateShort(value)}` : `Definir ${label.charAt(0).toLowerCase()}${label.slice(1)}`}
+      title={value ? 'Alterar data' : 'Definir data'}
+      className={cn('flex h-7 items-center rounded-md text-left text-[12.5px] tabular hover:bg-stone-100', className)}
+    >
+      {value ? formatDateShort(value) : <CalendarDays className="h-3.5 w-3.5 text-stone-400" />}
+    </button>
   );
 }

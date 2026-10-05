@@ -11,10 +11,10 @@ import { Avatar, Button, Card, Checkbox, ConfirmDialog, Field, IconButton, Input
 
 /** Cor da etapa pela ordem (como as bolinhas da referência). */
 const phaseColor = (i: number) => SWATCHES[i % SWATCHES.length];
-/** Duração digitada → dias úteis (0 = acontece no dia, sem ocupar duração). */
+/** Duração digitada → dias úteis (vazio ou 0 = sem datas; início e fim definidos no projeto). */
 const toDays = (value: string | number) => {
   const n = Number(value);
-  return value === '' || !Number.isFinite(n) ? 1 : Math.max(0, Math.round(n));
+  return value === '' || !Number.isFinite(n) ? 0 : Math.max(0, Math.round(n));
 };
 
 /**
@@ -37,7 +37,8 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
   const [newPhase, setNewPhase] = useState<{ name: string; title: string } | null>(null);
   const [deletingPhase, setDeletingPhase] = useState<string | null>(null);
 
-  const all = [...schedule.values()];
+  // Só as tarefas com duração entram na agenda simulada (duração 0 = datas definidas no projeto)
+  const all = [...schedule.values()].filter((s): s is { template: TaskTemplate; start: string; due: string } => !!s.start && !!s.due);
   const end = all.reduce((m, s) => (s.due > m ? s.due : m), all[0]?.due ?? simStart);
   const totalDays = all.length ? businessDaysBetween(all[0].start, end) : 0;
   const run = (p: Promise<unknown>) => p.catch(toast.error);
@@ -148,7 +149,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
       <div className={cn(!wide && 'border-t border-line/70')}>
         {phases.map((phase, pi) => {
           const items = templates.filter((t) => t.phase === phase);
-          const sched = items.map((t) => schedule.get(t.id)!).filter(Boolean);
+          const sched = all.filter((s) => s.template.phase === phase);
           const pStart = sched.reduce((m, s) => (s.start < m ? s.start : m), sched[0]?.start ?? '');
           const pEnd = sched.reduce((m, s) => (s.due > m ? s.due : m), sched[0]?.due ?? '');
           const hours = items.reduce((a, t) => a + (t.estimated_hours ?? 0), 0);
@@ -228,7 +229,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                         {!wide && (
                           <span className="block truncate text-[12px] text-stone-500">
                             {t.duration_days} {t.duration_days === 1 ? 'dia' : 'dias'}
-                            {s && ` · ${formatDateShort(s.start)} → ${formatDateShort(s.due)}`}
+                            {s?.start && s.due ? ` · ${formatDateShort(s.start)} → ${formatDateShort(s.due)}` : ' · datas no projeto'}
                             {checklist.length > 0 && ` · checklist ${checklist.length}`}
                             {person && ` · ${person.name.split(' ')[0]}`}
                           </span>
@@ -245,8 +246,16 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                             {t.duration_days} {t.duration_days === 1 ? 'dia' : 'dias'}
                             {t.start_with_previous && <Link2 className="h-3 w-3 text-stone-400" aria-label="Começa junto com a anterior" />}
                           </span>
-                          <span className="text-[12.5px] tabular text-stone-600">{s && formatDateShort(s.start)}</span>
-                          <span className="text-[12.5px] tabular text-stone-600">{s && formatDateShort(s.due)}</span>
+                          {s?.start && s.due ? (
+                            <>
+                              <span className="text-[12.5px] tabular text-stone-600">{formatDateShort(s.start)}</span>
+                              <span className="text-[12.5px] tabular text-stone-600">{formatDateShort(s.due)}</span>
+                            </>
+                          ) : (
+                            <span className="col-span-2 text-[12px] text-stone-400" title="Duração 0: início e fim são preenchidos em cada projeto">
+                              definir no projeto
+                            </span>
+                          )}
                           <span className="text-right text-[12.5px] tabular text-stone-600">{t.estimated_hours ? `${formatNumber(t.estimated_hours, 1)}h` : '—'}</span>
                           <span className="flex min-w-0 items-center gap-1.5 text-[12.5px]">
                             {person ? (
@@ -489,7 +498,7 @@ function TemplateTaskModal({
             ))}
           </datalist>
         </Field>
-        <Field label="Duração (dias úteis)">
+        <Field label="Duração (dias úteis)" hint="Deixe 0 para a tarefa entrar sem datas: início e fim são preenchidos no projeto.">
           <Input type="number" min={0} value={v.duration_days} onChange={(e) => setV({ ...v, duration_days: Number(e.target.value) })} aria-label="Duração (dias úteis)" />
         </Field>
         <Checkbox

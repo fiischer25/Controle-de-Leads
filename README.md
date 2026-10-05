@@ -37,8 +37,8 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   agendadas em sequência (dias úteis) a partir da data de início.
 - Lista de projetos com status, cliente, pessoas à frente, etapa atual, progresso e prazo
   (vencidos / a vencer), em cards ou tabela, com filtros e exportação.
-- Tela do projeto: tarefas em tabela por etapa (nº, checklist, status, duração, início, fim, horas
-  estimadas e realizadas, responsável, prioridade), **cronograma (Gantt)**, equipe e horas por pessoa,
+- Tela do projeto: tarefas em tabela por etapa (nº, checklist, status, duração, início e fim — clique
+  para escolher a data —, horas estimadas e realizadas, responsável, prioridade), **cronograma (Gantt)**, equipe e horas por pessoa,
   dados do cliente, links (Drive, pranchas…), anotações e histórico de atividades.
 - **Usar como modelo:** as tarefas de um projeto (etapas, ordem, checklist, observações, prioridade,
   horas, duração pelas datas e tarefas em paralelo) viram as tarefas-modelo de um tipo existente ou
@@ -126,8 +126,8 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 **Configurações (administrador ou quem tiver o módulo)**
 - Tipos de projeto e suas **tarefas-modelo**, em tabela por etapas: nº, duração, início e fim
   simulados, horas estimadas, quem fica à frente, prioridade, **checklist** e **observações** de cada
-  tarefa (copiados para cada novo projeto), tarefas em paralelo, tarefas de **0 dia** (acontecem no dia
-  sem empurrar a próxima, como reuniões e visitas) e etapas que se renomeiam e reordenam.
+  tarefa (copiados para cada novo projeto), tarefas em paralelo, tarefas com **duração 0** (entram no
+  projeto sem datas, como reuniões e visitas, e o início e o fim são preenchidos depois) e etapas que se renomeiam e reordenam.
 - Modelo **Arquitetura e Interiores** do escritório: LD - Levantamento de Dados, EP - Estudo
   Preliminar, C3D - Concepção 3D, PI - Projeto de Interiores, PL - Projeto Legal, PCE - Projetos
   Complementares Engenharia, CO - Compatibilização, PE - Projeto Executivo, PEI - Projeto Executivo

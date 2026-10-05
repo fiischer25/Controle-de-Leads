@@ -8,17 +8,14 @@
 -- nem nos outros tipos). Rodar de novo desfaz ajustes feitos depois em Configurações.
 -- Requer a migração 20261008000000_task_templates_details.sql.
 --
--- Também libera tarefas de 0 dia (acontecem no dia, sem empurrar a próxima), como
--- "Reunião com o Cliente" e "Visita ao Terreno".
+-- Também libera duração 0 nas tarefas-modelo: a tarefa entra no projeto sem datas e o
+-- início e o fim são preenchidos depois (ex.: "Reunião com o Cliente", "Visita ao Terreno").
 --
 -- Como aplicar: Supabase → SQL Editor → cole este arquivo inteiro → Run.
 
 -- Duração 0 permitida nas tarefas-modelo
 alter table public.task_templates drop constraint if exists task_templates_duration_days_check;
 alter table public.task_templates add constraint task_templates_duration_days_check check (duration_days >= 0);
-
--- Tarefa do projeto criada a partir de uma tarefa-modelo de 0 dia
-alter table public.tasks add column if not exists zero_days boolean;
 
 -- Cria o tipo, se ainda não existir
 insert into public.project_types (name, description, color, active, position)
