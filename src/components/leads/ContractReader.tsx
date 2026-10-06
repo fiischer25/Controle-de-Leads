@@ -4,6 +4,7 @@ import {
   CLAUDE_PROMPT,
   CONTRACT_ACCEPT,
   ContractNeedsAiError,
+  completeAddressFromCep,
   contractSummary,
   contractWarnings,
   parseClaudeAnswer,
@@ -69,9 +70,9 @@ export function ContractReader({
     }
   };
 
-  const applyAnswer = () => {
+  const applyAnswer = async () => {
     try {
-      finish(parseClaudeAnswer(answer), 'resposta do Claude.ai');
+      finish(await completeAddressFromCep(parseClaudeAnswer(answer)), 'resposta do Claude.ai');
       setClaude(false);
       setAnswer('');
     } catch (e) {
