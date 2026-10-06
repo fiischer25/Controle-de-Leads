@@ -185,6 +185,33 @@ export function contractAiReady(): Promise<boolean> {
 
 export type ContractMethod = 'ia' | 'gratuita' | 'claude';
 
+/** Completa rua, bairro, cidade e UF pelo CEP (ViaCEP) quando o contrato não traz. */
+export async function completeAddressFromCep(x: ContractExtraction): Promise<ContractExtraction> {
+  const c = x.client;
+  const cep = digitsOnly(c.cep);
+  if (cep.length !== 8 || (c.street && c.neighborhood && c.city && c.state)) return x;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    const data = await (await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: ctrl.signal })).json();
+    if (data?.erro) return x;
+    return {
+      ...x,
+      client: {
+        ...c,
+        street: c.street || data.logradouro || '',
+        neighborhood: c.neighborhood || data.bairro || '',
+        city: c.city || data.localidade || '',
+        state: c.state || data.uf || '',
+      },
+    };
+  } catch {
+    return x; // sem internet: a pessoa completa à mão
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function readWithAi(file: File): Promise<ContractExtraction> {
   const payload = await contractPayload(file);
   const data = (await backend.invokeFunction('contract-extract', { ...payload })) as { result?: ContractExtraction; error?: string } | null;
@@ -198,7 +225,7 @@ async function readWithAi(file: File): Promise<ContractExtraction> {
  * (PDF com texto ou Word). Foto ou escaneado sem IA: ContractNeedsAiError (usar o Claude.ai).
  */
 export async function readContract(file: File): Promise<{ extraction: ContractExtraction; method: ContractMethod }> {
-  if (await contractAiReady()) return { extraction: await readWithAi(file), method: 'ia' };
+  if (await contractAiReady()) return { extraction: await completeAddressFromCep(await readWithAi(file)), method: 'ia' };
   const text = await contractText(file);
   if (text === null) {
     throw new ContractNeedsAiError('Fotos não são lidas pela leitura gratuita. Use “Ler com o Claude.ai” abaixo ou envie o contrato em PDF/Word.');
@@ -212,7 +239,7 @@ export async function readContract(file: File): Promise<{ extraction: ContractEx
   if (found < 2 && !extraction.contract.total) {
     throw new ContractNeedsAiError('Não reconheci os dados neste contrato. Use “Ler com o Claude.ai” abaixo.');
   }
-  return { extraction, method: 'gratuita' };
+  return { extraction: await completeAddressFromCep(extraction), method: 'gratuita' };
 }
 
 // ---------- Ler com o Claude.ai (assinatura da pessoa, sem custo de API) ----------

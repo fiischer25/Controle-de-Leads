@@ -4,6 +4,7 @@
 // Funciona melhor com o modelo de contrato do escritório; o resultado sempre deve ser conferido.
 
 import type { ContractExtraction } from './contract';
+import { digitsOnly, isValidDocument } from './utils';
 
 const MONTHS: Record<string, number> = {
   janeiro: 1, fevereiro: 2, 'março': 3, marco: 3, abril: 4, maio: 5, junho: 6,
@@ -65,6 +66,27 @@ function titleCase(s: string): string {
 
 const clean = (s: string) => s.replace(/\s+/g, ' ').replace(/^[\s,;:–-]+|[\s,;:–-]+$/g, '').trim();
 
+/**
+ * Corrige o texto extraído do PDF: hífens soltos em números e palavras ("123.456.789 - 09",
+ * "e - mail", "Aplicam - se") e espaços repetidos.
+ */
+export function normalizeContractText(t: string): string {
+  return t
+    .replace(/\u00a0/g, ' ')
+    .replace(/(\d)\s+-\s+(\d)/g, '$1-$2')
+    .replace(/\b(\d{1,2}) (\d{1,2}\.\d{3}\.\d{3}-\d{2})\b/g, (m, a: string, b: string) => (a.length + b.indexOf('.') === 3 ? a + b : m))
+    .replace(/\b([eE])\s+-\s+(mail)/g, '$1-$2')
+    .replace(/([a-zà-ú])\s+-\s+([a-zà-ú])/g, '$1-$2')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ +\n/g, '\n');
+}
+
+/** Corta no fim da frase, sem confundir abreviações ("Av. Brasil", "R. XV", "nº 10"). */
+function untilSentenceEnd(s: string, max = 300): string {
+  const end = s.search(/;|\.\s+(?=\d+(?:\.\d+)*\.?\s|[A-ZÀ-Ú]{2,}\b|[A-ZÀ-Ú][a-zà-ú]+\s+[a-zà-ú])|\.\s*\n|\n\s*\n|doravante/);
+  return (end >= 0 ? s.slice(0, end) : s).slice(0, max);
+}
+
 /** Trecho com a qualificação do contratante (nome, documentos, endereço). */
 function contractorBlock(text: string): string {
   const doc = /\d{3}\.?\d{3}\.?\d{3}-?\d{2}|\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/;
@@ -78,8 +100,9 @@ function contractorBlock(text: string): string {
   // "Fulano, brasileiro, ..., doravante denominado CONTRATANTE"
   for (const m of text.matchAll(/(?:doravante|simplesmente|neste ato)?\s*(?:denominad[oa]s?|chamad[oa]s?)\s+(?:simplesmente\s+)?(?:de\s+)?CONTRATANTES?/gi)) {
     const before = text.slice(Math.max(0, m.index! - 1200), m.index!);
-    const start = Math.max(before.lastIndexOf(';'), before.search(/de um lado,?\s*/i) >= 0 ? before.search(/de um lado,?\s*/i) + 11 : -1, before.lastIndexOf('\n\n'));
-    const block = before.slice(start + 1);
+    const start = Math.max(before.lastIndexOf(';'), before.lastIndexOf('\n\n'));
+    // Tira o preâmbulo: "Pelo presente instrumento particular,", "De um lado,"
+    const block = before.slice(start + 1).replace(/^[\s\S]*?(?:instrumento particular|pelo presente|de um lado|entre as partes|as partes)[^,]*,\s*/i, '');
     if (doc.test(block)) return block;
   }
   return '';
@@ -87,8 +110,8 @@ function contractorBlock(text: string): string {
 
 function parseAddress(q: string) {
   const out = { street: '', number: '', complement: '', neighborhood: '', city: '', state: '' };
-  const addr = q.match(/(?:residentes?|domiciliad[oa]s?|com sede|estabelecid[oa])(?:\s+e\s+domiciliad[oa]s?)?\s+(?:na|no|à|ao|em)\s+(.+?)(?:;|\.\s|$)/is);
-  const a = addr ? addr[1] : '';
+  const addr = q.match(/(?:residentes?|domiciliad[oa]s?|com sede|estabelecid[oa])(?:\s+e\s+domiciliad[oa]s?)?\s+(?:na|no|à|ao|em)\s+([\s\S]+)/i);
+  const a = addr ? untilSentenceEnd(addr[1].replace(/\s+/g, ' ')) : '';
   if (a) {
     const num = a.match(/^(.+?),?\s+(?:n[º°o.]*|número|nr\.?)\s*([\d]+[A-Za-z]?|s\/n)/i) ?? a.match(/^(.+?),\s*(\d+[A-Za-z]?)\b/);
     if (num) {
@@ -122,7 +145,29 @@ function parseAddress(q: string) {
   return out;
 }
 
-function parseClient(text: string): ContractExtraction['client'] {
+/**
+ * CPF/CNPJ: o da qualificação; se tiver dígito inválido e o mesmo nome aparecer com outro
+ * documento válido (ex.: na assinatura), usa esse e avisa.
+ */
+function pickDocument(text: string, block: string, name: string, warnings: string[]): string {
+  const re = /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b|\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/;
+  const first = block.match(re)?.[0] ?? '';
+  if (!first || isValidDocument(first)) return first;
+  if (name) {
+    const lower = text.toLowerCase();
+    for (let i = lower.indexOf(name.toLowerCase()); i >= 0; i = lower.indexOf(name.toLowerCase(), i + 1)) {
+      const near = text.slice(i, i + name.length + 120).match(re)?.[0];
+      if (near && isValidDocument(near) && digitsOnly(near) !== digitsOnly(first)) {
+        warnings.push(`O CPF/CNPJ da qualificação do contrato (${first}) tem dígito inválido; usei o da assinatura (${near}). Confira.`);
+        return near;
+      }
+    }
+  }
+  warnings.push(`O CPF/CNPJ do contrato (${first}) tem dígito inválido. Confira com o cliente.`);
+  return first;
+}
+
+function parseClient(text: string, warnings: string[]): ContractExtraction['client'] {
   const q = contractorBlock(text);
   const client: ContractExtraction['client'] = {
     name: '', document: '', rg: '', birth_date: '', email: '', phone: '', profession: '',
@@ -131,9 +176,7 @@ function parseClient(text: string): ContractExtraction['client'] {
   if (!q) return client;
   const first = q.split(/,|\s+inscrit|\s+portador/)[0];
   client.name = titleCase(clean(first.replace(/^(?:o|a|sr\.?|sra\.?|nome:?)\s+/i, '')));
-  const cnpj = q.match(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/);
-  const cpf = q.match(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/);
-  client.document = (cnpj ?? cpf)?.[0] ?? '';
+  client.document = pickDocument(text, q, client.name, warnings);
   const rg = q.match(/\b(?:RG|R\.G\.|identidade|C[ée]dula de Identidade)\b[^\d]{0,25}([\d.\-xX]{5,15})/i);
   if (rg) client.rg = rg[1].replace(/[.-]$/, '');
   const email = q.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/) ?? text.match(/e-?mail\s*:?\s*([\w.+-]+@[\w-]+(?:\.[\w-]+)+)/i);
@@ -167,7 +210,25 @@ function labelFor(s: string, i: number): string {
 
 const EXCLUDE = /multa|juros|mora\b|rescis|reajust|corre[çc][ãa]o|IPCA|IGP|INCC|desconto|atraso|penalidade|cl[áa]usula penal|taxa|RRT|ART\b/i;
 
+/**
+ * Tabela de vencimentos, uma parcela por linha:
+ * "ENTRADA - R$ 9.747,50, no dia 25/11/2026." / "1ª PARCELA - R$ 5.848,50, no dia 15/12/2026."
+ */
+function parseSchedule(text: string, signed: string) {
+  const rows: ContractExtraction['contract']['installments'] = [];
+  const line = /^[ \t]*((?:entrada|sinal|saldo|assinatura|\d{1,2}\s*[ªaº°]?\s*parcela|parcela\s*(?:n[º°]\s*)?\d{1,2}(?:\s*(?:de|\/)\s*\d{1,2})?)[^\n]{0,25}?)\s*[-–:]\s*R\$\s*([\d.]+,\d{2})([^\n]*)/gim;
+  for (const m of text.matchAll(line)) {
+    const raw = clean(m[1]);
+    const label = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+    const due = brDate(m[3]) || (/entrada|sinal|assinatura/i.test(raw) && !/\d{1,2}\/\d/.test(m[3]) ? signed : '');
+    rows.push({ label, amount: brMoney(m[2]), percent: 0, due_date: due });
+  }
+  return rows;
+}
+
 function parsePayments(text: string, signed: string) {
+  const schedule = parseSchedule(text, signed);
+  if (schedule.length) return schedule;
   const rows: ContractExtraction['contract']['installments'] = [];
   const sentences = text
     .replace(/\r/g, '')
@@ -244,7 +305,7 @@ function parsePayments(text: string, signed: string) {
 
 function parseTotal(text: string): number {
   const flat = text.replace(/\s+/g, ' ');
-  const labelled = flat.match(/(?:valor total|valor global|valor dos honor[áa]rios|honor[áa]rios (?:totais|no valor|totalizam)|totaliza(?:m|ndo)?|pre[çc]o (?:total|global)|import[âa]ncia (?:total|de))[^R]{0,80}R\$\s*([\d.]+,\d{2})/i);
+  const labelled = flat.match(/(?:valor total|valor global|valor dos honor[áa]rios|honor[áa]rios (?:totais|no valor|totalizam)|totaliza(?:m|ndo)?|pagar[áa] (?:a[oà]s?|à) CONTRATAD[AO]S?|pre[çc]o (?:total|global)|import[âa]ncia (?:total|de))[^R]{0,80}R\$\s*([\d.]+,\d{2})/i);
   if (labelled) return brMoney(labelled[1]);
   const all = [...flat.matchAll(MONEY_G)].filter((m) => !EXCLUDE.test(flat.slice(Math.max(0, m.index! - 80), m.index!))).map((m) => brMoney(m[1]));
   return all.length ? Math.max(...all) : 0;
@@ -252,20 +313,28 @@ function parseTotal(text: string): number {
 
 /** Lê o texto de um contrato e devolve os dados no mesmo formato da leitura com IA. */
 export function parseContractText(text: string): ContractExtraction {
-  const flat = text.replace(/\u00a0/g, ' ');
-  const client = parseClient(flat);
-  const signedMatch = [...flat.matchAll(/[A-ZÀ-Ú][A-Za-zÀ-ú ]+?\s*(?:[/–-]\s*[A-Z]{2})?,\s*(\d{1,2}º?\s+de\s+[a-zç]+\s+de\s+\d{4})/g)].pop();
-  const signed = signedMatch ? brDate(signedMatch[1]) : '';
+  const flat = normalizeContractText(text);
+  const docWarnings: string[] = [];
+  const client = parseClient(flat, docWarnings);
+  const signedMatch = [...flat.matchAll(/\b(\d{1,2})º?\s+de\s+([A-Za-zçÇ]+)\s+de\s+(\d{4})\b/gi)].filter((m) => MONTHS[m[2].toLowerCase()]).pop();
+  const signed = signedMatch ? brDate(`${signedMatch[1]} de ${signedMatch[2].toLowerCase()} de ${signedMatch[3]}`) : '';
   const total = parseTotal(flat);
   const installments = parsePayments(flat, signed);
   const area = flat.match(/(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:,\d{1,2})?)\s*(?:m²|m2|metros quadrados)/i);
-  const site = flat.replace(/\s+/g, ' ').match(/(?:im[óo]vel|obra|unidade|resid[êe]ncia|apartamento|casa|terreno)\s+(?:situad[oa]|localizad[oa]|sito)\s+(?:na|no|à|ao|em)\s+([^;]+?)(?:,\s*(?:com|de propriedade|objeto|matr[íi]cula|cuja|que)|;|\.\s|$)/i);
-  const objeto = flat.replace(/\s+/g, ' ').match(/(?:tem (?:como|por) objeto|objeto d[oe]st[ea] (?:contrato|instrumento) (?:é|consiste em|:))\s*:?\s*([^.]{10,300})\./i);
+  const site = flat.match(/(?:im[óo]vel|obra|unidade|resid[êe]ncia|apartamento|casa|terreno)\s+(?:situad[oa]|localizad[oa]|sito)\s+(?:na|no|à|ao|em)\s+([\s\S]{5,400})/i);
+  const objeto = flat.match(/(?:tem (?:como|por) objeto|objeto d[oe]st[ea] (?:contrato|instrumento) (?:é|consiste em|:)|(?<![A-Za-zÀ-ú])O objeto (?:é|consiste em))\s*:?\s*([\s\S]{10,600})/i);
 
-  const siteAddr = site ? clean(site[1]) : '';
+  const siteAddr = site
+    ? clean(
+        untilSentenceEnd(site[1].replace(/\s+/g, ' '), 200)
+          .replace(/,?\s*CEP:?\s*[\d.-]{8,10}.*$/i, '')
+          .replace(/,\s*(?:com|de propriedade|objeto|matr[íi]cula|cuja|que)\b.*$/i, ''),
+      )
+    : '';
   const siteCity = siteAddr.match(/([A-ZÀ-Ú][A-Za-zÀ-ú' ]{1,40}?)\s*[/–-]\s*([A-Z]{2})\b/);
   const warnings = ['Leitura automática gratuita (sem IA): confira todos os campos antes de salvar.'];
   if (!client.document) warnings.push('Não encontrei o CPF/CNPJ do contratante. Preencha à mão.');
+  warnings.push(...docWarnings);
   if (total && installments.length) {
     const sumAmounts = installments.reduce((a, r) => a + r.amount, 0);
     const sumPct = installments.reduce((a, r) => a + r.percent, 0);
@@ -280,7 +349,7 @@ export function parseContractText(text: string): ContractExtraction {
       site_address: siteAddr,
       site_city: siteCity ? clean(siteCity[1]) : '',
       area_m2: area ? brMoney(area[1]) : 0,
-      scope: objeto ? clean(objeto[1]).replace(/^(?:a|o|os|as)\s+/i, '').replace(/^./, (c) => c.toUpperCase()) : '',
+      scope: objeto ? clean(untilSentenceEnd(objeto[1].replace(/\s+/g, ' '))).replace(/^(?:a|o|os|as)\s+/i, '').replace(/^./, (c) => c.toUpperCase()) : '',
     },
     notes: '',
     warnings,
