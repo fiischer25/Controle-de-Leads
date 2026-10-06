@@ -250,10 +250,16 @@ criadas no sistema ou pelo assistente passam a aparecer no Google Agenda do escr
 ### Leitura de contratos
 Ao marcar uma oportunidade como ganha (e no **Virar cliente** e em **Editar cliente**), dá para enviar o
 contrato assinado em PDF, foto ou Word (.docx): o sistema lê e preenche os dados do cliente, o valor, as
-parcelas (com vencimentos) e a área/endereço da obra. Nada é salvo antes de a pessoa conferir. Para ativar:
+parcelas (com vencimentos) e a área/endereço da obra. Nada é salvo antes de a pessoa conferir.
+
+**Para ativar sem instalar nada**, siga **Configurações → Leitura de contratos** no próprio sistema: guarde
+`ANTHROPIC_API_KEY` em *Edge Functions → Secrets* do Supabase, publique a função pelo editor do painel
+(*Deploy a new function → Via Editor*, nome `contract-extract`, código copiado pelo botão do sistema) e
+clique em **Testar**. A função é um arquivo único (`supabase/functions/contract-extract/index.ts`).
+Pelo terminal, o equivalente é:
 
 ```bash
-npx supabase secrets set ANTHROPIC_API_KEY=...   # a mesma chave do assistente, se já tiver
+npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 npx supabase functions deploy contract-extract
 ```
 
@@ -261,7 +267,7 @@ npx supabase functions deploy contract-extract
   API tenta automaticamente um modelo alternativo (*server-side fallback*).
 - Custo por contrato lido, cobrado pela Anthropic conforme o tamanho do arquivo (acompanhe o consumo em
   console.anthropic.com).
-- Testes da função: `cd supabase/functions && deno test _shared/contract.test.ts`.
+- Testes da função: `cd supabase/functions && deno test --allow-env contract-extract/index.test.ts`.
 
 ### Google Agenda
 Em **Configurações → Google Agenda**, cole o *código de incorporação* da agenda do escritório

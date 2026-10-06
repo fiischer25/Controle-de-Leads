@@ -1,7 +1,8 @@
-// Testes da leitura de contrato: `deno test supabase/functions/_shared/contract.test.ts`
+// Testes da leitura de contrato: `deno test --allow-env supabase/functions/contract-extract/index.test.ts`
 // Usam um cliente do Claude simulado (não chamam APIs externas).
 import { assert, assertEquals, assertRejects } from 'jsr:@std/assert@1';
-import { CONTRACT_SCHEMA, ContractError, contractContent, extractContract, normalizeExtraction } from './contract.ts';
+Deno.env.set('AIROS_NO_SERVE', '1');
+const { CONTRACT_SCHEMA, ContractError, contractContent, extractContract, handle, normalizeExtraction, todayIn } = await import('./index.ts');
 
 type Params = Record<string, unknown>;
 
@@ -106,4 +107,23 @@ Deno.test('recusa e resposta inválida viram erro amigável', async () => {
   await assertRejects(() => extractContract(fakeClaude({ stop_reason: 'refusal' }).client, { media_type: 'image/png', data: 'QUJD' }, '2026-10-05'), ContractError);
   await assertRejects(() => extractContract(fakeClaude({ text: 'não sei' }).client, { media_type: 'image/png', data: 'QUJD' }, '2026-10-05'), ContractError);
   await assertRejects(() => extractContract(fakeClaude({ stop_reason: 'max_tokens', text: '{' }).client, { media_type: 'image/png', data: 'QUJD' }, '2026-10-05'), ContractError);
+});
+
+Deno.test('data de hoje no fuso do escritório', () => {
+  assertEquals(todayIn('America/Sao_Paulo', new Date('2026-10-06T02:30:00Z')), '2026-10-05');
+});
+
+Deno.test('endpoint: CORS e aviso claro quando falta a chave', async () => {
+  const pre = await handle(new Request('http://x/contract-extract', { method: 'OPTIONS' }));
+  assertEquals(pre.status, 200);
+  assertEquals(pre.headers.get('Access-Control-Allow-Origin'), '*');
+  const key = Deno.env.get('ANTHROPIC_API_KEY');
+  Deno.env.delete('ANTHROPIC_API_KEY');
+  try {
+    const res = await handle(new Request('http://x/contract-extract', { method: 'POST', body: '{"ping":true}' }));
+    assertEquals(res.status, 503);
+    assert(/ANTHROPIC_API_KEY/.test((await res.json()).error));
+  } finally {
+    if (key) Deno.env.set('ANTHROPIC_API_KEY', key);
+  }
 });
