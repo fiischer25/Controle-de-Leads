@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, Download, FileText, Plus, Scale, Upload, Wallet } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { addMonthsKey, entryDate, monthKey, monthsBack, monthTotals, sum } from '../lib/finance';
+import { addMonthsKey, entryDate, monthKey, sum } from '../lib/finance';
 import type { FinanceEntry, FinanceKind } from '../lib/types';
-import { addDays, cn, downloadFile, formatCurrency, formatDate, formatMoney, matches, MONTHS_FULL, toCsv, today } from '../lib/utils';
+import { cn, downloadFile, formatCurrency, formatDate, formatMoney, matches, MONTHS_FULL, toCsv, today } from '../lib/utils';
 import { ActionLink, BarRow, Button, FilterPick, IconButton, PageHeader, SearchField, SectionHeader, Tabs, Toolbar } from '../components/ui';
 import { EntryFormModal } from '../components/finance/EntryFormModal';
 import { EntryList } from '../components/finance/EntryList';
@@ -14,6 +14,7 @@ import { FinanceAccounts } from '../components/finance/FinanceAccounts';
 import { FinanceProfitability } from '../components/finance/FinanceProfitability';
 import { FinanceCategories } from '../components/finance/FinanceCategories';
 import { ImportStatementModal } from '../components/finance/ImportStatementModal';
+import { useFinanceOverview } from '../components/finance/useFinanceOverview';
 
 type Tab = 'geral' | 'lancamentos' | 'contas' | 'rentabilidade' | 'categorias';
 type Editing = { entry?: FinanceEntry; kind?: FinanceKind } | null;
@@ -117,61 +118,9 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
   const t = today();
   const month = monthKey(t);
 
-  const data = useMemo(() => {
-    const totals = monthTotals(fin.entries, month);
-    const endOfMonth = addDays(addMonthsKey(`${month}-01`, 1), -1);
-    const open = fin.entries.filter((e) => !e.paid_at && e.kind !== 'transferencia');
-    // Saldo previsto no fim do mês: saldo atual + a receber − a pagar até o fim do mês (inclui vencidos)
-    const dueByEnd = open.filter((e) => e.due_date <= endOfMonth);
-    const projected =
-      fin.totalBalance + sum(dueByEnd.filter((e) => e.kind === 'receita').map((e) => e.amount)) - sum(dueByEnd.filter((e) => e.kind === 'despesa').map((e) => e.amount));
-    const upcoming = open.filter((e) => e.due_date <= addDays(t, 30)).sort((a, b) => a.due_date.localeCompare(b.due_date));
-    // A receber por mês (este e os próximos 11): cada parcela no mês do vencimento
-    const ahead = monthsBack(monthKey(addMonthsKey(`${month}-01`, 11)), 12)
-      .map((key) => {
-        const items = open
-          .filter((e) => e.kind === 'receita' && monthKey(e.due_date) === key && e.due_date >= `${month}-01`)
-          .sort((a, b) => a.due_date.localeCompare(b.due_date));
-        return { key, items, total: sum(items.map((e) => e.amount)) };
-      })
-      .filter((m) => m.items.length > 0);
-    // Fluxo de caixa: 5 meses realizados, o mês atual (realizado + em aberto) e 6 previstos
-    const flow = monthsBack(monthKey(addMonthsKey(`${month}-01`, 6)), 12).map((key) => {
-      const [, mm] = key.split('-').map(Number);
-      const m = monthTotals(fin.entries, key);
-      const forecast = key > month;
-      const current = key === month;
-      const pendingIn = sum(open.filter((e) => e.kind === 'receita' && monthKey(e.due_date) === key).map((e) => e.amount));
-      const pendingOut = sum(open.filter((e) => e.kind === 'despesa' && monthKey(e.due_date) === key).map((e) => e.amount));
-      return {
-        key,
-        label: MONTHS_FULL[mm - 1].slice(0, 3),
-        in: forecast ? pendingIn : current ? m.inPaid + pendingIn : m.inPaid,
-        out: forecast ? pendingOut : current ? m.outPaid + pendingOut : m.outPaid,
-        forecast,
-        current,
-      };
-    });
-    const byCategory: Record<string, number> = {};
-    for (const e of fin.entries) {
-      if (e.kind !== 'despesa' || monthKey(e.due_date) !== month) continue;
-      const k = e.category_id ?? 'none';
-      byCategory[k] = (byCategory[k] ?? 0) + e.amount;
-    }
-    return {
-      totals,
-      projected: Math.round(projected * 100) / 100,
-      upcoming,
-      ahead,
-      flow,
-      categories: Object.entries(byCategory).sort((a, b) => b[1] - a[1]),
-      overdueIn: sum(open.filter((e) => e.kind === 'receita' && e.due_date < t).map((e) => e.amount)),
-      overdueOut: sum(open.filter((e) => e.kind === 'despesa' && e.due_date < t).map((e) => e.amount)),
-      receivable: sum(open.filter((e) => e.kind === 'receita').map((e) => e.amount)),
-    };
-  }, [fin.entries, fin.totalBalance, month, t]);
+  const data = useFinanceOverview();
 
-  const result = Math.round((data.totals.inPaid - data.totals.outPaid) * 100) / 100;
+  const result = data.result;
   const maxCat = data.categories[0]?.[1] ?? 1;
 
   return (

@@ -6,14 +6,15 @@ import { openCreate } from '../lib/create';
 import { isProjectActive, totalMinutes } from '../lib/domain';
 import { TASK_PRIORITY } from '../lib/constants';
 import type { Task } from '../lib/types';
-import { addDays, cn, formatDateShort, formatMinutes, startOfWeek, today, toDateKey } from '../lib/utils';
-import { ActionLink, Button, EmptyState, MetricRow, PageHeader, SectionHeader, Tabs } from '../components/ui';
+import { addDays, cn, formatCurrency, formatDateShort, formatMinutes, startOfWeek, today, toDateKey } from '../lib/utils';
+import { ActionLink, Button, EmptyState, FitText, MetricRow, PageHeader, SectionHeader, Tabs } from '../components/ui';
 import { MobileTimerBar } from '../components/layout/MobileTimerBar';
 import { AgendaView } from '../components/agenda/AgendaView';
 import { TaskRow } from '../components/tasks/TaskRow';
 import { useOpenTask } from '../components/tasks/useOpenTask';
 import { useHomeData } from '../components/dashboard/useHomeData';
 import { ProjectsSection, TodayColumn } from '../components/dashboard/HomeSections';
+import { FinanceSnapshot } from '../components/dashboard/FinanceSnapshot';
 
 type Tab = 'geral' | 'agenda';
 
@@ -74,7 +75,16 @@ export default function HomePage() {
           .sort((a, b) => (a.next_contact_date ?? '').localeCompare(b.next_contact_date ?? ''))
       : [];
     const ws = startOfWeek(t);
+    // Meu comercial: oportunidades abertas e ganhas no mês em que sou responsável
+    const myLeads = can('comercial') ? db.leads.filter((l) => l.owner_id === me.id) : [];
+    const myOpen = myLeads.filter((l) => maps.stages[l.stage_id]?.kind === 'open');
+    const myWon = myLeads.filter((l) => maps.stages[l.stage_id]?.kind === 'won' && (l.stage_changed_at ?? l.updated_at).slice(0, 7) === t.slice(0, 7));
     return {
+      myOpen: myOpen.length,
+      myPipeline: myOpen.reduce((a, l) => a + (l.proposal_value ?? 0), 0),
+      myWon: myWon.length,
+      myWonValue: myWon.reduce((a, l) => a + (l.payment_plan?.total ?? l.proposal_value ?? 0), 0),
+      later: open.filter((x) => !x.due_date || x.due_date > week),
       open,
       overdue: open.filter((x) => x.due_date && x.due_date < t),
       today: open.filter((x) => x.due_date === t),
@@ -176,7 +186,7 @@ export default function HomePage() {
               ]}
             />
 
-            <div className="grid gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
+            <div className="grid items-start gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
               <div className="flex min-w-0 flex-col gap-12">
                 <section aria-labelledby="minhas-tarefas" className="panel">
                   <SectionHeader
@@ -188,15 +198,27 @@ export default function HomePage() {
                       </ActionLink>
                     }
                   />
-                  {upcomingCount === 0 ? (
-                    <div>
-                      <EmptyState
-                        tone="success"
-                        icon={<CheckCircle2 strokeWidth={1.6} />}
-                        title="Nada atrasado nem vencendo nos próximos 7 dias"
-                        description={mine.open.length ? `${mine.open.length} ${mine.open.length === 1 ? 'tarefa aberta' : 'tarefas abertas'} com prazo mais adiante ou sem prazo.` : 'Quando alguém designar uma tarefa para você, ela aparece aqui.'}
-                        className="py-10"
-                      />
+                  {upcomingCount === 0 && mine.open.length === 0 ? (
+                    <EmptyState
+                      tone="success"
+                      icon={<CheckCircle2 strokeWidth={1.6} />}
+                      title="Nenhuma tarefa aberta"
+                      description="Quando alguém designar uma tarefa para você, ela aparece aqui."
+                      className="py-10"
+                    />
+                  ) : upcomingCount === 0 ? (
+                    <div className="-mx-4 -mb-2 overflow-hidden pb-1.5 md:-mx-6 md:-mb-3">
+                      <p className="flex items-center gap-2 border-t border-hairline px-4 py-3 text-[13px] text-success-fg md:px-6">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" strokeWidth={1.8} /> Nada atrasado nem vencendo nos próximos 7 dias.
+                      </p>
+                      <div className="px-4 pb-2 pt-1 text-[12.5px] font-medium text-stone-700 md:px-6">
+                        Mais adiante e sem prazo <span className="ml-1 font-normal text-faint">{mine.later.length}</span>
+                      </div>
+                      <div className="divide-y divide-hairline-surface border-t border-hairline-surface md:[&>div]:px-6">
+                        {mine.later.slice(0, GROUP_LIMIT).map((x) => (
+                          <TaskRow key={x.id} task={x} onOpen={() => openTask(x.id)} showProject />
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="-mx-4 -mb-2 overflow-hidden pb-1.5 md:-mx-6 md:-mb-3">
@@ -225,32 +247,56 @@ export default function HomePage() {
                   )}
                 </section>
 
-                {mine.followups.length > 0 && (
-                  <section aria-labelledby="retornos" className="panel">
-                    <SectionHeader id="retornos" title="Retornos de leads" aside={<ActionLink to="/oportunidades" muted>Oportunidades</ActionLink>} />
-                    <ul>
-                      {mine.followups.slice(0, 6).map((l) => {
-                        const late = l.next_contact_date! < today();
-                        return (
-                          <li key={l.id}>
-                            <Link
-                              to={`/oportunidades?lead=${l.id}`}
-                              className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-hairline py-3 transition-colors hover:bg-ink/[0.025]"
-                            >
-                              <span className="min-w-0">
-                                <span className="block truncate text-[13.5px] text-ink">{l.name}</span>
-                                <span className="block truncate text-[12.5px] text-faint">
-                                  {maps.stages[l.stage_id]?.name} · {l.city}
+                {can('comercial') && (
+                  <section aria-labelledby="meu-comercial" className="panel">
+                    <SectionHeader id="meu-comercial" title="Meu comercial" aside={<ActionLink to="/oportunidades" muted>Oportunidades</ActionLink>} />
+                    <dl className="grid grid-cols-3 gap-3 border-t border-hairline py-4">
+                      <div className="min-w-0">
+                        <dt className="text-[12.5px] text-muted">Em negociação</dt>
+                        <dd className="mt-1 font-display text-[20px] font-semibold tabular text-ink">{mine.myOpen}</dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-[12.5px] text-muted">Em propostas</dt>
+                        <dd className="mt-1">
+                          <FitText className="font-display text-[20px] font-semibold tabular text-ink">{formatCurrency(mine.myPipeline)}</FitText>
+                        </dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-[12.5px] text-muted">Ganhos no mês</dt>
+                        <dd className="mt-1">
+                          <FitText className="font-display text-[20px] font-semibold tabular text-success-fg">
+                            {mine.myWon ? formatCurrency(mine.myWonValue) : '0'}
+                          </FitText>
+                        </dd>
+                      </div>
+                    </dl>
+                    {mine.followups.length === 0 ? (
+                      <p className="border-t border-hairline py-3 text-[13px] text-faint">Nenhum retorno pendente.</p>
+                    ) : (
+                      <ul>
+                        {mine.followups.slice(0, 6).map((l) => {
+                          const late = l.next_contact_date! < today();
+                          return (
+                            <li key={l.id}>
+                              <Link
+                                to={`/oportunidades?lead=${l.id}`}
+                                className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-hairline py-3 transition-colors hover:bg-ink/[0.025]"
+                              >
+                                <span className="min-w-0">
+                                  <span className="block truncate text-[13.5px] text-ink">Retorno · {l.name}</span>
+                                  <span className="block truncate text-[12.5px] text-faint">
+                                    {maps.stages[l.stage_id]?.name} · {l.city}
+                                  </span>
                                 </span>
-                              </span>
-                              <span className={cn('text-[12.5px]', late ? 'text-danger-fg' : 'text-warning-fg')}>
-                                {late ? `desde ${formatDateShort(l.next_contact_date!)}` : 'hoje'}
-                              </span>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                                <span className={cn('text-[12.5px]', late ? 'text-danger-fg' : 'text-warning-fg')}>
+                                  {late ? `desde ${formatDateShort(l.next_contact_date!)}` : 'hoje'}
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                   </section>
                 )}
               </div>
@@ -258,6 +304,8 @@ export default function HomePage() {
             </div>
 
             <ProjectsSection projects={mine.projects} soonDays={home.soonDays} title="Meus projetos" limit={8} empty="Você não está em nenhum projeto ativo." />
+
+            {can('financeiro') && <FinanceSnapshot variant="personal" />}
           </div>
         )}
       </div>

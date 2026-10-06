@@ -44,7 +44,7 @@ export function FinanceProfitability() {
     result: sum(rows.map((r) => r.f.result)),
   };
   const missing = [...new Set(rows.flatMap((r) => r.f.missingCost))].map((id) => maps.profiles[id]?.name.split(' ')[0]).filter(Boolean);
-  const cols = 'grid grid-cols-[minmax(0,1fr)_110px_110px] gap-x-4 md:grid-cols-[minmax(0,1.4fr)_120px_120px_110px_130px_120px_64px]';
+  const cols = 'grid grid-cols-[minmax(0,1fr)_110px_110px] gap-x-4 xl:grid-cols-[minmax(0,1.4fr)_120px_120px_110px_130px_120px_64px]';
 
   return (
     <div className="flex flex-col gap-12">
@@ -62,11 +62,11 @@ export function FinanceProfitability() {
         <div className={cn(cols, 'border-b border-hairline pb-2.5 text-right text-[12.5px] text-faint')}>
           <span className="text-left">Projeto</span>
           <span>Honorários</span>
-          <span className="hidden md:block">Recebido</span>
-          <span className="hidden md:block">Despesas</span>
-          <span className="hidden md:block">Custo das horas</span>
+          <span className="hidden xl:block">Recebido</span>
+          <span className="hidden xl:block">Despesas</span>
+          <span className="hidden xl:block">Custo das horas</span>
           <span>Resultado</span>
-          <span className="hidden md:block">Margem</span>
+          <span className="hidden xl:block">Margem</span>
         </div>
         {rows.length === 0 && <p className="py-6 text-[13px] text-faint">Lance honorários ou despesas ligados a projetos para ver a rentabilidade.</p>}
         <ul className="tabular">
@@ -74,10 +74,8 @@ export function FinanceProfitability() {
             const name = (
               <>
                 <span className="block truncate text-[13.5px] text-ink">{p.name}</span>
-                <span className="block truncate text-[12.5px] text-faint">
-                  {PROJECT_STATUS[p.status]?.label ?? p.status}
-                  {f.overdue > 0 && <span className="text-danger-fg"> · {formatMoney(f.overdue)} vencido</span>}
-                </span>
+                <span className="block truncate text-[12.5px] text-faint">{PROJECT_STATUS[p.status]?.label ?? p.status}</span>
+                {f.overdue > 0 && <span className="block text-[12.5px] text-danger-fg">{formatMoney(f.overdue)} vencido</span>}
               </>
             );
             return (
@@ -90,13 +88,13 @@ export function FinanceProfitability() {
                   <span className="min-w-0 text-left">{name}</span>
                 )}
                 <span className="text-stone-700">{formatMoney(f.contracted)}</span>
-                <span className="hidden text-stone-700 md:block">{formatMoney(f.received)}</span>
-                <span className="hidden text-stone-700 md:block">{formatMoney(f.expenses)}</span>
-                <span className="hidden text-stone-700 md:block" title={formatMinutes(f.minutes)}>
+                <span className="hidden text-stone-700 xl:block">{formatMoney(f.received)}</span>
+                <span className="hidden text-stone-700 xl:block">{formatMoney(f.expenses)}</span>
+                <span className="hidden text-stone-700 xl:block" title={formatMinutes(f.minutes)}>
                   {formatMoney(f.hoursCost)}
                 </span>
                 <span className={cn('font-medium', f.result < 0 ? 'text-danger-fg' : 'text-ink')}>{formatMoney(f.result)}</span>
-                <span className={cn('hidden md:block', f.margin !== null && f.margin < 0 ? 'text-danger-fg' : 'text-muted')}>{pct(f.margin)}</span>
+                <span className={cn('hidden xl:block', f.margin !== null && f.margin < 0 ? 'text-danger-fg' : 'text-muted')}>{pct(f.margin)}</span>
               </li>
             );
           })}
@@ -105,11 +103,11 @@ export function FinanceProfitability() {
           <div className={cn(cols, 'pt-3 text-right text-[13px] font-medium tabular text-ink')}>
             <span className="text-left">Total</span>
             <span>{formatMoney(total.contracted)}</span>
-            <span className="hidden md:block">{formatMoney(total.received)}</span>
-            <span className="hidden md:block">{formatMoney(total.expenses)}</span>
-            <span className="hidden md:block">{formatMoney(total.hoursCost)}</span>
+            <span className="hidden xl:block">{formatMoney(total.received)}</span>
+            <span className="hidden xl:block">{formatMoney(total.expenses)}</span>
+            <span className="hidden xl:block">{formatMoney(total.hoursCost)}</span>
             <span className={total.result < 0 ? 'text-danger-fg' : undefined}>{formatMoney(total.result)}</span>
-            <span className="hidden text-muted md:block">{pct(total.contracted > 0 ? total.result / total.contracted : null)}</span>
+            <span className="hidden text-muted xl:block">{pct(total.contracted > 0 ? total.result / total.contracted : null)}</span>
           </div>
         )}
       </section>

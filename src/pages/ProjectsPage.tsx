@@ -225,9 +225,12 @@ export default function ProjectsPage() {
                           <>
                             <StageRail phases={phases} current={current} />
                             <div className="mt-2 flex min-w-0 items-baseline gap-2 text-[12.5px]">
-                              <span className="truncate text-muted">
-                                {current >= 0 && current < phases.length ? `${phases[current]} · ${current + 1}/${phases.length}` : s.phase}
-                              </span>
+                              <span className="truncate text-muted">{current >= 0 && current < phases.length ? phases[current] : s.phase}</span>
+                              {current >= 0 && current < phases.length && (
+                                <span className="shrink-0 tabular text-muted">
+                                  · {current + 1}/{phases.length}
+                                </span>
+                              )}
                               {p.status === 'pausado' && <span className="shrink-0 text-faint">· pausado</span>}
                               {s.overdueTasks > 0 && (
                                 <span className="shrink-0 text-danger-fg">

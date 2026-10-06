@@ -276,7 +276,7 @@ export default function LeadsPage() {
       <div className="mt-6 md:mt-8">
         {!desktop ? null : view === 'kanban' ? (
           /* Desktop: quadro arrastável */
-          <div className="scrollbar-thin -mx-8 overflow-x-auto px-8 pb-6 xl:-mx-16 xl:px-16">
+          <div className="scrollbar-thin -mx-5 overflow-x-auto px-5 pb-6 md:-mx-8 md:px-8 xl:-mx-12 xl:px-12">
             <div className="flex gap-4">
               {stages.map((stage) => {
                 const items = byStage[stage.id] ?? [];
@@ -543,10 +543,10 @@ function LeadCard({
         <h3 className="min-w-0 text-[14px] font-medium leading-5 text-ink">{lead.name}</h3>
         {owner && <Avatar user={owner} size="xs" className="mt-px" />}
       </div>
-      {details && <p className="mt-0.5 truncate text-[12.5px] leading-[18px] text-faint">{details}</p>}
+      {details && <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[18px] text-faint">{details}</p>}
 
       <div className="mt-3 flex items-baseline justify-between gap-2 text-[12.5px]">
-        <span className={cn('tabular', lead.proposal_value ? 'font-medium text-ink' : 'text-faint')}>
+        <span className={cn('shrink-0 tabular', lead.proposal_value ? 'font-medium text-ink' : 'text-faint')}>
           {lead.proposal_value ? formatCurrency(lead.proposal_value) : 'Sem proposta'}
         </span>
         {open && <span className="truncate text-right">{status}</span>}

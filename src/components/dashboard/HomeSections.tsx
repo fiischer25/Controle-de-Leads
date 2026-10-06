@@ -152,7 +152,8 @@ export function ProjectsSection({
       ) : (
         <ul>
           {shown.map(({ summary: s, phases, current }) => {
-            const phaseLabel = current >= 0 && current < phases.length ? `${phases[current]} · ${current + 1}/${phases.length}` : s.phase;
+            const inPhase = current >= 0 && current < phases.length;
+            const phaseLabel = inPhase ? phases[current] : s.phase;
             const inner = (
               <>
                 <div className="min-w-0">
@@ -163,6 +164,7 @@ export function ProjectsSection({
                   <StageRail phases={phases} current={current} />
                   <div className="mt-2 flex min-w-0 gap-2 text-[12.5px]">
                     <span className="truncate text-muted">{phaseLabel}</span>
+                    {inPhase && <span className="shrink-0 tabular text-muted">· {current + 1}/{phases.length}</span>}
                     {s.overdueTasks > 0 && (
                       <span className="shrink-0 text-danger-fg">
                         · {s.overdueTasks} {s.overdueTasks === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}

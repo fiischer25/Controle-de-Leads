@@ -306,7 +306,7 @@ function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string) => v
   const [dragging, setDragging] = useState<string | null>(null);
   const t = today();
   return (
-    <div className="scrollbar-thin -mx-8 overflow-x-auto px-8 pb-6 xl:-mx-16 xl:px-16">
+    <div className="scrollbar-thin -mx-5 overflow-x-auto px-5 pb-6 md:-mx-8 md:px-8 xl:-mx-12 xl:px-12">
       <div className="flex gap-6">
         {TASK_STATUS_ORDER.map((status) => {
           const style = TASK_STATUS_STYLE[status];
