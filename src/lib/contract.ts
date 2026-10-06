@@ -144,22 +144,153 @@ export async function contractPayload(file: File): Promise<ContractPayload> {
   throw new Error('Formato não suportado. Envie o contrato em PDF, foto (JPG/PNG) ou Word (.docx).');
 }
 
-/** Lê o contrato: arquivo → dados extraídos. */
-export async function readContract(file: File): Promise<ContractExtraction> {
-  const payload = await contractPayload(file);
-  let data: { result?: ContractExtraction; error?: string } | null;
-  try {
-    data = (await backend.invokeFunction('contract-extract', { ...payload })) as typeof data;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (/não está publicada|failed to send|fetch/i.test(msg)) {
-      throw new Error('A leitura de contratos ainda não foi ativada. O administrador ativa em Configurações → Leitura de contratos.');
-    }
-    throw e;
+/** O arquivo não tem texto (foto, PDF escaneado) ou o texto não tem os dados: sugerir o Claude.ai. */
+export class ContractNeedsAiError extends Error {}
+
+/** Texto de um PDF (com texto, não escaneado), lido no navegador. */
+async function pdfText(buf: ArrayBuffer): Promise<string> {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= Math.min(doc.numPages, 40); i++) {
+    const content = await (await doc.getPage(i)).getTextContent();
+    pages.push(content.items.map((it) => ('str' in it ? it.str + (it.hasEOL ? '\n' : ' ') : '')).join(''));
   }
+  await doc.destroy();
+  return pages.join('\n\n');
+}
+
+/** Texto do contrato (PDF, Word ou .txt); null para fotos. */
+export async function contractText(file: File): Promise<string | null> {
+  if (file.size > MAX_BYTES) throw new Error('Arquivo grande demais (até 15 MB).');
+  const lower = file.name.toLowerCase();
+  if (file.type === 'application/pdf' || lower.endsWith('.pdf')) return pdfText(await file.arrayBuffer());
+  if (lower.endsWith('.docx')) return docxText(await file.arrayBuffer());
+  if (lower.endsWith('.doc')) throw new Error('Arquivos .doc antigos não são lidos. Salve como PDF ou .docx e envie de novo.');
+  if (file.type === 'text/plain' || lower.endsWith('.txt')) return file.text();
+  if (file.type.startsWith('image/') || /\.(jpe?g|png|webp|hei[cf])$/.test(lower)) return null;
+  throw new Error('Formato não suportado. Envie o contrato em PDF ou Word (.docx).');
+}
+
+let aiCheck: Promise<boolean> | null = null;
+/** A leitura com IA (função contract-extract, paga) está ativa? Conferido uma vez por sessão. */
+export function contractAiReady(): Promise<boolean> {
+  aiCheck ??= backend
+    .invokeFunction('contract-extract', { ping: true })
+    .then((d) => !!(d as { ok?: boolean } | null)?.ok)
+    .catch(() => false);
+  return aiCheck;
+}
+
+export type ContractMethod = 'ia' | 'gratuita' | 'claude';
+
+async function readWithAi(file: File): Promise<ContractExtraction> {
+  const payload = await contractPayload(file);
+  const data = (await backend.invokeFunction('contract-extract', { ...payload })) as { result?: ContractExtraction; error?: string } | null;
   if (data?.error) throw new Error(data.error);
   if (!data?.result) throw new Error('Não foi possível ler o contrato.');
   return data.result;
+}
+
+/**
+ * Lê o contrato. Com a leitura com IA ativada, usa a IA; senão, a leitura gratuita no navegador
+ * (PDF com texto ou Word). Foto ou escaneado sem IA: ContractNeedsAiError (usar o Claude.ai).
+ */
+export async function readContract(file: File): Promise<{ extraction: ContractExtraction; method: ContractMethod }> {
+  if (await contractAiReady()) return { extraction: await readWithAi(file), method: 'ia' };
+  const text = await contractText(file);
+  if (text === null) {
+    throw new ContractNeedsAiError('Fotos não são lidas pela leitura gratuita. Use “Ler com o Claude.ai” abaixo ou envie o contrato em PDF/Word.');
+  }
+  if (text.replace(/\s/g, '').length < 150) {
+    throw new ContractNeedsAiError('Este PDF parece escaneado (sem texto). Use “Ler com o Claude.ai” abaixo ou envie o PDF original/Word.');
+  }
+  const { parseContractText } = await import('./contractParse');
+  const extraction = parseContractText(text);
+  const found = Object.keys(contractClientFields(extraction)).length;
+  if (found < 2 && !extraction.contract.total) {
+    throw new ContractNeedsAiError('Não reconheci os dados neste contrato. Use “Ler com o Claude.ai” abaixo.');
+  }
+  return { extraction, method: 'gratuita' };
+}
+
+// ---------- Ler com o Claude.ai (assinatura da pessoa, sem custo de API) ----------
+
+export const CLAUDE_PROMPT = `Leia o contrato anexado (prestação de serviços de arquitetura) e responda SOMENTE com um JSON no formato abaixo, sem nenhum texto antes ou depois.
+
+Regras:
+- "client" é o CONTRATANTE (quem paga), nunca o escritório/arquiteto (CONTRATADA).
+- Campo que não estiver no contrato: "" para texto e 0 para número.
+- Datas no formato AAAA-MM-DD. Valores em reais como número (R$ 12.500,00 → 12500).
+- Liste cada parcela separadamente ("10 parcelas mensais" vira 10 itens, com as datas mês a mês). Parcela "na assinatura" vence na data de assinatura; parcela ligada a um evento sem data (ex.: entrega do anteprojeto) fica com "due_date": "".
+- Em "warnings", escreva em português o que precisa ser conferido (dados ilegíveis, valores que não somam).
+
+{
+  "client": { "name": "", "document": "", "rg": "", "birth_date": "", "email": "", "phone": "", "profession": "", "cep": "", "street": "", "number": "", "complement": "", "neighborhood": "", "city": "", "state": "" },
+  "contract": { "total": 0, "signed_date": "", "installments": [ { "label": "", "amount": 0, "percent": 0, "due_date": "" } ] },
+  "project": { "site_address": "", "site_city": "", "area_m2": 0, "scope": "" },
+  "notes": "",
+  "warnings": []
+}`;
+
+const str = (v: unknown) => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '');
+const num = (v: unknown) => {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v.replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')) : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+};
+const isoDate = (v: unknown) => {
+  const s = str(v);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s ? s : '';
+};
+
+/** Garante o formato do resultado vindo de fora (resposta colada do Claude.ai). */
+export function normalizeExtraction(raw: unknown): ContractExtraction {
+  const r = (raw ?? {}) as Record<string, Record<string, unknown> | undefined>;
+  const c = r.client ?? {};
+  const k = r.contract ?? {};
+  const p = r.project ?? {};
+  return {
+    client: {
+      name: str(c.name), document: str(c.document), rg: str(c.rg), birth_date: isoDate(c.birth_date), email: str(c.email).toLowerCase(),
+      phone: str(c.phone), profession: str(c.profession), cep: str(c.cep), street: str(c.street), number: str(c.number),
+      complement: str(c.complement), neighborhood: str(c.neighborhood), city: str(c.city), state: str(c.state).toUpperCase().slice(0, 2),
+    },
+    contract: {
+      total: num(k.total),
+      signed_date: isoDate(k.signed_date),
+      installments: (Array.isArray(k.installments) ? k.installments : []).slice(0, 120).map((i: Record<string, unknown>) => ({
+        label: str(i?.label),
+        amount: num(i?.amount),
+        percent: Math.min(100, num(i?.percent)),
+        due_date: isoDate(i?.due_date),
+      })),
+    },
+    project: { site_address: str(p.site_address), site_city: str(p.site_city), area_m2: num(p.area_m2), scope: str(p.scope) },
+    notes: str((raw as Record<string, unknown> | null)?.notes),
+    warnings: (Array.isArray((raw as Record<string, unknown> | null)?.warnings) ? ((raw as Record<string, unknown>).warnings as unknown[]) : [])
+      .map(str)
+      .filter(Boolean)
+      .slice(0, 10),
+  };
+}
+
+/** Resposta colada do Claude.ai (pode vir com ```json ... ```) → dados do contrato. */
+export function parseClaudeAnswer(answer: string): ContractExtraction {
+  const start = answer.indexOf('{');
+  const end = answer.lastIndexOf('}');
+  if (start < 0 || end <= start) throw new Error('Não encontrei os dados na resposta. Copie a resposta inteira do Claude (o bloco que começa com { ).');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(answer.slice(start, end + 1));
+  } catch {
+    throw new Error('A resposta está incompleta. No Claude, clique em “Copiar” embaixo da resposta e cole aqui de novo.');
+  }
+  const x = normalizeExtraction(parsed);
+  if (!x.client.name && !x.contract.total && !x.contract.installments.length) throw new Error('A resposta não trouxe dados do contrato.');
+  return x;
 }
 
 // ---------- Aplicar o resultado ----------

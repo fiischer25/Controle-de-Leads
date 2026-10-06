@@ -170,7 +170,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
         <div className="mb-6">
           <ContractReader
             initial={recalled}
-            description="Envie o contrato assinado (PDF, foto ou Word) e o sistema preenche os dados do cliente e do projeto."
+            description="Envie o contrato assinado (PDF ou Word) e o sistema preenche os dados do cliente e do projeto."
             onRead={readContract}
           />
           {contractDeal && (
