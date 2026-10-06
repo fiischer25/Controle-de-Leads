@@ -267,10 +267,18 @@ export function Field({
   htmlFor?: string;
   children: ReactNode;
 }) {
+  const labelId = useId();
+  const box = useRef<HTMLDivElement>(null);
+  // Liga o rótulo ao primeiro campo (nome acessível para leitores de tela e testes)
+  useLayoutEffect(() => {
+    if (!label || htmlFor) return;
+    const control = box.current?.querySelector<HTMLElement>('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea, [role=combobox]');
+    if (control && !control.hasAttribute('aria-label') && !control.hasAttribute('aria-labelledby')) control.setAttribute('aria-labelledby', labelId);
+  });
   return (
-    <div className={className}>
+    <div ref={box} className={className}>
       {label && (
-        <label className="label" htmlFor={htmlFor}>
+        <label id={labelId} className="label" htmlFor={htmlFor}>
           {label}
           {required && <span className="ml-0.5 text-faint">*</span>}
         </label>

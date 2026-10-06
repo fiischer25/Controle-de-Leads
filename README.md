@@ -175,6 +175,22 @@ Sem configurar nada, o sistema abre em **modo demonstração**: os dados ficam s
 navegador (ótimo para conhecer o sistema — marque “carregar dados de exemplo” no primeiro acesso).
 Para uso real pela equipe, configure o Supabase.
 
+### Testes de ponta a ponta
+
+```bash
+npx playwright-core install chromium   # uma vez (ou defina CHROMIUM_PATH)
+npm run test:e2e                       # compila se preciso, sobe o preview e roda tudo
+npm run test:e2e -- financeiro         # só as especificações com "financeiro" no nome
+```
+
+Os testes ficam em `tests/e2e/` e rodam o sistema real no navegador, no modo demonstração (cada
+especificação começa com um navegador limpo e os dados de exemplo). Cobrem navegação, acessos por
+módulo, oportunidades (ganho/não ganho, valores, Virar cliente), leitura de contrato, financeiro
+(lançamentos, extrato, anexos, relatório), clientes e contrato, projetos e tarefas-modelo, painéis
+e a varredura de números cortados em 4 larguras de tela. Os arquivos em `tests/e2e/fixtures/` são
+fictícios. Opções: `E2E_BUILD=1` força a compilação, `E2E_BASE=http://...` usa um servidor já no ar
+e `E2E_SHOTS=pasta` salva um print de cada passo que falhar.
+
 ## Colocando em produção (Supabase + hospedagem)
 
 1. **Crie um projeto** gratuito em [supabase.com](https://supabase.com).
