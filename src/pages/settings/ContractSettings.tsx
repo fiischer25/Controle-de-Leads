@@ -40,7 +40,7 @@ export function ContractSettings() {
     setStatus(null);
     try {
       const data = (await backend.invokeFunction('contract-extract', { ping: true })) as { ok?: boolean; error?: string } | null;
-      if (data?.ok) setStatus({ kind: 'ok', text: 'Tudo certo: a leitura de contratos está ativa.' });
+      if (data?.ok) setStatus({ kind: 'ok', text: 'Tudo certo: a leitura com IA está ativa e passa a ser usada ao enviar contratos.' });
       else setStatus({ kind: 'error', text: data?.error ?? 'A função respondeu de forma inesperada. Publique o código de novo (passo 3).' });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -59,8 +59,30 @@ export function ContractSettings() {
     <Card className="max-w-3xl overflow-hidden">
       <CardHeader
         title="Leitura de contratos"
-        subtitle="Ao marcar uma oportunidade como ganha, envie o contrato e o sistema preenche o cadastro do cliente, o valor e as parcelas. Ative uma vez, pelo site do Supabase, sem instalar nada."
+        subtitle="Ao marcar uma oportunidade como ganha, envie o contrato e o sistema preenche o cadastro do cliente, o valor e as parcelas."
       />
+      <div className="space-y-3 border-t border-line/70 px-5 py-5 text-[13.5px] leading-relaxed text-muted">
+        <p className="flex gap-2 rounded-lg bg-success-bg px-3 py-2.5 text-success-fg">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          Já funciona, de graça, sem configurar nada.
+        </p>
+        <p>
+          <b className="text-ink">Contrato em PDF ou Word:</b> o próprio sistema lê o texto e reconhece o contratante (nome, CPF/CNPJ, RG, endereço,
+          CEP, telefone, e-mail), o valor, os percentuais, as parcelas mensais, as datas e a área. Funciona melhor com o modelo de contrato do
+          escritório. Sempre confira os campos antes de salvar.
+        </p>
+        <p>
+          <b className="text-ink">Foto, PDF escaneado ou contrato fora do padrão:</b> use <b>Ler com o Claude.ai</b>, logo abaixo do botão de enviar.
+          O sistema dá uma instrução pronta; você anexa o contrato no Claude (sua assinatura), cola a instrução e depois cola a resposta no sistema.
+        </p>
+      </div>
+      <details className="group border-t border-line/70">
+        <summary className="cursor-pointer list-none px-5 py-3.5 text-[13.5px] font-medium text-ink hover:bg-subtle/60">
+          Opcional: leitura automática com IA (paga, por contrato lido)
+          <span className="block text-[12.5px] font-normal text-faint">
+            Lê fotos e escaneados direto no sistema, sem passar pelo Claude.ai. Precisa de créditos na Anthropic.
+          </span>
+        </summary>
       <ol className="space-y-5 border-t border-line/70 px-5 py-5">
         <Step n={1} title="Crie a chave da Anthropic">
           Entre em{' '}
@@ -94,7 +116,7 @@ export function ContractSettings() {
         <Step n={4} title="Teste">
           <div className="flex flex-wrap items-center gap-3">
             <Button size="sm" icon={<PlayCircle className="h-3.5 w-3.5" />} loading={testing} onClick={test} disabled={local}>
-              Testar a leitura de contratos
+              Testar a leitura com IA
             </Button>
             {local && <span className="text-[12.5px] text-faint">Disponível com o sistema conectado ao Supabase.</span>}
           </div>
@@ -108,9 +130,10 @@ export function ContractSettings() {
       </ol>
       <div className="flex items-start gap-2 border-t border-line/70 bg-subtle/60 px-5 py-3.5 text-[12.5px] text-muted">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        Cada contrato lido é cobrado pela Anthropic conforme o tamanho do arquivo; acompanhe o consumo em console.anthropic.com. Se o modelo
+        Na leitura com IA, cada contrato lido é cobrado pela Anthropic conforme o tamanho do arquivo; acompanhe o consumo em console.anthropic.com. Se o modelo
         principal estiver indisponível, a leitura tenta automaticamente um modelo alternativo.
       </div>
+      </details>
     </Card>
   );
 }

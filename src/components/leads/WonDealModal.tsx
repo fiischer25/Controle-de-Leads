@@ -71,8 +71,8 @@ export function WonDealModal({
         className="mb-5"
         description={
           lead.client_id
-            ? 'Envie o contrato assinado (PDF, foto ou Word) e o sistema preenche o valor e as parcelas.'
-            : 'Envie o contrato assinado (PDF, foto ou Word): o sistema preenche o valor e as parcelas aqui e os dados do cliente no cadastro a seguir.'
+            ? 'Envie o contrato assinado (PDF ou Word) e o sistema preenche o valor e as parcelas.'
+            : 'Envie o contrato assinado (PDF ou Word): o sistema preenche o valor e as parcelas aqui e os dados do cliente no cadastro a seguir.'
         }
         onRead={(x, fileName) => {
           const plan = contractPlan(x, today());

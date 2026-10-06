@@ -111,7 +111,7 @@ export function ClientEditModal({ client, initialTab = 'dados', onClose }: { cli
       {commercial && (
         <ContractReader
           className="mb-5"
-          description="Envie o contrato (PDF, foto ou Word) e o sistema atualiza os dados do cliente, o valor e as parcelas. Nada é salvo antes de você conferir."
+          description="Envie o contrato (PDF ou Word) e o sistema atualiza os dados do cliente, o valor e as parcelas. Nada é salvo antes de você conferir."
           onRead={(x) => {
             setValue((v) => applyContractToClient(x, v));
             setErrors({});

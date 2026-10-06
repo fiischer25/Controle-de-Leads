@@ -37,9 +37,10 @@ uma **visão 360°** no painel inicial. Não possui módulo financeiro.
   50% · 50%, à vista, mensal ou personalizado, com as datas. As parcelas entram sozinhas em
   **contas a receber** do Financeiro (categoria honorários), mesmo quando quem fecha só tem o módulo
   Comercial, e passam para o projeto quando o lead vira cliente. Editar depois não duplica.
-- **Preencher com o contrato:** no fechamento, envie o contrato assinado (PDF, foto ou Word) e o sistema
-  preenche o valor e as parcelas, e no cadastro seguinte os dados do cliente e da obra. Também funciona no
-  *Virar cliente* e em *Editar cliente*. Veja “Leitura de contratos” abaixo para ativar.
+- **Preencher com o contrato:** no fechamento, envie o contrato assinado (PDF ou Word) e o sistema
+  preenche o valor e as parcelas, e no cadastro seguinte os dados do cliente e da obra — de graça. Fotos e
+  escaneados: “Ler com o Claude.ai”. Também funciona no *Virar cliente* e em *Editar cliente*. Veja
+  “Leitura de contratos” abaixo.
 - Em cada parcela dá para digitar o **valor em R$** (o percentual é calculado) ou o percentual (o
   valor é calculado); a soma precisa fechar com o valor do contrato. A forma de pagamento pode ser
   **editada depois** (na oportunidade ou na aba Informações do projeto): as parcelas no Financeiro
@@ -248,26 +249,23 @@ e guarde `GOOGLE_SERVICE_ACCOUNT_JSON` (o JSON da chave) e `GOOGLE_CALENDAR_ID` 
 criadas no sistema ou pelo assistente passam a aparecer no Google Agenda do escritório.
 
 ### Leitura de contratos
-Ao marcar uma oportunidade como ganha (e no **Virar cliente** e em **Editar cliente**), dá para enviar o
-contrato assinado em PDF, foto ou Word (.docx): o sistema lê e preenche os dados do cliente, o valor, as
-parcelas (com vencimentos) e a área/endereço da obra. Nada é salvo antes de a pessoa conferir.
+Ao marcar uma oportunidade como ganha (e no **Virar cliente** e em **Editar cliente**), envie o contrato e o
+sistema preenche os dados do cliente, o valor, as parcelas (com vencimentos) e a área/endereço da obra. Nada
+é salvo antes de a pessoa conferir. Há três formas, e as duas primeiras não têm custo:
 
-**Para ativar sem instalar nada**, siga **Configurações → Leitura de contratos** no próprio sistema: guarde
-`ANTHROPIC_API_KEY` em *Edge Functions → Secrets* do Supabase, publique a função pelo editor do painel
-(*Deploy a new function → Via Editor*, nome `contract-extract`, código copiado pelo botão do sistema) e
-clique em **Testar**. A função é um arquivo único (`supabase/functions/contract-extract/index.ts`).
-Pelo terminal, o equivalente é:
-
-```bash
-npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-npx supabase functions deploy contract-extract
-```
-
-- Usa o Claude com saída estruturada (JSON fixo); se o modelo principal estiver indisponível ou recusar, a
-  API tenta automaticamente um modelo alternativo (*server-side fallback*).
-- Custo por contrato lido, cobrado pela Anthropic conforme o tamanho do arquivo (acompanhe o consumo em
-  console.anthropic.com).
-- Testes da função: `cd supabase/functions && deno test --allow-env contract-extract/index.test.ts`.
+1. **Leitura gratuita (padrão, sem configurar nada):** PDF com texto ou Word (.docx) são lidos no próprio
+   navegador e os dados são reconhecidos pelo padrão dos contratos brasileiros (qualificação do
+   CONTRATANTE, CPF/CNPJ, RG, endereço, CEP, “R$”, percentuais, “N parcelas mensais”, datas, m²) —
+   `src/lib/contractParse.ts`. Funciona melhor com o modelo de contrato do escritório.
+2. **Ler com o Claude.ai (sem custo extra, usa a assinatura de quem usa):** para foto, PDF escaneado ou
+   contrato fora do padrão. O sistema copia uma instrução pronta; a pessoa anexa o contrato no claude.ai, cola
+   a instrução e cola a resposta (JSON) de volta no sistema.
+3. **Leitura com IA automática (opcional, paga por contrato):** a função `contract-extract` lê qualquer
+   formato direto no sistema. Quando está ativa, passa a ser usada no lugar da leitura gratuita. Para ativar,
+   siga **Configurações → Leitura de contratos → Opcional** (sem terminal: segredo `ANTHROPIC_API_KEY` em
+   *Edge Functions → Secrets* e a função publicada pelo editor do painel com o código copiado pelo sistema).
+   Pelo terminal: `npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-...` e
+   `npx supabase functions deploy contract-extract`. Testes: `cd supabase/functions && deno test --allow-env contract-extract/index.test.ts`.
 
 ### Google Agenda
 Em **Configurações → Google Agenda**, cole o *código de incorporação* da agenda do escritório
