@@ -90,6 +90,10 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            role="combobox"
+            aria-expanded
+            aria-controls="palette-results"
+            aria-label="Busca rápida"
             placeholder={can('comercial') ? 'Buscar projetos, clientes, oportunidades, tarefas…' : can('projetos') ? 'Buscar projetos e tarefas…' : 'Buscar nas minhas tarefas…'}
             className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-stone-400"
             onKeyDown={(e) => {
@@ -100,7 +104,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             }}
           />
         </div>
-        <div className="scrollbar-thin max-h-[55vh] overflow-y-auto p-2">
+        <div id="palette-results" role="listbox" aria-label="Resultados" className="scrollbar-thin max-h-[55vh] overflow-y-auto p-2">
           {results.length === 0 && <p className="px-3 py-10 text-center text-sm text-stone-500">Nada encontrado para “{query}”.</p>}
           {results.map((r, i) => {
             const header = r.group !== lastGroup ? r.group : null;
@@ -109,6 +113,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
               <div key={`${r.group}-${r.id}`}>
                 {header && <div className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-stone-400">{header}</div>}
                 <button
+                  role="option"
+                  aria-selected={i === active}
                   onMouseEnter={() => setActive(i)}
                   onClick={() => go(r)}
                   className={cn('flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left', i === active ? 'bg-stone-100' : '')}

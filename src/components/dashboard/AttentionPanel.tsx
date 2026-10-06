@@ -295,6 +295,8 @@ function QueueRow({
         </div>
       )}
       <div
+        data-attention-item={item.kind}
+        data-category={item.category}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
