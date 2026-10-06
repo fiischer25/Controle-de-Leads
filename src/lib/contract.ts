@@ -1,9 +1,8 @@
-// Leitura de contrato: prepara o arquivo (PDF, foto ou Word), chama a função contract-extract
-// e transforma o resultado em dados do cliente, forma de pagamento e projeto.
-// O formato do resultado é o de supabase/functions/contract-extract/index.ts.
+// Leitura de contrato, sem custo: o texto do PDF/Word é lido no navegador e reconhecido em
+// contractParse.ts; para foto ou escaneado, a resposta colada do Claude.ai. O resultado vira
+// dados do cliente, forma de pagamento e projeto.
 
 import type { ClientInput, ProjectInput } from '../context/DataContext';
-import { backend } from './backend';
 import { BR_STATES } from './constants';
 import { addMonthsKey, type FeePreset, type PlanRow } from './finance';
 import type { PlanDraft } from './paymentPlan';
@@ -36,46 +35,8 @@ export interface ContractExtraction {
   warnings: string[];
 }
 
-export interface ContractPayload {
-  name: string;
-  media_type: string;
-  data?: string;
-  text?: string;
-}
-
 export const CONTRACT_ACCEPT = '.pdf,.docx,.txt,.jpg,.jpeg,.png,.webp,application/pdf,image/*';
 const MAX_BYTES = 15 * 1024 * 1024;
-/** Fotos são reduzidas para este lado máximo (a API aceita imagens de até 5 MB). */
-const MAX_IMAGE_SIDE = 2200;
-
-function base64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-}
-
-async function imagePayload(file: File): Promise<ContractPayload> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error('Não consegui abrir a imagem. Envie em JPG ou PNG.'));
-      el.src = url;
-    });
-    const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(img.naturalWidth * scale);
-    canvas.height = Math.round(img.naturalHeight * scale);
-    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const data = canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
-    return { name: file.name, media_type: 'image/jpeg', data };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
 /** Lê um arquivo de dentro de um .zip (o .docx é um zip). */
 async function unzipEntry(buf: ArrayBuffer, wanted: string): Promise<Uint8Array | null> {
   const view = new DataView(buf);
@@ -128,22 +89,6 @@ export async function docxText(buf: ArrayBuffer): Promise<string> {
     .trim();
 }
 
-/** Prepara o arquivo do contrato para envio. */
-export async function contractPayload(file: File): Promise<ContractPayload> {
-  if (file.size > MAX_BYTES) throw new Error('Arquivo grande demais (até 15 MB).');
-  const name = file.name;
-  const lower = name.toLowerCase();
-  if (file.type === 'application/pdf' || lower.endsWith('.pdf')) {
-    return { name, media_type: 'application/pdf', data: base64(await file.arrayBuffer()) };
-  }
-  if (lower.endsWith('.docx')) return { name, media_type: 'text/plain', text: await docxText(await file.arrayBuffer()) };
-  if (lower.endsWith('.doc')) throw new Error('Arquivos .doc antigos não são lidos. Salve como PDF ou .docx e envie de novo.');
-  if (file.type === 'text/plain' || lower.endsWith('.txt')) return { name, media_type: 'text/plain', text: await file.text() };
-  if (/heic|heif/.test(file.type) || /\.hei[cf]$/.test(lower)) throw new Error('Foto em HEIC não é aceita. Envie em JPG ou PDF.');
-  if (file.type.startsWith('image/')) return imagePayload(file);
-  throw new Error('Formato não suportado. Envie o contrato em PDF, foto (JPG/PNG) ou Word (.docx).');
-}
-
 /** O arquivo não tem texto (foto, PDF escaneado) ou o texto não tem os dados: sugerir o Claude.ai. */
 export class ContractNeedsAiError extends Error {}
 
@@ -173,18 +118,6 @@ export async function contractText(file: File): Promise<string | null> {
   throw new Error('Formato não suportado. Envie o contrato em PDF ou Word (.docx).');
 }
 
-let aiCheck: Promise<boolean> | null = null;
-/** A leitura com IA (função contract-extract, paga) está ativa? Conferido uma vez por sessão. */
-export function contractAiReady(): Promise<boolean> {
-  aiCheck ??= backend
-    .invokeFunction('contract-extract', { ping: true })
-    .then((d) => !!(d as { ok?: boolean } | null)?.ok)
-    .catch(() => false);
-  return aiCheck;
-}
-
-export type ContractMethod = 'ia' | 'gratuita' | 'claude';
-
 /** Completa rua, bairro, cidade e UF pelo CEP (ViaCEP) quando o contrato não traz. */
 export async function completeAddressFromCep(x: ContractExtraction): Promise<ContractExtraction> {
   const c = x.client;
@@ -212,20 +145,11 @@ export async function completeAddressFromCep(x: ContractExtraction): Promise<Con
   }
 }
 
-async function readWithAi(file: File): Promise<ContractExtraction> {
-  const payload = await contractPayload(file);
-  const data = (await backend.invokeFunction('contract-extract', { ...payload })) as { result?: ContractExtraction; error?: string } | null;
-  if (data?.error) throw new Error(data.error);
-  if (!data?.result) throw new Error('Não foi possível ler o contrato.');
-  return data.result;
-}
-
 /**
- * Lê o contrato. Com a leitura com IA ativada, usa a IA; senão, a leitura gratuita no navegador
- * (PDF com texto ou Word). Foto ou escaneado sem IA: ContractNeedsAiError (usar o Claude.ai).
+ * Lê o contrato no navegador (PDF com texto ou Word). Foto ou escaneado: ContractNeedsAiError
+ * (usar o Claude.ai).
  */
-export async function readContract(file: File): Promise<{ extraction: ContractExtraction; method: ContractMethod }> {
-  if (await contractAiReady()) return { extraction: await completeAddressFromCep(await readWithAi(file)), method: 'ia' };
+export async function readContract(file: File): Promise<ContractExtraction> {
   const text = await contractText(file);
   if (text === null) {
     throw new ContractNeedsAiError('Fotos não são lidas pela leitura gratuita. Use “Ler com o Claude.ai” abaixo ou envie o contrato em PDF/Word.');
@@ -239,7 +163,7 @@ export async function readContract(file: File): Promise<{ extraction: ContractEx
   if (found < 2 && !extraction.contract.total) {
     throw new ContractNeedsAiError('Não reconheci os dados neste contrato. Use “Ler com o Claude.ai” abaixo.');
   }
-  return { extraction: await completeAddressFromCep(extraction), method: 'gratuita' };
+  return completeAddressFromCep(extraction);
 }
 
 // ---------- Ler com o Claude.ai (assinatura da pessoa, sem custo de API) ----------

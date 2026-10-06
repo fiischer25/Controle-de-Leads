@@ -13,7 +13,6 @@ import { useAuth } from '../context/AuthContext';
 import { WhatsAppSettings } from './settings/WhatsAppSettings';
 import { TemplatesEditor } from './settings/TemplatesEditor';
 import { DailyAlertsSettings } from './settings/DailyAlertsSettings';
-import { ContractSettings } from './settings/ContractSettings';
 import { DatabaseSettings } from './settings/DatabaseSettings';
 import { useData } from '../context/DataContext';
 import { funnelOrder, stageColor } from '../lib/status';
@@ -24,14 +23,14 @@ import { TABLES } from '../lib/types';
 import { byPosition, cn, downloadFile, nowIso, toCalendarEmbedUrl, today, uid } from '../lib/utils';
 import { Button, Card, CardHeader, Checkbox, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, Tabs, Textarea } from '../components/ui';
 
-type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'whatsapp' | 'avisos' | 'contratos' | 'dados' | 'banco';
+type Tab = 'escritorio' | 'tipos' | 'funil' | 'origens' | 'agenda' | 'whatsapp' | 'avisos' | 'dados' | 'banco';
 
 export default function SettingsPage() {
   const [params, setParams] = useSearchParams();
   const { isAdmin } = useData();
   const requested = (params.get('aba') as Tab) || 'escritorio';
   // Backup exporta todos os dados (inclusive da equipe): só administradores.
-  const tab = (requested === 'dados' || requested === 'banco' || requested === 'contratos') && !isAdmin ? 'escritorio' : requested;
+  const tab = (requested === 'dados' || requested === 'banco') && !isAdmin ? 'escritorio' : requested;
   return (
     <div>
       <PageHeader title="Configurações" description="Personalize o sistema para a rotina do escritório." />
@@ -47,13 +46,7 @@ export default function SettingsPage() {
           { id: 'agenda', label: 'Google Agenda' },
           { id: 'whatsapp', label: 'Assistente' },
           { id: 'avisos', label: 'Resumo diário' },
-          ...(isAdmin
-            ? [
-                { id: 'contratos' as const, label: 'Leitura de contratos' },
-                { id: 'dados' as const, label: 'Backup' },
-                { id: 'banco' as const, label: 'Banco de dados' },
-              ]
-            : []),
+          ...(isAdmin ? [{ id: 'dados' as const, label: 'Backup' }, { id: 'banco' as const, label: 'Banco de dados' }] : []),
         ]}
       />
       {tab === 'tipos' && <ProjectTypesSettings />}
@@ -64,7 +57,6 @@ export default function SettingsPage() {
       {tab === 'whatsapp' && <WhatsAppSettings />}
       {tab === 'avisos' && <DailyAlertsSettings />}
       {tab === 'dados' && <DataSettings />}
-      {tab === 'contratos' && <ContractSettings />}
       {tab === 'banco' && <DatabaseSettings />}
     </div>
   );

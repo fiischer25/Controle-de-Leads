@@ -16,7 +16,7 @@ import { Button, Textarea } from '../ui';
 
 /**
  * "Preencher com o contrato": envia o contrato (PDF ou Word) e o sistema lê e preenche os campos
- * (de graça, no navegador; ou com IA, se ativada). Para fotos e escaneados, "Ler com o Claude.ai":
+ * (de graça, no navegador). Para fotos e escaneados, "Ler com o Claude.ai":
  * a pessoa usa a própria assinatura do Claude e cola a resposta aqui. Mostra o resumo e os avisos.
  */
 export function ContractReader({
@@ -50,8 +50,7 @@ export function ContractReader({
     setError('');
     setBusy(file.name);
     try {
-      const { extraction } = await readContract(file);
-      finish(extraction, file.name);
+      finish(await readContract(file), file.name);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível ler o contrato.');
       if (e instanceof ContractNeedsAiError) setClaude(true);
