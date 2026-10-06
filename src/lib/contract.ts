@@ -1,6 +1,6 @@
 // Leitura de contrato: prepara o arquivo (PDF, foto ou Word), chama a função contract-extract
 // e transforma o resultado em dados do cliente, forma de pagamento e projeto.
-// O formato do resultado é o de supabase/functions/_shared/contract.ts.
+// O formato do resultado é o de supabase/functions/contract-extract/index.ts.
 
 import type { ClientInput, ProjectInput } from '../context/DataContext';
 import { backend } from './backend';
@@ -153,7 +153,7 @@ export async function readContract(file: File): Promise<ContractExtraction> {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/não está publicada|failed to send|fetch/i.test(msg)) {
-      throw new Error('A leitura de contratos ainda não foi ativada: publique a função contract-extract no Supabase (veja o README).');
+      throw new Error('A leitura de contratos ainda não foi ativada. O administrador ativa em Configurações → Leitura de contratos.');
     }
     throw e;
   }
