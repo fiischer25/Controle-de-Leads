@@ -13,8 +13,8 @@ import { AgendaView } from '../components/agenda/AgendaView';
 import { MonthBars } from '../components/charts/MonthBars';
 import { useHomeData } from '../components/dashboard/useHomeData';
 import { FunnelSection, ProjectsSection, TeamSection, TodayColumn } from '../components/dashboard/HomeSections';
+import { FinanceSnapshot } from '../components/dashboard/FinanceSnapshot';
 import { useFinance } from '../components/finance/useFinance';
-import { monthKey, monthTotals, sum } from '../lib/finance';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
 
 type Tab = 'geral' | 'agenda';
@@ -114,18 +114,9 @@ export default function OfficeDashboardPage() {
 
   // Financeiro (só para quem tem o módulo)
   const fin = useFinance();
-  const money = useMemo(() => {
+  const overdueIn = useMemo(() => {
     const t = today();
-    const in30 = addDays(t, 30);
-    const open = fin.entries.filter((e) => !e.paid_at && e.kind !== 'transferencia');
-    const m = monthTotals(fin.entries, monthKey(t));
-    return {
-      receive30: sum(open.filter((e) => e.kind === 'receita' && e.due_date >= t && e.due_date <= in30).map((e) => e.amount)),
-      pay30: sum(open.filter((e) => e.kind === 'despesa' && e.due_date >= t && e.due_date <= in30).map((e) => e.amount)),
-      overdueIn: sum(open.filter((e) => e.kind === 'receita' && e.due_date < t).map((e) => e.amount)),
-      overdueOut: sum(open.filter((e) => e.kind === 'despesa' && e.due_date < t).map((e) => e.amount)),
-      result: Math.round((m.inPaid - m.outPaid) * 100) / 100,
-    };
+    return fin.entries.filter((e) => e.kind === 'receita' && !e.paid_at && e.due_date < t).reduce((a, e) => a + e.amount, 0);
   }, [fin.entries]);
 
   const calendarConnected = !!(settings.calendar_embed_url || me.calendar_embed_url);
@@ -167,6 +158,14 @@ export default function OfficeDashboardPage() {
               <>
                 {' · '}
                 {commercial.followups.length} {commercial.followups.length === 1 ? 'retorno de lead pendente' : 'retornos de leads pendentes'}
+              </>
+            )}
+            {can('financeiro') && overdueIn > 0 && (
+              <>
+                {' · '}
+                <Link to="/financeiro?aba=lancamentos" className="text-danger-fg hover:underline hover:underline-offset-4">
+                  {formatCurrency(overdueIn)} a receber vencido
+                </Link>
               </>
             )}
             {attention > 0 && (
@@ -228,14 +227,16 @@ export default function OfficeDashboardPage() {
                   value: charts.doneShare === null ? '—' : `${charts.doneShare}%`,
                   sub: `${charts.projectTaskCount} nos projetos ativos`,
                 },
-                { label: 'Horas na semana', value: formatMinutes(charts.weekMinutes).replace(/ \d+min$/, ''), sub: `${charts.deliveredYear} entregues no ano` },
+                { label: 'Horas da equipe', value: formatMinutes(charts.weekMinutes).replace(/ \d+min$/, ''), sub: 'nesta semana' },
               ]}
             />
 
-            <div className="grid gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
+            <div className="grid items-start gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
               <ProjectsSection projects={home.projects} soonDays={home.soonDays} title="Andamento dos projetos" limit={8} />
               <TodayColumn todayEvents={home.todayEvents} upcoming={home.upcomingEvents} calendarConnected={calendarConnected} />
             </div>
+
+            {can('financeiro') && <FinanceSnapshot variant="office" />}
 
             <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-3 lg:gap-12">
               <section aria-labelledby="por-etapa" className="panel">
@@ -274,6 +275,9 @@ export default function OfficeDashboardPage() {
                       Próxima: <span className="text-ink">{charts.nextDelivery.project.name}</span> · {charts.nextDelivery.project.due_date?.split('-').reverse().slice(0, 2).join('/')}
                     </p>
                   )}
+                  <p className="mt-1 text-[12.5px] text-faint">
+                    {charts.deliveredYear} {charts.deliveredYear === 1 ? 'projeto entregue' : 'projetos entregues'} neste ano
+                  </p>
                 </div>
               </section>
             </div>
@@ -290,7 +294,7 @@ export default function OfficeDashboardPage() {
               ]}
             />
 
-            <div className="grid gap-12 lg:grid-cols-[340px_1fr] lg:gap-16">
+            <div className="grid items-start gap-12 lg:grid-cols-[340px_1fr] lg:gap-16">
               <FunnelSection rows={home.funnel} total={home.funnelTotal} conversion={home.kpis.conversion} />
               <section aria-labelledby="retornos-equipe" className="panel">
                 <SectionHeader
@@ -334,20 +338,6 @@ export default function OfficeDashboardPage() {
                 )}
               </section>
             </div>
-
-            {can('financeiro') && (
-              <MetricRow
-                label="Financeiro"
-                items={[
-                  { label: 'Saldo em contas', value: formatCurrency(fin.totalBalance), to: '/financeiro' },
-                  { label: 'A receber em 30 dias', value: formatCurrency(money.receive30), to: '/financeiro?aba=lancamentos' },
-                  { label: 'A pagar em 30 dias', value: formatCurrency(money.pay30), to: '/financeiro?aba=lancamentos' },
-                  { label: 'A receber vencido', value: formatCurrency(money.overdueIn), tone: money.overdueIn ? 'text-danger-fg' : undefined },
-                  { label: 'A pagar vencido', value: formatCurrency(money.overdueOut), tone: money.overdueOut ? 'text-danger-fg' : undefined },
-                  { label: 'Resultado do mês', value: formatCurrency(money.result), tone: money.result < 0 ? 'text-danger-fg' : undefined, sub: 'recebido − pago' },
-                ]}
-              />
-            )}
 
             <TeamSection team={home.team} />
           </div>

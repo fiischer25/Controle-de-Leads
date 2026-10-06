@@ -5,7 +5,7 @@ import { useData } from '../context/DataContext';
 import { accountBalances, addMonthsKey, entryStatus, monthKey, monthTotals, sum } from '../lib/finance';
 import type { FinanceEntry } from '../lib/types';
 import { addDays, cn, formatDate, formatMoney, MONTHS_FULL, today } from '../lib/utils';
-import { Button, Checkbox, IconButton } from '../components/ui';
+import { Button, Checkbox, FitText, IconButton } from '../components/ui';
 import { ACCOUNT_KIND_LABEL, useFinance } from '../components/finance/useFinance';
 
 function monthLabel(key: string) {
@@ -128,7 +128,7 @@ export default function FinanceReportPage() {
         </p>
       </div>
 
-      <article className="mx-auto my-8 max-w-[860px] bg-white px-10 py-10 text-[12px] leading-[1.45] text-stone-900 shadow-surface print:my-0 print:max-w-none print:p-0 print:shadow-none">
+      <article className="mx-auto my-4 max-w-[860px] bg-white px-4 py-6 sm:my-8 sm:px-10 sm:py-10 text-[12px] leading-[1.45] text-stone-900 shadow-surface print:my-0 print:max-w-none print:p-0 print:shadow-none">
         <header className="flex items-start justify-between gap-6 border-b border-stone-300 pb-5">
           <div>
             {settings.logo_url ? (
@@ -147,7 +147,7 @@ export default function FinanceReportPage() {
         </header>
 
         {/* Resumo */}
-        <section className="mt-6 grid grid-cols-5 gap-3">
+        <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5 print:grid-cols-5">
           <Box label={`Saldo em ${formatDate(addDays(`${month}-01`, -1)).slice(0, 5)}`} value={r.startTotal} />
           <Box label="Entradas" value={r.totals.inPaid} tone="text-emerald-800" sub={`previsto ${formatMoney(r.totals.inPlanned)}`} />
           <Box label="Saídas" value={r.totals.outPaid} sub={`previsto ${formatMoney(r.totals.outPlanned)}`} />
@@ -169,7 +169,7 @@ export default function FinanceReportPage() {
           />
         </Section>
 
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid gap-8 sm:grid-cols-2 print:grid-cols-2">
           <Section title="Receitas por categoria">
             <Table
               head={['Categoria', 'Recebido', '%']}
@@ -236,9 +236,11 @@ export default function FinanceReportPage() {
 
 function Box({ label, value, sub, tone }: { label: string; value: number; sub?: string; tone?: string }) {
   return (
-    <div className="rounded-[8px] border border-stone-200 px-3 py-2.5">
+    <div className="min-w-0 rounded-[8px] border border-stone-200 px-3 py-2.5">
       <div className="text-[10.5px] uppercase tracking-[0.06em] text-stone-500">{label}</div>
-      <div className={cn('mt-1 text-[15px] font-semibold tabular', tone)}>{formatMoney(value)}</div>
+      <FitText min={11} className={cn('mt-1 text-[15px] font-semibold tabular', tone)}>
+        {formatMoney(value)}
+      </FitText>
       {sub && <div className="mt-0.5 text-[10.5px] text-stone-500">{sub}</div>}
     </div>
   );
@@ -267,41 +269,44 @@ function Table({
   empty?: string;
 }) {
   if (rows.length === 0) return <p className="border-t border-stone-200 py-2 text-stone-500">{empty}</p>;
-  const cls = (i: number) => (align[i] === 'right' ? 'text-right tabular' : 'text-left');
+  const cls = (i: number) => (align[i] === 'right' ? 'whitespace-nowrap text-right tabular' : 'text-left');
   return (
-    <table className="w-full border-collapse">
-      <thead>
-        <tr className="border-b border-stone-300 text-[10.5px] uppercase tracking-[0.05em] text-stone-500">
-          {head.map((h, i) => (
-            <th key={i} className={cn('py-1.5 pr-3 font-medium last:pr-0', cls(i))}>
-              {h}
-            </th>
+    // No celular a tabela rola para o lado em vez de vazar da página
+    <div className="overflow-x-auto print:overflow-visible">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="border-b border-stone-300 text-[10.5px] uppercase tracking-[0.05em] text-stone-500">
+            {head.map((h, i) => (
+              <th key={i} className={cn('py-1.5 pr-3 font-medium last:pr-0', cls(i))}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="break-inside-avoid border-b border-stone-200">
+              {r.map((c, j) => (
+                <td key={j} className={cn('py-1.5 pr-3 align-top last:pr-0', cls(j))}>
+                  {c}
+                </td>
+              ))}
+            </tr>
           ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i} className="break-inside-avoid border-b border-stone-200">
-            {r.map((c, j) => (
-              <td key={j} className={cn('py-1.5 pr-3 align-top last:pr-0', cls(j))}>
-                {c}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-      {foot && (
-        <tfoot>
-          <tr className="font-semibold">
-            {foot.map((c, j) => (
-              <td key={j} className={cn('pt-2 pr-3 last:pr-0', cls(j))}>
-                {c}
-              </td>
-            ))}
-          </tr>
-        </tfoot>
-      )}
-    </table>
+        </tbody>
+        {foot && (
+          <tfoot>
+            <tr className="font-semibold">
+              {foot.map((c, j) => (
+                <td key={j} className={cn('pt-2 pr-3 last:pr-0', cls(j))}>
+                  {c}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        )}
+      </table>
+    </div>
   );
 }
 

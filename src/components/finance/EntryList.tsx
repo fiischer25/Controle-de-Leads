@@ -52,8 +52,9 @@ export function EntryList({
         const sub = [
           transfer ? `${account?.name ?? '—'} → ${to?.name ?? '—'}` : (category?.name ?? 'Sem categoria'),
           showProject ? (project?.name ?? client?.name) : null,
-          e.installments ? `${e.installment}/${e.installments}` : null,
         ].filter(Boolean);
+        // Nº da parcela fica fora do trecho que pode ser cortado
+        const counter = e.installments ? `${e.installment}/${e.installments}` : null;
         return (
           <li
             key={e.id}
@@ -77,6 +78,7 @@ export function EntryList({
                 <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-faint">
                   {category && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} aria-hidden />}
                   <span className="truncate">{sub.join(' · ')}</span>
+                  {counter && <span className="shrink-0 tabular">· {counter}</span>}
                 </span>
               </span>
               {!compact && <span className="hidden truncate py-3 text-[13px] text-muted md:block">{transfer ? '' : (account?.name ?? 'Sem conta')}</span>}

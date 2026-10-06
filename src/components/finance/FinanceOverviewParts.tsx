@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { FinanceEntry } from '../../lib/types';
 import { cn, formatCurrency, formatMoney } from '../../lib/utils';
-import { ActionLink } from '../ui';
+import { ActionLink, FitText } from '../ui';
 import { EntryList } from './EntryList';
 
 /** Cartão de indicador: rótulo, valor em destaque, detalhe e barra de progresso opcional. */
@@ -29,15 +29,14 @@ export function KpiCard({
         {label}
         {icon && <span className="text-faint">{icon}</span>}
       </div>
-      <div
+      <FitText
         className={cn(
-          'mt-1.5 truncate font-display text-[22px] font-semibold leading-7 tabular tracking-[-0.015em] md:mt-2 md:text-[28px] md:leading-8',
+          'mt-1.5 font-display text-[22px] font-semibold leading-7 tabular tracking-[-0.015em] md:mt-2 md:text-[28px] md:leading-8',
           tone === 'success' ? 'text-success-fg' : tone === 'danger' ? 'text-danger-fg' : 'text-ink',
         )}
-        title={value}
       >
         {value}
-      </div>
+      </FitText>
       {progress && (
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-stone-100" aria-hidden>
           <div

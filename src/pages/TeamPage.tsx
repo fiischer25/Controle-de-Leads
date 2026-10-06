@@ -50,7 +50,7 @@ export default function TeamPage() {
   const active = members.filter((p) => p.active);
   const totalOpen = active.reduce((acc, p) => acc + (stats[p.id]?.open ?? 0), 0);
   const totalOverdue = active.reduce((acc, p) => acc + (stats[p.id]?.overdue ?? 0), 0);
-  const cols = 'grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_110px_72px_minmax(0,1fr)_64px]';
+  const cols = 'grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.3fr)_minmax(124px,1.2fr)_110px_72px_minmax(0,1fr)_64px]';
 
   return (
     <div>
@@ -129,7 +129,7 @@ export default function TeamPage() {
                 </div>
                 <div className="hidden min-w-0 md:block">
                   <div className="truncate text-[13px] text-stone-700">{p.email}</div>
-                  <div className="truncate text-[12.5px] text-faint">{p.phone || 'sem telefone'}</div>
+                  <div className="whitespace-nowrap text-[12.5px] tabular text-faint">{p.phone || 'sem telefone'}</div>
                 </div>
                 <div className="text-right text-[13px] md:text-left">
                   <span className="tabular text-ink">{st?.open ?? 0}</span> <span className="text-faint">{st?.open === 1 ? 'aberta' : 'abertas'}</span>

@@ -314,11 +314,11 @@ function QueueRow({
               e.stopPropagation();
               click();
             }}
-            className="block max-w-full truncate rounded-xs text-left text-[15px] font-medium leading-5 text-ink md:text-[14.5px]"
+            className="line-clamp-2 block max-w-full rounded-xs text-left text-[15px] font-medium leading-5 text-ink md:truncate md:text-[14.5px]"
           >
             {item.title}
           </button>
-          <div className="mt-0.5 truncate text-[13px] leading-[18px] text-faint md:text-muted">{item.context}</div>
+          <div className="mt-0.5 line-clamp-2 text-[13px] leading-[18px] text-faint md:text-muted">{item.context}</div>
         </div>
         <div className="flex items-center gap-0.5">
           <span className={cn('whitespace-nowrap pr-1 text-[13px] md:pr-0', GROUP_COLOR[item.group])}>{item.meta}</span>

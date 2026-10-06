@@ -1328,6 +1328,43 @@ export interface Metric {
   sub?: ReactNode;
 }
 
+/**
+ * Número que nunca é cortado: numa linha só, diminui a fonte até caber na largura disponível
+ * (até `min` px). O valor completo também fica no title.
+ */
+export function FitText({ children, className, min = 13, title }: { children: ReactNode; className?: string; min?: number; title?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.fontSize = '';
+      el.style.lineHeight = '';
+      el.style.whiteSpace = '';
+      let size = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > el.clientWidth + 0.5 && size > min) {
+        size -= 1;
+        el.style.fontSize = `${size}px`;
+        el.style.lineHeight = `${Math.round(size * 1.2)}px`;
+      }
+      // Nem no menor tamanho coube: quebra a linha em vez de cortar
+      if (el.scrollWidth > el.clientWidth + 0.5) el.style.whiteSpace = 'normal';
+    };
+    fit();
+    // Refaz ao mudar a largura do cartão e quando as fontes terminam de carregar
+    const ro = new ResizeObserver(fit);
+    if (el.parentElement) ro.observe(el.parentElement);
+    document.fonts?.ready.then(fit).catch(() => undefined);
+    return () => ro.disconnect();
+  }, [children, min]);
+  const text = typeof children === 'string' || typeof children === 'number' ? String(children) : undefined;
+  return (
+    <div ref={ref} className={cn('overflow-hidden whitespace-nowrap [overflow-wrap:anywhere]', className)} title={title ?? text}>
+      {children}
+    </div>
+  );
+}
+
 /** Indicadores em cartões: rótulo, número em destaque e linha de apoio. */
 export function MetricRow({ items, className, label }: { items: Metric[]; className?: string; label?: string }) {
   const cols = { 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-4', 5: 'md:grid-cols-3 xl:grid-cols-5', 6: 'md:grid-cols-3 xl:grid-cols-6' }[
@@ -1341,10 +1378,10 @@ export function MetricRow({ items, className, label }: { items: Metric[]; classN
           const inner = (
             <>
               <div className="truncate text-[12.5px] font-medium text-muted">{k.label}</div>
-              <div className={cn('metric-value mt-1.5 truncate font-display text-[23px] font-semibold leading-7 tracking-[-0.015em] tabular md:mt-2 md:text-[28px] md:leading-8', k.tone ?? 'text-ink')}>
+              <FitText className={cn('metric-value mt-1.5 font-display text-[23px] font-semibold leading-7 tracking-[-0.015em] tabular md:mt-2 md:text-[28px] md:leading-8', k.tone ?? 'text-ink')}>
                 {k.value}
-              </div>
-              {k.sub && <div className="mt-1.5 truncate text-[12px] text-faint">{k.sub}</div>}
+              </FitText>
+              {k.sub && <div className="mt-1.5 text-[12px] leading-4 text-faint">{k.sub}</div>}
             </>
           );
           return k.to ? (
