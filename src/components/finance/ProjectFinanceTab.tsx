@@ -8,6 +8,7 @@ import { ActionLink, Button, MetricRow, SectionHeader } from '../ui';
 import { EntryFormModal } from './EntryFormModal';
 import { EntryList } from './EntryList';
 import { FeePlanModal } from './FeePlanModal';
+import { FixReceiptDates } from './FixReceiptDates';
 import { useFinance } from './useFinance';
 
 /** Aba Financeiro do projeto: honorários (parcelas), despesas do projeto e resultado. */
@@ -30,6 +31,7 @@ export function ProjectFinanceTab({ project }: { project: Project }) {
 
   return (
     <div className="flex flex-col gap-12">
+      <FixReceiptDates projectId={project.id} />
       <MetricRow
         items={[
           { label: 'Honorários', value: formatCurrency(f.contracted), hint: formatMoney(f.contracted), sub: income.length ? `${income.length} ${income.length === 1 ? 'parcela' : 'parcelas'}` : 'nenhuma parcela' },

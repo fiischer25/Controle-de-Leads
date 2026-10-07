@@ -3,6 +3,8 @@ import { useData, type ClientInput } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { applyContractToClient, contractDeal, type ReadContract } from '../../lib/contract';
 import type { Client, LeadPaymentPlan } from '../../lib/types';
+import { today } from '../../lib/utils';
+import { PastPaidOption } from '../finance/PastPaidOption';
 import { ContractDealOption } from '../leads/ContractDealOption';
 import { ContractReader } from '../leads/ContractReader';
 import { Button, Modal } from '../ui';
@@ -43,6 +45,7 @@ export function ClientFormModal({
   // Sozinho (fora do Novo projeto): as parcelas do contrato podem ir para o Financeiro
   const [deal, setDeal] = useState<LeadPaymentPlan | null>(null);
   const [saveDeal, setSaveDeal] = useState(true);
+  const [pastPaid, setPastPaid] = useState(true);
 
   const readContract = (extraction: ReadContract['extraction'], fileName: string, file?: File) => {
     setContract({ extraction, fileName, file });
@@ -67,7 +70,7 @@ export function ClientFormModal({
         if (deal && saveDeal) {
           try {
             const lead = await ensureClientLead(saved.id);
-            launched = await closeDeal(lead.id, deal, true, true);
+            launched = await closeDeal(lead.id, deal, true, true, pastPaid ? today() : undefined);
           } catch (e) {
             toast.error(`O cliente foi cadastrado, mas as parcelas não foram lançadas: ${e instanceof Error ? e.message : e}`);
           }
@@ -112,6 +115,7 @@ export function ClientFormModal({
             onRead={readContract}
           />
           {deal && <ContractDealOption deal={deal} checked={saveDeal} onChange={setSaveDeal} />}
+          {deal && saveDeal && <PastPaidOption rows={deal.rows} checked={pastPaid} onChange={setPastPaid} />}
         </div>
       )}
       <ClientFields value={value} onChange={setValue} errors={errors} />

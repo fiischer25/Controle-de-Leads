@@ -443,9 +443,9 @@ export default function LeadsPage() {
           lead={maps.leads[pendingWon.id]}
           mode="won"
           onClose={() => setPendingWon(null)}
-          onSubmit={async (plan, launch) => {
+          onSubmit={async (plan, launch, paidBefore) => {
             const lead = maps.leads[pendingWon.id];
-            const created = plan ? await closeDeal(lead.id, plan, launch, true) : 0;
+            const created = plan ? await closeDeal(lead.id, plan, launch, true, paidBefore) : 0;
             await moveLead(pendingWon.id, pendingWon.stage, pendingWon.before);
             if (created > 0) toast.success(`${lead.name} fechou! ${created} ${created === 1 ? 'parcela lançada' : 'parcelas lançadas'} em contas a receber.`);
             // Acabou de ganhar: segue direto para o cadastro do cliente e do projeto

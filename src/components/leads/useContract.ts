@@ -27,6 +27,8 @@ export function useContract(lead: Lead | null) {
   // Já lançadas e nada recebido: salvar atualiza as parcelas no Financeiro
   const [launch, setLaunch] = useState(received === 0);
   const [touched, setTouched] = useState(false);
+  // Projeto já em andamento: parcelas com data passada entram como recebidas (na data de cada uma)
+  const [pastPaid, setPastPaid] = useState(true);
 
   /** Plano pronto para gravar, ou a mensagem do que falta. */
   const build = (): { plan: LeadPaymentPlan } | { error: string } => {
@@ -65,6 +67,8 @@ export function useContract(lead: Lead | null) {
     launch: launch && received === 0,
     setLaunch,
     touched,
+    pastPaid,
+    setPastPaid,
     build,
     apply,
   };

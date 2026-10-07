@@ -123,7 +123,8 @@ interface DataApi {
    * receber (uma única vez por oportunidade). Devolve quantas parcelas foram criadas.
    */
   /** replace: substitui as parcelas já lançadas desta oportunidade (se nenhuma foi recebida). */
-  closeDeal(leadId: string, plan: LeadPaymentPlan, launch: boolean, replace?: boolean): Promise<number>;
+  /** `paidBefore`: parcelas com vencimento antes desta data entram já recebidas (na data de cada uma). */
+  closeDeal(leadId: string, plan: LeadPaymentPlan, launch: boolean, replace?: boolean, paidBefore?: string): Promise<number>;
 
   // Clientes e projetos
   createClient(input: ClientInput): Promise<Client>;
@@ -177,6 +178,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   const loadTable = useCallback(async <T extends TableName>(table: T) => {
     const rows = await backend.list(table);
     setDb((prev) => ({ ...prev, [table]: rows }));
+    return rows;
   }, []);
 
   const refresh = useCallback(async () => {
@@ -492,7 +494,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   );
 
   const closeDeal = useCallback(
-    async (leadId: string, plan: LeadPaymentPlan, launch: boolean, replace = false) => {
+    async (leadId: string, plan: LeadPaymentPlan, launch: boolean, replace = false, paidBefore?: string) => {
       const lead = dbRef.current.leads.find((l) => l.id === leadId);
       if (!lead) throw new Error('Oportunidade não encontrada.');
       await patch('leads', leadId, { payment_plan: plan, proposal_value: plan.total });
@@ -501,7 +503,15 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       if (backend.mode === 'supabase') {
         // Função segura do banco: funciona também para quem só tem o módulo Comercial
         const created = Number(await backend.rpc('create_lead_receivables', { p_lead: leadId, p_replace: replace })) || 0;
-        if (canAccess(dbRef.current.profiles.find((p) => p.id === userId), 'financeiro')) await loadTable('finance_entries');
+        if (canAccess(dbRef.current.profiles.find((p) => p.id === userId), 'financeiro')) {
+          const rows = (await loadTable('finance_entries')) as FinanceEntry[];
+          // Parcelas de meses passados (projeto já em andamento): recebidas na data de cada uma
+          if (paidBefore) {
+            for (const e of rows.filter((x) => x.lead_id === leadId && !x.paid_at && x.due_date < paidBefore)) {
+              await patch('finance_entries', e.id, { paid_at: e.due_date });
+            }
+          }
+        }
         return created;
       }
       // Modo demonstração: mesmas regras da função do banco
@@ -527,7 +537,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
         description: `Honorários ${lead.name} · ${r.label.trim() || `Parcela ${i + 1}`}`,
         amount: amounts[i],
         due_date: r.due_date,
-        paid_at: null,
+        paid_at: paidBefore && r.due_date < paidBefore ? r.due_date : null,
         account_id: account,
         to_account_id: null,
         category_id: category?.id ?? null,

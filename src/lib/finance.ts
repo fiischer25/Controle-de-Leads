@@ -29,15 +29,24 @@ export function settledDate(due: string, today: string): string {
   return due <= today ? due : today;
 }
 
+/** Parcela antiga para acertar: recebida com a data errada ou ainda em aberto. */
+export interface PastReceipt {
+  entry: FinanceEntry;
+  /** 'data': marcada como recebida com a data do dia; 'aberta': nunca marcada como recebida. */
+  kind: 'data' | 'aberta';
+}
+
 /**
- * Recebimentos lançados depois do vencimento e marcados como recebidos com a data do dia em que
- * foram marcados (ex.: projetos já em andamento cadastrados agora), e não com a data combinada.
- * Os vindos do extrato bancário ficam de fora: lá a data é a real.
+ * Parcelas de meses passados lançadas agora (ex.: projetos já em andamento cadastrados depois):
+ * o vencimento é anterior ao dia do lançamento. Aparecem no mês errado quando foram marcadas como
+ * recebidas com a data do dia, ou contam como "a receber vencido" quando ficaram em aberto.
+ * As vindas do extrato bancário ficam de fora: lá a data é a real.
  */
-export function backdatedReceipts(entries: FinanceEntry[]): FinanceEntry[] {
+export function pastReceipts(entries: FinanceEntry[]): PastReceipt[] {
   return entries
-    .filter((e) => e.kind === 'receita' && e.paid_at && !e.bank_ref && e.due_date < e.created_at.slice(0, 10) && e.paid_at > e.due_date)
-    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+    .filter((e) => e.kind === 'receita' && !e.bank_ref && e.created_at && e.due_date < e.created_at.slice(0, 10) && (!e.paid_at || e.paid_at > e.due_date))
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))
+    .map((entry) => ({ entry, kind: entry.paid_at ? 'data' : 'aberta' }));
 }
 
 export function monthKey(date: string): string {

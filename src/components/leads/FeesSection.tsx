@@ -1,5 +1,6 @@
 import { Wallet } from 'lucide-react';
 import { Button, SectionHeader } from '../ui';
+import { PastPaidOption } from '../finance/PastPaidOption';
 import { ContractFields } from './ContractFields';
 import { FEES_SECTION_ID, type Contract } from './useContract';
 
@@ -47,6 +48,7 @@ export function FeesSection({
         a receber no Financeiro.
       </p>
       <ContractFields c={fees} showLaunch={false} />
+      <PastPaidOption rows={fees.draft.rows} checked={fees.pastPaid} onChange={fees.setPastPaid} />
       {error && <p className="mt-3 text-[13px] text-danger-fg">{error}</p>}
     </section>
   );

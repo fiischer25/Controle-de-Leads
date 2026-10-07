@@ -138,6 +138,26 @@ export default async function ({ browser }) {
   );
 
   await s.step(
+    'projeto já em andamento: parcelas com data passada entram recebidas no mês de cada uma',
+    async () => {
+      const day = (n) => new Date(Date.now() + n * 864e5 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+      const d = await openNewProject(page);
+      await d.getByRole('combobox', { name: 'Cliente' }).click();
+      await page.getByRole('option', { name: /^Sofia Almeida/ }).click();
+      await d.getByRole('button', { name: /Definir os honorários agora/ }).click();
+      await d.getByLabel('Valor fechado').fill('30.000,00');
+      await d.getByLabel('Primeiro vencimento').fill(day(-75));
+      await d.getByText(/parcelas com data já passada já foram recebidas/).waitFor();
+      const p = await finishProject(page, d);
+      const fin = await entriesOf(page, p.id);
+      eq(fin.length, 3, 'parcelas');
+      for (const e of fin) eq(e.paid_at, e.due_date < day(0) ? e.due_date : null, `parcela de ${e.due_date}`);
+      ok(fin.some((e) => e.paid_at), 'nenhuma recebida');
+    },
+    page,
+  );
+
+  await s.step(
     'Novo cliente em Clientes com o contrato lança as parcelas',
     async () => {
       await page.goto(BASE + '/clientes');

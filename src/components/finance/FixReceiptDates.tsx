@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { CalendarCheck } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
-import { backdatedReceipts } from '../../lib/finance';
-import { formatDate, formatMoney } from '../../lib/utils';
+import { pastReceipts, type PastReceipt } from '../../lib/finance';
+import { formatDate, formatMoney, MONTHS_FULL } from '../../lib/utils';
 import { Button, Checkbox, Modal } from '../ui';
 import { useFinance } from './useFinance';
 
@@ -18,21 +18,26 @@ function readDismissed(): string[] {
 }
 
 /**
- * Aviso no Financeiro: parcelas antigas (ex.: de projetos já em andamento cadastrados agora)
- * marcadas como recebidas com a data do dia, e não com a data combinada. Revisa e corrige de uma vez.
+ * Aviso no Financeiro: parcelas de meses passados lançadas agora (projetos já em andamento
+ * cadastrados depois) que estão contando no mês atual: recebidas com a data do dia ou ainda em
+ * aberto como "a receber vencido". Corrige de uma vez: cada uma recebida na data da parcela.
+ * `projectId`: só as parcelas daquele projeto (aba Financeiro do projeto).
  */
-export function FixReceiptDates() {
+export function FixReceiptDates({ projectId }: { projectId?: string } = {}) {
   const { maps } = useData();
   const fin = useFinance();
   const toast = useToast();
   const [dismissed, setDismissed] = useState(readDismissed);
-  const candidates = useMemo(() => backdatedReceipts(fin.entries).filter((e) => !dismissed.includes(e.id)), [fin.entries, dismissed]);
+  const candidates = useMemo(
+    () => pastReceipts(fin.entries).filter((c) => !dismissed.includes(c.entry.id) && (!projectId || c.entry.project_id === projectId)),
+    [fin.entries, dismissed, projectId],
+  );
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 
   if (!candidates.length) return null;
-  const months = new Set(candidates.map((e) => e.paid_at!.slice(0, 7))).size;
+  const total = candidates.reduce((a, c) => a + c.entry.amount, 0);
 
   const dismiss = (ids: string[]) => {
     const next = [...dismissed, ...ids];
@@ -45,12 +50,12 @@ export function FixReceiptDates() {
   };
 
   const apply = async () => {
-    const chosen = candidates.filter((e) => picked.has(e.id));
+    const chosen = candidates.filter((c) => picked.has(c.entry.id));
     setBusy(true);
     try {
-      for (const e of chosen) await fin.updateEntry(e, { paid_at: e.due_date });
-      toast.success(`${chosen.length} ${chosen.length === 1 ? 'recebimento corrigido' : 'recebimentos corrigidos'}: agora cada um está no mês do pagamento.`);
-      dismiss(candidates.filter((e) => !picked.has(e.id)).map((e) => e.id));
+      for (const c of chosen) await fin.updateEntry(c.entry, { paid_at: c.entry.due_date });
+      toast.success(`${chosen.length} ${chosen.length === 1 ? 'parcela acertada' : 'parcelas acertadas'}: cada uma recebida no mês da parcela.`);
+      dismiss(candidates.filter((c) => !picked.has(c.entry.id)).map((c) => c.entry.id));
       setOpen(false);
     } catch (err) {
       toast.error(err);
@@ -59,18 +64,65 @@ export function FixReceiptDates() {
     }
   };
 
+  const group = (kind: PastReceipt['kind'], title: string, hint: string) => {
+    const items = candidates.filter((c) => c.kind === kind);
+    if (!items.length) return null;
+    return (
+      <section className="mb-5 last:mb-0">
+        <h3 className="text-[13.5px] font-semibold text-ink">{title}</h3>
+        <p className="mb-1 text-[12.5px] text-faint">{hint}</p>
+        <ul className="divide-y divide-hairline-surface">
+          {items.map(({ entry: e }) => {
+            const project = e.project_id ? maps.projects[e.project_id] : null;
+            return (
+              <li key={e.id} className="flex items-start gap-3 py-2.5">
+                <Checkbox
+                  checked={picked.has(e.id)}
+                  onChange={(on) =>
+                    setPicked((s) => {
+                      const n = new Set(s);
+                      if (on) n.add(e.id);
+                      else n.delete(e.id);
+                      return n;
+                    })
+                  }
+                  label={<span className="sr-only">Acertar {e.description}</span>}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] text-ink">{e.description}</div>
+                  <div className="text-[12.5px] text-muted">
+                    {project ? `${project.name} · ` : ''}
+                    {kind === 'data' ? (
+                      <>
+                        Recebida em <s>{formatDate(e.paid_at)}</s> → <span className="text-ink">{formatDate(e.due_date)}</span>
+                      </>
+                    ) : (
+                      <>
+                        Em aberto, venceu {formatDate(e.due_date)} → <span className="text-ink">recebida em {formatDate(e.due_date)}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <span className="shrink-0 text-[13.5px] tabular text-ink">{formatMoney(e.amount)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    );
+  };
+
   return (
     <>
       <section
-        aria-label="Datas de recebimento para revisar"
+        aria-label="Parcelas de meses passados para acertar"
         className="mb-6 flex flex-col gap-3 rounded-[14px] border border-line bg-warning-bg px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
       >
         <p className="flex items-start gap-2.5 text-[13.5px] text-ink">
           <CalendarCheck className="mt-0.5 h-4 w-4 shrink-0 text-warning-fg" strokeWidth={1.8} />
           <span>
-            {candidates.length} {candidates.length === 1 ? 'parcela antiga foi marcada' : 'parcelas antigas foram marcadas'} como recebida
-            {candidates.length === 1 ? '' : 's'} com a data do dia em que {candidates.length === 1 ? 'foi lançada' : 'foram lançadas'}
-            {months === 1 ? ' (tudo no mesmo mês)' : ''}, e não com a data do pagamento.
+            {candidates.length} {candidates.length === 1 ? 'parcela de mês passado está contando' : 'parcelas de meses passados estão contando'} em{' '}
+            {MONTHS_FULL[new Date().getMonth()].toLowerCase()} ({formatMoney(total)}), e não no mês de cada parcela.
           </span>
         </p>
         <Button
@@ -78,17 +130,17 @@ export function FixReceiptDates() {
           variant="primary"
           className="shrink-0"
           onClick={() => {
-            setPicked(new Set(candidates.map((e) => e.id)));
+            setPicked(new Set(candidates.map((c) => c.entry.id)));
             setOpen(true);
           }}
         >
-          Revisar e corrigir
+          Revisar e acertar
         </Button>
       </section>
       {open && (
         <Modal
-          title="Corrigir datas de recebimento"
-          subtitle="Cada parcela passa a contar no mês da data do pagamento (vencimento combinado)."
+          title="Acertar parcelas de meses passados"
+          subtitle="Cada parcela marcada passa a constar como recebida na data da parcela, no mês certo."
           onClose={() => setOpen(false)}
           size="lg"
           footer={
@@ -97,7 +149,7 @@ export function FixReceiptDates() {
                 variant="ghost"
                 className="mr-auto"
                 onClick={() => {
-                  dismiss(candidates.map((e) => e.id));
+                  dismiss(candidates.map((c) => c.entry.id));
                   setOpen(false);
                 }}
               >
@@ -105,39 +157,13 @@ export function FixReceiptDates() {
               </Button>
               <Button onClick={() => setOpen(false)}>Cancelar</Button>
               <Button variant="primary" loading={busy} disabled={!picked.size} onClick={apply}>
-                Corrigir {picked.size} {picked.size === 1 ? 'recebimento' : 'recebimentos'}
+                Acertar {picked.size} {picked.size === 1 ? 'parcela' : 'parcelas'}
               </Button>
             </>
           }
         >
-          <ul className="divide-y divide-hairline-surface">
-            {candidates.map((e) => {
-              const project = e.project_id ? maps.projects[e.project_id] : null;
-              return (
-                <li key={e.id} className="flex items-start gap-3 py-2.5">
-                  <Checkbox
-                    checked={picked.has(e.id)}
-                    onChange={(on) =>
-                      setPicked((s) => {
-                        const n = new Set(s);
-                        if (on) n.add(e.id);
-                        else n.delete(e.id);
-                        return n;
-                      })
-                    }
-                    label={<span className="sr-only">Corrigir {e.description}</span>}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13.5px] text-ink">{e.description}</div>
-                    <div className="text-[12.5px] text-muted">
-                      {project ? `${project.name} · ` : ''}Recebido em <s>{formatDate(e.paid_at)}</s> → <span className="text-ink">{formatDate(e.due_date)}</span>
-                    </div>
-                  </div>
-                  <span className="shrink-0 text-[13.5px] tabular text-ink">{formatMoney(e.amount)}</span>
-                </li>
-              );
-            })}
-          </ul>
+          {group('aberta', 'Ainda como "a receber"', 'Lançadas depois do vencimento e nunca marcadas como recebidas: hoje contam como vencidas. Desmarque as que ainda não foram pagas.')}
+          {group('data', 'Recebidas com a data de hoje', 'Marcadas como recebidas no dia do lançamento: passam para a data da parcela.')}
         </Modal>
       )}
     </>

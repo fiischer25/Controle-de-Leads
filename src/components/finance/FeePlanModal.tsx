@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import type { FinanceEntry, Project } from '../../lib/types';
-import { formatMoney, nowIso, uid } from '../../lib/utils';
+import { formatMoney, nowIso, today, uid } from '../../lib/utils';
 import { Button, Field, Modal, Select } from '../ui';
 import { MoneyInput } from './MoneyInput';
 import { newPlanDraft, planAmounts, validatePlan, type PlanDraft } from '../../lib/paymentPlan';
+import { PastPaidOption } from './PastPaidOption';
 import { PaymentPlanEditor } from './PaymentPlanEditor';
 import { useFinance } from './useFinance';
 
@@ -24,6 +25,7 @@ export function FeePlanModal({ project, onClose }: { project: Project; onClose: 
   const [account, setAccount] = useState(fin.accounts.find((a) => a.active)?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [pastPaid, setPastPaid] = useState(true);
 
   const category =
     fin.categories.find((c) => c.kind === 'receita' && c.active && c.name.toLowerCase().startsWith('honorários')) ??
@@ -36,6 +38,7 @@ export function FeePlanModal({ project, onClose }: { project: Project; onClose: 
     const problem = validatePlan(total, rows);
     if (problem) return setError(problem);
     const amounts = planAmounts(total, rows);
+    const t = today();
     setBusy(true);
     try {
       const now = nowIso();
@@ -46,7 +49,8 @@ export function FeePlanModal({ project, onClose }: { project: Project; onClose: 
         description: `Honorários ${project.name} · ${r.label.trim() || `Parcela ${i + 1}`}`,
         amount: amounts[i],
         due_date: r.due_date,
-        paid_at: null,
+        // Projeto já em andamento: parcela com data passada entra recebida na data dela
+        paid_at: pastPaid && r.due_date < t ? r.due_date : null,
         account_id: account || null,
         to_account_id: null,
         category_id: category?.id ?? null,
@@ -111,6 +115,7 @@ export function FeePlanModal({ project, onClose }: { project: Project; onClose: 
       </div>
       <div className="mt-4">
         <PaymentPlanEditor total={total} value={plan} onChange={setPlan} />
+        <PastPaidOption rows={rows} checked={pastPaid} onChange={setPastPaid} />
         {error && <p className="mt-3 text-[13px] text-danger-fg">{error}</p>}
         <p className="mt-4 text-[12.5px] text-faint">
           As parcelas entram em contas a receber, na categoria {category?.name ?? 'de receitas'}. Datas e valores podem ser ajustados depois, uma a uma.
