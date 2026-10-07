@@ -1,6 +1,6 @@
 // Status do projeto: automático pelas tarefas, definido à mão (Obra) fica, volta ao automático,
 // aviso ao concluir todas as tarefas (Finalizado ou Obra), status na lista de projetos e menu de
-// status das últimas tarefas da tabela por etapas sem cortar.
+// status das últimas tarefas da tabela por etapas sem cortar; detalhes e ordenação da lista.
 import { BASE, eq, ls, ok, openApp, patchTable, setupAdmin, spec } from './lib.mjs';
 
 export default async function ({ browser }) {
@@ -29,6 +29,13 @@ export default async function ({ browser }) {
       await page.goto(BASE + '/projetos');
       const row = page.locator(`a[href="/projetos/${pid}"]`);
       await row.getByText('Em andamento', { exact: true }).waitFor();
+      // Detalhes sem abrir o projeto: responsável, tarefas, próxima tarefa, horas e honorários
+      const facts = await row.locator('[data-project-facts]').innerText();
+      for (const t of ['Responsável:', 'tarefas', 'Próxima:', 'registradas', 'Honorários:', 'recebidos']) ok(facts.includes(t), `faltou "${t}" em: ${facts}`);
+      await page.getByRole('combobox', { name: 'Ordenar' }).click();
+      await page.getByRole('option', { name: 'Nome', exact: true }).click();
+      const names = await page.locator('ul > li a[href^="/projetos/"] .font-display').allInnerTexts();
+      eq(names, [...names].sort((a, b) => a.localeCompare(b)), 'ordem por nome');
       await page.getByRole('tab', { name: /^Finalizados/ }).waitFor();
     },
     page,
