@@ -178,6 +178,8 @@ export interface Project {
   description: string | null;
   notes: string | null;
   links: ProjectLink[];
+  /** Documentos do projeto (contrato assinado, plantas, memoriais...). */
+  attachments?: FileAttachment[];
   lead_id: string | null;
   completed_at: string | null;
   created_by: string | null;

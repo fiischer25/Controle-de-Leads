@@ -1,5 +1,5 @@
 // Leitura de contrato (gratuita, no navegador): PDF com texto e Word preenchem fechamento,
-// cliente, projeto e parcelas; foto sugere o Claude.ai e a resposta colada preenche tudo.
+// cliente, projeto e parcelas (o PDF fica nos documentos do projeto); foto sugere o Claude.ai e a resposta colada preenche tudo.
 // Arquivos em fixtures/ são fictícios.
 import { BASE, FIXTURES, eq, finishConvert, ls, ok, openApp, openWon, setupAdmin, spec } from './lib.mjs';
 
@@ -49,6 +49,7 @@ export default async function ({ browser }) {
       eq(fin.map((e) => [e.amount, e.due_date]), [[9000, '2026-10-10'], [12000, '2026-11-10'], [9000, '2026-12-10']], 'parcelas');
       const proj = (await ls(page, 'projects')).find((p) => p.client_id === lead.client_id);
       eq([proj.area_m2, proj.site_address], [185, 'Rua das Araucárias, nº 45, Batel, Curitiba/PR'], 'projeto');
+      eq((proj.attachments ?? []).map((a) => a.name), ['contrato-a.pdf'], 'PDF nos documentos do projeto');
     },
     page,
   );

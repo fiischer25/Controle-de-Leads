@@ -74,11 +74,11 @@ export function WonDealModal({
             ? 'Envie o contrato assinado (PDF ou Word) e o sistema preenche o valor e as parcelas.'
             : 'Envie o contrato assinado (PDF ou Word): o sistema preenche o valor e as parcelas aqui e os dados do cliente no cadastro a seguir.'
         }
-        onRead={(x, fileName) => {
+        onRead={(x, fileName, file) => {
           const plan = contractPlan(x, today());
           if (plan) c.apply(plan.total, plan.draft);
           // Os dados do cliente e do projeto vão para o "Virar cliente", logo em seguida
-          rememberContract(lead.id, x, fileName);
+          rememberContract(lead.id, x, fileName, file);
         }}
       />
       <ContractFields c={c} autoFocus />

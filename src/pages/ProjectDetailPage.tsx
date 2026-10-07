@@ -6,6 +6,7 @@ import { ProjectFinanceTab } from '../components/finance/ProjectFinanceTab';
 import { ProjectTasksTable } from '../components/projects/ProjectTasksTable';
 import { ClientEditModal } from '../components/clients/ClientEditModal';
 import { WonDealModal } from '../components/leads/WonDealModal';
+import { FilesSection } from '../components/files/FilesSection';
 import { planSummary } from '../lib/paymentPlan';
 import { SaveAsTemplateModal } from '../components/projects/SaveAsTemplateModal';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -449,7 +450,7 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function InfoTab({ project, onEditProject }: { project: Project; onEditProject: () => void }) {
-  const { maps, updateProject, closeDeal, can } = useData();
+  const { maps, me, isAdmin, updateProject, closeDeal, can } = useData();
   const toast = useToast();
   const client = maps.clients[project.client_id];
   // Oportunidade que originou o projeto (forma de pagamento do contrato)
@@ -543,8 +544,22 @@ function InfoTab({ project, onEditProject }: { project: Project; onEditProject: 
           )}
         </section>
       )}
+      <FilesSection
+        id="info-documentos"
+        title="Documentos"
+        className="panel"
+        files={project.attachments ?? []}
+        folder={`projetos/${project.id}`}
+        onChange={(next) => updateProject(project.id, { attachments: next })}
+        canRemove={(f) => isAdmin || !f.uploaded_by || f.uploaded_by === me.id}
+        empty="Contrato assinado, plantas, memoriais… Anexe ou arraste o arquivo para cá."
+        inputLabel="Anexar documento ao projeto"
+        heading={(action) => (
+          <SectionHeader id="info-documentos" title={`Documentos${project.attachments?.length ? ` · ${project.attachments.length}` : ''}`} aside={action} />
+        )}
+      />
       <section aria-labelledby="info-links" className="panel">
-        <SectionHeader id="info-links" title="Links e arquivos" />
+        <SectionHeader id="info-links" title="Links" />
         <ul>
           {(project.links ?? []).map((l) => (
             <li key={l.id} className="group flex items-center gap-2 border-t border-hairline py-3 text-body">

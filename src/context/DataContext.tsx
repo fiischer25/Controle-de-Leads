@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { backend, type NewUserInput } from '../lib/backend';
+import { removeTeamFiles } from '../lib/teamFiles';
 import { defaultFinanceAccount, defaultFinanceCategories, defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from '../lib/defaults';
 import { buildProjectTasks, nextProjectCode, tasksToTemplates } from '../lib/domain';
 import { SWATCHES } from '../lib/constants';
@@ -107,7 +108,11 @@ interface DataApi {
   // Leads
   createLead(input: LeadInput): Promise<Lead>;
   /** Oportunidade do cliente (onde fica o contrato); cria uma já ganha se o cliente não tiver. */
-  ensureClientLead(clientId: string): Promise<Lead>;
+  /**
+   * Oportunidade (ganha) do cliente, para guardar o contrato. Com `newDeal`, um contrato novo: se a
+   * oportunidade existente já tem forma de pagamento ou projeto, cria outra só para este contrato.
+   */
+  ensureClientLead(clientId: string, opts?: { newDeal?: boolean; projectTypeId?: string | null }): Promise<Lead>;
   updateLead(id: string, patch: Partial<Lead>): Promise<void>;
   moveLead(id: string, stageId: string, beforeLeadId?: string | null, extra?: Partial<Lead>): Promise<void>;
   deleteLead(id: string): Promise<void>;
@@ -394,12 +399,13 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   );
 
   const ensureClientLead = useCallback(
-    async (clientId: string) => {
+    async (clientId: string, opts: { newDeal?: boolean; projectTypeId?: string | null } = {}) => {
       const client = dbRef.current.clients.find((c) => c.id === clientId);
       if (!client) throw new Error('Cliente não encontrado.');
       const existing =
         (client.lead_id && dbRef.current.leads.find((l) => l.id === client.lead_id)) || dbRef.current.leads.find((l) => l.client_id === clientId);
-      if (existing) {
+      const taken = existing && (existing.payment_plan || dbRef.current.projects.some((p) => p.lead_id === existing.id));
+      if (existing && !(opts.newDeal && taken)) {
         if (client.lead_id !== existing.id) await patch('clients', clientId, { lead_id: existing.id });
         return existing;
       }
@@ -407,6 +413,8 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       const won = stages.find((s) => s.kind === 'won') ?? stages[0];
       if (!won) throw new Error('Cadastre as etapas do funil em Configurações.');
       const now = nowIso();
+      // Contrato de um projeto novo: oportunidade fechada agora; senão, desde o cadastro do cliente
+      const at = opts.newDeal ? now : client.created_at;
       const lead: Lead = {
         id: uid(),
         name: client.name,
@@ -416,7 +424,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
         state: client.state,
         area_m2: null,
         category: null,
-        project_type_id: dbRef.current.projects.find((p) => p.client_id === clientId)?.project_type_id ?? null,
+        project_type_id: opts.projectTypeId ?? dbRef.current.projects.find((p) => p.client_id === clientId)?.project_type_id ?? null,
         source_id: null,
         referred_by: null,
         proposal_value: null,
@@ -426,17 +434,18 @@ export function DataProvider({ userId, children }: { userId: string; children: R
         next_contact_date: null,
         expected_close_date: null,
         lost_reason: null,
-        notes: 'Criada a partir do cadastro do cliente para registrar o contrato.',
-        stage_changed_at: client.created_at,
-        closed_at: client.created_at,
+        notes: opts.newDeal ? 'Criada a partir do contrato do projeto.' : 'Criada a partir do cadastro do cliente para registrar o contrato.',
+        stage_changed_at: at,
+        closed_at: at,
         client_id: clientId,
-        converted_at: client.created_at,
+        converted_at: at,
         created_by: userId,
-        created_at: client.created_at,
+        created_at: at,
         updated_at: now,
       };
       const [saved] = await insertRows('leads', [lead]);
-      await patch('clients', clientId, { lead_id: saved.id });
+      // O cliente continua apontando para o primeiro contrato (Editar cliente → Contrato)
+      if (!existing) await patch('clients', clientId, { lead_id: saved.id });
       await log('lead', saved.id, 'created', `registrou o contrato de ${client.name}`);
       return saved;
     },
@@ -707,8 +716,14 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       const taskSet = new Set(taskIds);
       await removeRows('time_entries', dbRef.current.time_entries.filter((e) => taskSet.has(e.task_id)).map((e) => e.id));
       await removeRows('task_comments', dbRef.current.task_comments.filter((c) => taskSet.has(c.task_id)).map((c) => c.id));
+      const files = [
+        ...(project?.attachments ?? []),
+        ...dbRef.current.tasks.filter((t) => taskSet.has(t.id)).flatMap((t) => t.attachments ?? []),
+      ].map((a) => a.path);
       await removeRows('tasks', taskIds);
       await removeRows('projects', [id]);
+      // Documentos e arquivos das tarefas vão junto (falha aqui não desfaz a exclusão)
+      if (files.length) await removeTeamFiles(files);
       if (project) await log('project', id, 'deleted', `excluiu o projeto ${project.name}`);
     },
     [removeRows, log],
@@ -806,7 +821,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       const files = (dbRef.current.tasks.find((t) => t.id === id)?.attachments ?? []).map((a) => a.path);
       await removeRows('tasks', [id]);
       // Arquivos anexados vão junto (falha aqui não desfaz a exclusão)
-      if (files.length) await backend.removeFiles('task-files', files).catch(() => undefined);
+      if (files.length) await removeTeamFiles(files);
     },
     [removeRows],
   );
