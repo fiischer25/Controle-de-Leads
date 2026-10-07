@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, ExternalLink, HardHat, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ProjectFinanceTab } from '../components/finance/ProjectFinanceTab';
 import { ProjectTasksTable } from '../components/projects/ProjectTasksTable';
@@ -12,7 +12,7 @@ import { SaveAsTemplateModal } from '../components/projects/SaveAsTemplateModal'
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useToast } from '../context/ToastContext';
 import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
-import { orderedPhases, totalMinutes } from '../lib/domain';
+import { autoProjectStatus, orderedPhases, totalMinutes } from '../lib/domain';
 import type { Project, ProjectStatus, Task } from '../lib/types';
 import {
   byPosition,
@@ -59,6 +59,9 @@ import { GanttChart } from '../components/projects/GanttChart';
 import { MemberPicker } from '../components/projects/ProjectFields';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
 
+/** Opção do seletor de status que volta ao automático. */
+const AUTO = '__auto';
+
 type Tab = 'tasks' | 'timeline' | 'team' | 'info' | 'finance' | 'activity';
 
 export default function ProjectDetailPage() {
@@ -100,6 +103,12 @@ export default function ProjectDetailPage() {
   const manager = project.manager_id ? maps.profiles[project.manager_id] : null;
   const dueState = deadlineState(project.due_date, finished, settings.due_soon_days);
   const currentIdx = project.status === 'concluido' ? phases.length : open.length === 0 && tasks.length ? phases.length : phases.indexOf(phase);
+  // Todas as tarefas concluídas: pergunta se o projeto foi finalizado ou segue em obra
+  const allDone = tasks.length > 0 && open.length === 0 && (project.status === 'nao_iniciado' || project.status === 'em_andamento' || project.status === 'pausado');
+
+  /** Status escolhido à mão fica até voltar ao automático (null). */
+  const setStatus = (status: ProjectStatus | null) =>
+    updateProject(project.id, status ? { status, status_manual: true } : { status: autoProjectStatus(tasks), status_manual: false }).catch(toast.error);
 
   const addQuick = async (phaseName: string) => {
     const title = quick[phaseName]?.trim();
@@ -151,12 +160,16 @@ export default function ProjectDetailPage() {
             <div className="w-44">
               <Listbox
                 value={project.status}
-                onChange={(v) => updateProject(project.id, { status: v as ProjectStatus }).catch(toast.error)}
-                options={PROJECT_STATUS_ORDER.map((s) => ({
-                  value: s,
-                  label: PROJECT_STATUS[s].label,
-                  icon: <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PROJECT_STATUS[s].dot)} />,
-                }))}
+                onChange={(v) => setStatus(v === AUTO ? null : (v as ProjectStatus))}
+                options={[
+                  ...PROJECT_STATUS_ORDER.map((s) => ({
+                    value: s,
+                    label: PROJECT_STATUS[s].label,
+                    icon: <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PROJECT_STATUS[s].dot)} />,
+                  })),
+                  // Definido à mão: volta a seguir as tarefas
+                  ...(project.status_manual ? [{ value: AUTO, label: 'Automático (pelas tarefas)' }] : []),
+                ]}
                 aria-label="Status do projeto"
                 className={cn('border-transparent font-medium', st.badge)}
               />
@@ -175,6 +188,26 @@ export default function ProjectDetailPage() {
           </>
         }
       />
+
+      {allDone && (
+        <section
+          aria-label="Todas as tarefas concluídas"
+          className="mb-6 flex flex-col gap-3 rounded-[14px] border border-line bg-success-bg px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="flex items-center gap-2.5 text-[14px] text-ink">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-success-fg" strokeWidth={1.8} />
+            Todas as tarefas foram concluídas. Como fica o projeto?
+          </p>
+          <span className="flex shrink-0 gap-2">
+            <Button size="sm" icon={<HardHat className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setStatus('obra')}>
+              Obra
+            </Button>
+            <Button size="sm" variant="primary" icon={<CheckCircle2 className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setStatus('concluido')}>
+              Finalizado
+            </Button>
+          </span>
+        </section>
+      )}
 
       {/* Trilho de etapas */}
       {phases.length > 0 && (
@@ -633,6 +666,7 @@ function EditProjectModal({ project, onClose }: { project: Project; onClose: () 
     try {
       await updateProject(project.id, {
         name: v.name.trim(), client_id: v.client_id, project_type_id: v.project_type_id, status: v.status,
+        ...(v.status !== project.status ? { status_manual: true } : {}),
         manager_id: v.manager_id, member_ids: v.member_ids, start_date: v.start_date, due_date: v.due_date,
         area_m2: v.area_m2, site_address: v.site_address, site_city: v.site_city, description: v.description,
       });

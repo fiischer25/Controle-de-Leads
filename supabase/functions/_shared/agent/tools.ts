@@ -544,10 +544,10 @@ const HANDLERS: Record<string, Handler> = {
         await notify(ctx, creator, 'Tarefa concluída', `${ctx.me.name} concluiu "${task.title}".`, `/tarefas?tarefa=${id}`);
       }
     }
-    // O projeto começa automaticamente quando a primeira tarefa avança
+    // O projeto começa automaticamente quando a primeira tarefa avança (status definido à mão fica)
     if (status && status !== 'todo' && task.project_id) {
       const project = (await lookup.projectList()).find((p) => p.id === task.project_id);
-      if (project?.status === 'nao_iniciado') await ctx.store.update('projects', project.id, { status: 'em_andamento', updated_at: nowIso() });
+      if (project?.status === 'nao_iniciado' && !(project as { status_manual?: boolean }).status_manual) await ctx.store.update('projects', project.id, { status: 'em_andamento', updated_at: nowIso() });
     }
     if (newAssignee && newAssignee.id !== task.assignee_id) {
       await notify(

@@ -33,6 +33,9 @@ function translateError(message: string): string {
   if (/attachments/i.test(message) && /'projects'|"projects"|\bprojects\b/i.test(message) && /column|schema cache/i.test(message)) {
     return 'O banco ainda não tem os documentos do projeto. Abra Configurações → Banco de dados e aplique “Documentos do projeto” (migração 20261017000000_project_documents.sql).';
   }
+  if (/projects_status_check/i.test(message) || (/status_manual/i.test(message) && /column|schema cache/i.test(message))) {
+    return 'O banco ainda não tem o status “Obra”. Abra Configurações → Banco de dados e aplique “Status do projeto: Obra” (migração 20261018000000_project_status_obra.sql).';
+  }
   if (/bucket not found/i.test(message)) {
     return 'O espaço de arquivos ainda não foi criado no banco. Abra Configurações → Banco de dados e aplique as atualizações que faltam.';
   }

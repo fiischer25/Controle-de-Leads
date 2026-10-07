@@ -969,30 +969,63 @@ export function Popover({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
   useLayer(open, () => setOpen(false));
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+  // O menu fica por cima de tudo (fora de tabelas e painéis que cortam o conteúdo), ancorado ao
+  // gatilho; abre para o outro lado quando não cabe na tela.
+  useLayoutEffect(() => {
+    if (!open) {
+      setPlace(null);
+      return;
+    }
+    const update = () => {
+      const t = ref.current?.getBoundingClientRect();
+      const p = panelRef.current;
+      if (!t || !p) return;
+      const h = p.offsetHeight;
+      const w = p.offsetWidth;
+      const below = window.innerHeight - t.bottom - 8;
+      const above = t.top - 8;
+      const up = side === 'top' ? !(above < h + 8 && below > above) : below < h + 8 && above > below;
+      const top = up ? t.top - 8 - h : t.bottom + 8;
+      const left = align === 'right' ? t.right - w : t.left;
+      setPlace({
+        top: Math.max(8, Math.min(top, window.innerHeight - h - 8)),
+        left: Math.max(8, Math.min(left, window.innerWidth - w - 8)),
+      });
     };
+    update();
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
     document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [open]);
+    document.addEventListener('touchstart', onDown);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+    };
+  }, [open, side, align]);
   return (
     <div ref={ref} className="relative">
       {trigger({ open, toggle: () => setOpen((o) => !o) })}
-      {open && (
-        <div
-          className={cn(
-            'absolute z-30 min-w-[12rem] rounded-[12px] border border-line bg-surface p-1 shadow-md animate-fade-in',
-            side === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
-            align === 'right' ? 'right-0' : 'left-0',
-            className,
-          )}
-        >
-          {children(() => setOpen(false))}
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <div
+            ref={panelRef}
+            className={cn('fixed z-[70] min-w-[12rem] rounded-[12px] border border-line bg-surface p-1 shadow-md animate-fade-in', className)}
+            style={place ? { top: place.top, left: place.left } : { top: 0, left: 0, visibility: 'hidden' }}
+          >
+            {children(() => setOpen(false))}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -109,13 +109,18 @@ export default async function ({ browser }) {
   );
 
   await s.step(
-    'Virar cliente direto com PDF oferece salvar as parcelas',
+    'Virar cliente direto com PDF: honorários do contrato lançados automaticamente',
     async () => {
       const d = await openWon(page, others[2]);
       await d.getByRole('button', { name: 'Marcar como ganho sem forma de pagamento' }).click();
       const c = page.getByRole('dialog', { name: /Virar cliente/ });
       await c.getByLabel('Arquivo do contrato').setInputFiles(FIXTURES + 'contrato-a.pdf');
-      await c.getByText(/Salvar também a forma de pagamento do contrato: R\$\s30\.000,00/).waitFor({ timeout: 20000 });
+      await c.getByText('Preenchido com contrato-a.pdf').waitFor({ timeout: 20000 });
+      ok(!(await c.getByText(/Salvar também a forma de pagamento/).count()), 'ainda pede para marcar');
+      await c.getByRole('button', { name: 'Continuar para o projeto' }).click();
+      await c.getByRole('heading', { name: 'Honorários' }).waitFor();
+      eq(await c.getByLabel('Valor fechado').inputValue(), '30.000,00', 'valor dos honorários');
+      await c.getByRole('button', { name: 'Voltar' }).click();
       await finishConvert(page, c);
       const lead = (await ls(page, 'leads')).find((l) => l.name === others[2]);
       eq((await ls(page, 'finance_entries')).filter((e) => e.lead_id === lead.id).length, 3, 'parcelas');

@@ -93,6 +93,25 @@ export default async function ({ browser }) {
   );
 
   await s.step(
+    'cliente sem CPF com o mesmo nome: selecionado e o cadastro é completado com o contrato',
+    async () => {
+      // Como um cliente vindo de uma oportunidade só com nome e telefone
+      await patchTable(page, 'clients', "rows.forEach((c) => { if (c.id === arg) { c.document = ''; c.cep = ''; c.street = ''; c.number = ''; c.profession = ''; } });", first.client_id);
+      await page.reload();
+      const d = await openNewProject(page);
+      await d.getByLabel('Arquivo do contrato').setInputFiles(FIXTURES + 'contrato-a.pdf');
+      await d.getByText(/já é cliente \(mesmo nome do contrato\)/).waitFor({ timeout: 20000 });
+      await d.getByText(/o cadastro é completado com o que falta: CPF\/CNPJ, profissão, endereço/).waitFor();
+      ok(!(await page.getByRole('dialog', { name: 'Novo cliente' }).count()), 'abriu o Novo cliente');
+      const third = await finishProject(page, d);
+      eq(third.client_id, first.client_id, 'cliente');
+      const c = (await ls(page, 'clients')).find((x) => x.id === first.client_id);
+      eq([c.document, c.cep, c.street, c.number, c.profession], ['529.982.247-25', '80020-310', 'Rua XV de Novembro', '1500', 'Engenheiro civil'], 'cadastro completado');
+    },
+    page,
+  );
+
+  await s.step(
     'Novo projeto sem contrato: honorários definidos na hora e conferidos antes de criar',
     async () => {
       const d = await openNewProject(page);
@@ -105,7 +124,7 @@ export default async function ({ browser }) {
       await d.getByText(/^Selecione/).first().click();
       await page.getByRole('option', { name: new RegExp(ADMIN.name.split(' ')[0]) }).first().click();
       await d.getByRole('button', { name: 'Criar projeto' }).click();
-      await d.locator('#novo-projeto-honorarios .text-danger-fg').first().waitFor();
+      await d.locator('#honorarios-do-projeto .text-danger-fg').first().waitFor();
       ok(await d.count(), 'criou sem o valor dos honorários');
       await d.getByLabel('Valor fechado').fill('20.000,00');
       await d.getByRole('button', { name: 'Criar projeto' }).click();

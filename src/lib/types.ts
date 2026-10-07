@@ -153,7 +153,7 @@ export interface Client {
   updated_at: string;
 }
 
-export type ProjectStatus = 'nao_iniciado' | 'em_andamento' | 'pausado' | 'concluido' | 'cancelado';
+export type ProjectStatus = 'nao_iniciado' | 'em_andamento' | 'obra' | 'pausado' | 'concluido' | 'cancelado';
 
 export interface ProjectLink {
   id: string;
@@ -168,6 +168,8 @@ export interface Project {
   client_id: string;
   project_type_id: string;
   status: ProjectStatus;
+  /** Definido à mão (ex.: Obra): as tarefas não mudam mais o status. Falso = automático. */
+  status_manual?: boolean;
   manager_id: string | null;
   member_ids: string[];
   start_date: string;

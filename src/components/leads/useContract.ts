@@ -71,3 +71,13 @@ export function useContract(lead: Lead | null) {
 }
 
 export type Contract = ReturnType<typeof useContract>;
+
+/** Âncora da seção Honorários do projeto novo (Novo projeto e Virar cliente). */
+export const FEES_SECTION_ID = 'honorarios-do-projeto';
+
+/** Plano pronto para lançar, ou a mensagem do que falta (e rola até a seção Honorários). */
+export function buildFees(fees: Contract) {
+  const built = fees.build();
+  if ('error' in built) document.getElementById(FEES_SECTION_ID)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  return built;
+}

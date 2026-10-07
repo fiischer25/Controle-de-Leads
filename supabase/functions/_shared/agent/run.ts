@@ -45,7 +45,7 @@ export async function buildContext(store: Store, me: Profile, tz: string, now: D
     store.list<{ id: string; code: string; name: string; client_id: string; status: string }>('projects'),
     hasModule(me, 'comercial') || hasModule(me, 'projetos') ? store.list<{ id: string; name: string }>('clients') : Promise.resolve([]),
   ]);
-  const active = projects.filter((p) => ['nao_iniciado', 'em_andamento', 'pausado'].includes(p.status));
+  const active = projects.filter((p) => ['nao_iniciado', 'em_andamento', 'obra', 'pausado'].includes(p.status));
   const time = isoToZoned(now.toISOString(), tz).time;
   const lines = [
     '<contexto>',

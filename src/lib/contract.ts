@@ -378,11 +378,45 @@ export function contractDeal(x: ContractExtraction, accountId: string | null): L
   };
 }
 
-/** Cliente já cadastrado com o mesmo CPF/CNPJ do contrato. */
-export function findClientByContract(clients: Client[], x: ContractExtraction): Client | null {
+const nameWords = (v: string) =>
+  v
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((w) => w.length > 2 && !['dos', 'das', 'de', 'da', 'do'].includes(w));
+
+/** Mesmo nome: primeiro nome igual e mais um sobrenome em comum (ou um dos nomes só tem o primeiro). */
+export function sameClientName(a: string, b: string): boolean {
+  const x = nameWords(a);
+  const y = nameWords(b);
+  if (!x.length || !y.length || x[0] !== y[0]) return false;
+  if (x.length === 1 || y.length === 1) return true;
+  return x.slice(1).some((w) => y.slice(1).includes(w));
+}
+
+/** Dados do contrato que faltam no cadastro do cliente (o que já está preenchido não muda). */
+export function missingClientFields(client: Client, x: ContractExtraction): Partial<ClientInput> {
+  const out: Partial<ClientInput> = {};
+  for (const [k, v] of Object.entries(contractClientFields(x)) as [keyof ClientInput, ClientInput[keyof ClientInput]][]) {
+    if (k === 'name') continue;
+    const current = client[k as keyof Client];
+    if (current === null || current === undefined || String(current).trim() === '') (out as Record<string, unknown>)[k] = v;
+  }
+  return out;
+}
+
+/**
+ * Cliente já cadastrado: mesmo CPF/CNPJ do contrato ou, entre os cadastrados sem CPF/CNPJ (ex.:
+ * vindos de uma oportunidade só com nome e telefone), o mesmo nome.
+ */
+export function findClientByContract(clients: Client[], x: ContractExtraction): { client: Client; by: 'document' | 'name' } | null {
   const doc = digitsOnly(x.client.document);
-  if (doc.length !== 11 && doc.length !== 14) return null;
-  return clients.find((c) => digitsOnly(c.document) === doc) ?? null;
+  const byDoc = doc.length === 11 || doc.length === 14 ? clients.find((c) => digitsOnly(c.document) === doc) : undefined;
+  if (byDoc) return { client: byDoc, by: 'document' };
+  if (!x.client.name.trim()) return null;
+  const byName = clients.filter((c) => !digitsOnly(c.document) && sameClientName(c.name, x.client.name));
+  return byName.length === 1 ? { client: byName[0], by: 'name' } : null;
 }
 
 // ---------- Contrato lido no fechamento, usado em seguida no "Virar cliente" ----------

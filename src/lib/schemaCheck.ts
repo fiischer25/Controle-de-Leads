@@ -37,6 +37,7 @@ const REQUIRED: Array<{ file: string; label: string; probe: (b: SupabaseBackend)
   },
   { file: '20261015000000_task_attachments.sql', label: 'Arquivos (PDF) nas tarefas', probe: (b) => b.probe('tasks', 'attachments') },
   { file: '20261017000000_project_documents.sql', label: 'Documentos do projeto (contrato em PDF)', probe: (b) => b.probe('projects', 'attachments') },
+  { file: '20261018000000_project_status_obra.sql', label: 'Status do projeto: Obra e status definido à mão', probe: (b) => b.probe('projects', 'status_manual') },
   {
     file: '20261014000000_finance_access_repair.sql',
     label: 'Permissões do Financeiro (administrador com acesso total)',
