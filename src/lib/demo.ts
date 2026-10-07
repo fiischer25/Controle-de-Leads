@@ -280,6 +280,8 @@ export async function buildDemoData(
     one({ description: 'Impulsionamento Instagram', amount: 600, due_date: addDays(t, 6), category_id: cat('Marketing'), account_id: card.id }),
     one({ kind: 'transferencia', description: 'Reforço do caixa', amount: 500, due_date: addDays(t, -12), paid_at: addDays(t, -12), account_id: bank.id, to_account_id: cash.id }),
   );
+  // Lançados antes do vencimento, como no uso normal (não parecem parcelas antigas lançadas agora)
+  for (const e of finEntries) if (e.due_date < t) e.created_at = e.updated_at = `${addDays(e.due_date, -30)}T12:00:00.000Z`;
   const memberCosts: FinanceMemberCost[] = [[admin, 120], [ana, 85], [bruno, 70], [carla, 60]].map(([p, cost]) => ({
     id: uid(), user_id: (p as Profile).id, hourly_cost: cost as number, updated_at: now,
   }));

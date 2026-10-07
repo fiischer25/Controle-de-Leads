@@ -93,7 +93,7 @@ export default function FinancePage() {
       />
 
       <div className={tab === 'geral' ? 'mt-4' : 'mt-8'}>
-        {(tab === 'geral' || tab === 'lancamentos') && <FixReceiptDates />}
+        {tab !== 'categorias' && <FixReceiptDates />}
         {tab === 'geral' && <Overview onOpen={(entry) => setEditing({ entry })} onTab={setTab} />}
         {tab === 'lancamentos' && <Entries onOpen={(entry) => setEditing({ entry })} onImport={() => setImporting({})} />}
         {tab === 'contas' && <FinanceAccounts onImport={(account) => setImporting({ account })} />}

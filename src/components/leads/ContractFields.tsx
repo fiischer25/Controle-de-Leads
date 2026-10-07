@@ -2,6 +2,7 @@ import { planSummary } from '../../lib/paymentPlan';
 import { formatMoney } from '../../lib/utils';
 import { Checkbox, Field, Select } from '../ui';
 import { MoneyInput } from '../finance/MoneyInput';
+import { PastPaidOption } from '../finance/PastPaidOption';
 import { PaymentPlanEditor } from '../finance/PaymentPlanEditor';
 import type { Contract } from './useContract';
 
@@ -67,6 +68,7 @@ export function ContractFields({ c, autoFocus = false, showLaunch = true }: { c:
           )}
         </div>
       )}
+      {showLaunch && c.launch && c.received === 0 && <PastPaidOption rows={c.draft.rows} checked={c.pastPaid} onChange={c.setPastPaid} />}
       {c.existingPlan && (
         <p className="mt-3 text-[12.5px] text-faint">
           Combinado anteriormente: {formatMoney(c.existingPlan.total)} · {planSummary(c.existingPlan.rows)}.

@@ -643,9 +643,9 @@ function InfoTab({ project, onEditProject }: { project: Project; onEditProject: 
           lead={lead}
           mode="edit"
           onClose={() => setEditingPlan(false)}
-          onSubmit={async (plan, launch) => {
+          onSubmit={async (plan, launch, paidBefore) => {
             if (!plan) return;
-            const n = await closeDeal(lead.id, plan, launch, true);
+            const n = await closeDeal(lead.id, plan, launch, true, paidBefore);
             toast.success(n > 0 ? `Contrato salvo e ${n} ${n === 1 ? 'parcela atualizada' : 'parcelas atualizadas'} no Financeiro.` : 'Contrato salvo.');
           }}
         />

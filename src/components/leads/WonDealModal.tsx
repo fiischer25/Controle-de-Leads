@@ -21,7 +21,8 @@ export function WonDealModal({
   lead: Lead;
   mode: 'won' | 'edit';
   /** plan = null: marcar como ganho sem forma de pagamento. */
-  onSubmit: (plan: LeadPaymentPlan | null, launch: boolean) => Promise<void>;
+  /** `paidBefore`: parcelas com data anterior entram já recebidas (projeto em andamento). */
+  onSubmit: (plan: LeadPaymentPlan | null, launch: boolean, paidBefore?: string) => Promise<void>;
   onClose: () => void;
 }) {
   const c = useContract(lead);
@@ -38,7 +39,7 @@ export function WonDealModal({
     setError('');
     setBusy(withPlan ? 'plan' : 'skip');
     try {
-      await onSubmit(plan, withPlan && c.launch);
+      await onSubmit(plan, withPlan && c.launch, c.pastPaid ? today() : undefined);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível salvar.');

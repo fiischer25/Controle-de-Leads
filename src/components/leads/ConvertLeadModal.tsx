@@ -130,7 +130,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
       let launched = 0;
       if (plan) {
         try {
-          launched = await closeDeal(lead.id, plan, true, true);
+          launched = await closeDeal(lead.id, plan, true, true, fees.pastPaid ? today() : undefined);
         } catch (e) {
           toast.error(`O projeto foi criado, mas os honorários não foram lançados: ${e instanceof Error ? e.message : e}`);
         }

@@ -449,8 +449,8 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
           lead={lead}
           mode={winning.mode}
           onClose={() => setWinning(null)}
-          onSubmit={async (plan: LeadPaymentPlan | null, launch: boolean) => {
-            const created = plan ? await closeDeal(lead.id, plan, launch, true) : 0;
+          onSubmit={async (plan: LeadPaymentPlan | null, launch: boolean, paidBefore?: string) => {
+            const created = plan ? await closeDeal(lead.id, plan, launch, true, paidBefore) : 0;
             if (winning.stageId) await moveLead(lead.id, winning.stageId);
             if (created > 0)
               toast.success(

@@ -142,7 +142,7 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
       let launched = 0;
       if (lead && plan) {
         try {
-          launched = await closeDeal(lead.id, plan, true, true);
+          launched = await closeDeal(lead.id, plan, true, true, fees.pastPaid ? today() : undefined);
         } catch (e) {
           problems.push(`os honorários não foram lançados (${e instanceof Error ? e.message : e})`);
         }

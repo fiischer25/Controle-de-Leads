@@ -75,7 +75,7 @@ export function ClientEditModal({ client, initialTab = 'dados', onClose }: { cli
           referred_by: origin.referred_by.trim() || null,
           owner_id: origin.owner_id,
         });
-        if (plan) launched = await closeDeal(l.id, plan, contract.launch, true);
+        if (plan) launched = await closeDeal(l.id, plan, contract.launch, true, contract.pastPaid ? today() : undefined);
       }
       toast.success(
         launched > 0
