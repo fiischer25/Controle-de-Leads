@@ -29,14 +29,39 @@ export default async function ({ browser }) {
       await page.goto(BASE + '/projetos');
       const row = page.locator(`a[href="/projetos/${pid}"]`);
       await row.getByText('Em andamento', { exact: true }).waitFor();
-      // Detalhes sem abrir o projeto: responsável, tarefas, próxima tarefa, horas e honorários
+      // Detalhes sem abrir o projeto, focados em prazos (sem financeiro)
       const facts = await row.locator('[data-project-facts]').innerText();
-      for (const t of ['Responsável:', 'tarefas', 'Próxima:', 'registradas', 'Honorários:', 'recebidos']) ok(facts.includes(t), `faltou "${t}" em: ${facts}`);
+      for (const t of ['Responsável:', 'tarefas', 'registradas']) ok(facts.includes(t), `faltou "${t}" em: ${facts}`);
+      ok((await page.locator('[data-project-facts]').allInnerTexts()).some((x) => x.includes('Próximo prazo:')), 'próximo prazo na lista');
+      ok(!/Honorários|recebid|R\$/.test(await page.locator('[data-project-facts]').allInnerTexts().then((x) => x.join(' '))), 'financeiro na lista de projetos');
       await page.getByRole('combobox', { name: 'Ordenar' }).click();
       await page.getByRole('option', { name: 'Nome', exact: true }).click();
       const names = await page.locator('ul > li a[href^="/projetos/"] .font-display').allInnerTexts();
       eq(names, [...names].sort((a, b) => a.localeCompare(b)), 'ordem por nome');
       await page.getByRole('tab', { name: /^Finalizados/ }).waitFor();
+    },
+    page,
+  );
+
+  await s.step(
+    'alerta: tarefa em andamento com prazo perto ou atrasada',
+    async () => {
+      const day = (n) => new Date(Date.now() + n * 864e5 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+      // Só uma tarefa em andamento, vencendo daqui a 2 dias; as outras abertas sem prazo
+      await patchTable(page, 'tasks', `let first = true; rows.forEach((t) => { if (t.project_id !== arg || t.status === 'done') return; if (first) { t.status = 'doing'; t.due_date = '${day(2)}'; t.title = 'Detalhamento de Forro'; first = false; } else { t.status = 'todo'; t.due_date = null; } });`, pid);
+      await page.reload();
+      const row = page.locator(`a[href="/projetos/${pid}"]`);
+      const alert = row.locator('[data-deadline-alert]');
+      await alert.waitFor();
+      eq(await alert.getAttribute('data-deadline-alert'), 'perto', 'tipo do alerta');
+      ok(/Em andamento e vence em 2 dias .*: Detalhamento de Forro/.test(await alert.innerText()), await alert.innerText());
+      // Filtro pelo alerta, a partir do resumo do topo
+      await page.getByRole('button', { name: /tarefa em andamento vence em até 3 dias/ }).click();
+      eq(await page.locator('ul > li a[href^="/projetos/"]').count(), 1, 'projetos com alerta');
+      // Atrasada vira alerta vermelho
+      await patchTable(page, 'tasks', `rows.forEach((t) => { if (t.project_id === arg && t.status === 'doing') t.due_date = '${day(-1)}'; });`, pid);
+      await page.reload();
+      await page.locator(`a[href="/projetos/${pid}"] [data-deadline-alert="atrasada"]`).getByText(/Em andamento e atrasada/).waitFor();
     },
     page,
   );
