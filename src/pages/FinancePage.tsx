@@ -1,3 +1,4 @@
+import { FixReceiptDates } from '../components/finance/FixReceiptDates';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, Download, FileText, Plus, Scale, Upload, Wallet } from 'lucide-react';
@@ -92,6 +93,7 @@ export default function FinancePage() {
       />
 
       <div className={tab === 'geral' ? 'mt-4' : 'mt-8'}>
+        {(tab === 'geral' || tab === 'lancamentos') && <FixReceiptDates />}
         {tab === 'geral' && <Overview onOpen={(entry) => setEditing({ entry })} onTab={setTab} />}
         {tab === 'lancamentos' && <Entries onOpen={(entry) => setEditing({ entry })} onImport={() => setImporting({})} />}
         {tab === 'contas' && <FinanceAccounts onImport={(account) => setImporting({ account })} />}

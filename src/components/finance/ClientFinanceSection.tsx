@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { planSummary } from '../../lib/paymentPlan';
 import type { Client, FinanceEntry, Lead } from '../../lib/types';
 import { byPosition, cn, formatCurrency, formatDate, formatDateShort, formatMoney, today } from '../../lib/utils';
+import { settledDate } from '../../lib/finance';
 import { ActionLink, IconButton, MetricRow, SectionHeader } from '../ui';
 import { ClientEditModal } from '../clients/ClientEditModal';
 import { EntryFormModal } from './EntryFormModal';
@@ -97,7 +98,12 @@ export function ClientFinanceSection({ client, lead, projectIds }: { client: Cli
                     <IconButton
                       label={`Marcar ${e.description} como recebido`}
                       size="xs"
-                      onClick={() => fin.setPaid(e, t).then(() => toast.success('Parcela marcada como recebida.')).catch(toast.error)}
+                      onClick={() =>
+                        fin
+                          .setPaid(e, settledDate(e.due_date, t))
+                          .then(() => toast.success(`Parcela recebida em ${formatDate(settledDate(e.due_date, t))}.`))
+                          .catch(toast.error)
+                      }
                     >
                       <Check className="h-3.5 w-3.5" />
                     </IconButton>

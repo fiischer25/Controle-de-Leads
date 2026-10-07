@@ -21,6 +21,25 @@ export function entryDate(e: Pick<FinanceEntry, 'paid_at' | 'due_date'>): string
   return e.paid_at ?? e.due_date;
 }
 
+/**
+ * Data do recebimento/pagamento ao marcar como pago: a data combinada (vencimento) quando já
+ * passou, senão hoje. Assim parcelas antigas lançadas agora não caem todas no mês atual.
+ */
+export function settledDate(due: string, today: string): string {
+  return due <= today ? due : today;
+}
+
+/**
+ * Recebimentos lançados depois do vencimento e marcados como recebidos com a data do dia em que
+ * foram marcados (ex.: projetos já em andamento cadastrados agora), e não com a data combinada.
+ * Os vindos do extrato bancário ficam de fora: lá a data é a real.
+ */
+export function backdatedReceipts(entries: FinanceEntry[]): FinanceEntry[] {
+  return entries
+    .filter((e) => e.kind === 'receita' && e.paid_at && !e.bank_ref && e.due_date < e.created_at.slice(0, 10) && e.paid_at > e.due_date)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+}
+
 export function monthKey(date: string): string {
   return date.slice(0, 7);
 }
