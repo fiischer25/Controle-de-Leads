@@ -6,26 +6,19 @@ import { PROJECT_STATUS } from '../lib/constants';
 import { isProjectActive } from '../lib/domain';
 import { byPosition, downloadFile, formatDate, matches, toCsv, today } from '../lib/utils';
 import { ActionLink, Avatar, AvatarStack, Button, EmptyState, FilterPick, PageHeader, SearchField, StatusBadge, Tabs, Toolbar } from '../components/ui';
-import type { FinanceEntry } from '../lib/types';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { useProjectSummaries, type ProjectSummary } from '../components/projects/useProjectSummaries';
 import { projectRail, templatePhasesByType } from '../components/projects/rail';
 import { ProjectDeadline, StageRail } from '../components/projects/StageRail';
 import { ProjectFacts } from '../components/projects/ProjectFacts';
-import { projectFacts } from '../components/projects/facts';
+import { projectFacts, TASK_ALERT_DAYS, type ProjectFactsData } from '../components/projects/facts';
 
 type Scope = 'ativos' | 'concluidos' | 'todos';
-type DeadlineFilter = '' | 'overdue' | 'soon';
+type DeadlineFilter = '' | 'overdue' | 'soon' | 'alerta';
 type Sort = '' | 'prazo' | 'nome' | 'progresso' | 'recentes';
 
-/** Mais urgente primeiro: prazo vencido ou tarefas atrasadas, depois o prazo mais próximo. */
-function byUrgency(a: ProjectSummary, b: ProjectSummary) {
-  const u = (s: ProjectSummary) => (isProjectActive(s.project) ? (s.deadline === 'overdue' || s.overdueTasks > 0 ? 0 : 1) : 2);
-  return u(a) - u(b) || (a.project.due_date ?? '9999').localeCompare(b.project.due_date ?? '9999');
-}
-
 export default function ProjectsPage() {
-  const { db, maps, settings, can } = useData();
+  const { db, maps, settings } = useData();
   const summaries = useProjectSummaries();
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<Scope>('ativos');
@@ -45,7 +38,21 @@ export default function ProjectsPage() {
     [summaries],
   );
 
+  // Responsável, próxima tarefa e alertas de prazo de cada projeto
+  const facts = useMemo(() => {
+    const t = today();
+    return Object.fromEntries(summaries.map((s) => [s.project.id, projectFacts(s, maps.profiles, t, isProjectActive(s.project))])) as Record<string, ProjectFactsData>;
+  }, [summaries, maps.profiles]);
+
   const filtered = useMemo(() => {
+    /** Mais urgente primeiro: atrasos (projeto ou tarefas), depois prazos perto, depois o prazo de entrega. */
+    const urgency = (s: ProjectSummary) => {
+      if (!isProjectActive(s.project)) return 3;
+      const alerts = facts[s.project.id]?.alerts ?? [];
+      if (s.deadline === 'overdue' || s.overdueTasks > 0 || alerts.some((x) => x.days < 0)) return 0;
+      if (alerts.length || s.deadline === 'soon' || s.deadline === 'today') return 1;
+      return 2;
+    };
     return summaries
       .filter((s) => {
         const p = s.project;
@@ -55,6 +62,7 @@ export default function ProjectsPage() {
         if (person && !s.people.some((x) => x.id === person)) return false;
         if (deadline === 'overdue' && s.deadline !== 'overdue') return false;
         if (deadline === 'soon' && !['soon', 'today'].includes(s.deadline)) return false;
+        if (deadline === 'alerta' && !facts[p.id]?.alerts.length) return false;
         return matches(query, p.name, p.code, s.client?.name, p.site_city, s.type?.name);
       })
       .sort((a, b) => {
@@ -62,18 +70,10 @@ export default function ProjectsPage() {
         if (sort === 'nome') return a.project.name.localeCompare(b.project.name);
         if (sort === 'progresso') return b.progress - a.progress;
         if (sort === 'recentes') return b.project.created_at.localeCompare(a.project.created_at);
-        return byUrgency(a, b);
+        return urgency(a) - urgency(b) || (a.project.due_date ?? '9999').localeCompare(b.project.due_date ?? '9999');
       });
-  }, [summaries, scope, type, person, deadline, query, sort]);
+  }, [summaries, scope, type, person, deadline, query, sort, facts]);
 
-  // Responsável, próxima tarefa e honorários de cada projeto (honorários só com o Financeiro)
-  const finance = can('financeiro');
-  const facts = useMemo(() => {
-    const t = today();
-    const income: Record<string, FinanceEntry[]> = {};
-    if (finance) for (const e of db.finance_entries) if (e.project_id && e.kind === 'receita') (income[e.project_id] ||= []).push(e);
-    return Object.fromEntries(summaries.map((s) => [s.project.id, projectFacts(s, finance ? (income[s.project.id] ?? []) : null, maps.profiles, t)]));
-  }, [summaries, db.finance_entries, maps.profiles, finance]);
 
   const kpis = useMemo(() => {
     const active = summaries.filter((s) => isProjectActive(s.project));
@@ -82,9 +82,10 @@ export default function ProjectsPage() {
       overdue: active.filter((s) => s.deadline === 'overdue').length,
       soon: active.filter((s) => s.deadline === 'soon' || s.deadline === 'today').length,
       lateTasks: active.reduce((acc, s) => acc + s.overdueTasks, 0),
+      alerts: active.reduce((acc, s) => acc + (facts[s.project.id]?.alerts.filter((a) => a.days >= 0).length ?? 0), 0),
       doneYear: summaries.filter((s) => s.project.status === 'concluido' && (s.project.completed_at ?? '').startsWith(year)).length,
     };
-  }, [summaries]);
+  }, [summaries, facts]);
 
   const exportCsv = () => {
     downloadFile(
@@ -106,13 +107,7 @@ export default function ProjectsPage() {
           Responsável: facts[s.project.id]?.manager?.name ?? '',
           'Próxima tarefa': facts[s.project.id]?.next?.task.title ?? '',
           'Prazo da próxima tarefa': formatDate(facts[s.project.id]?.next?.task.due_date ?? null),
-          ...(finance
-            ? {
-                Honorários: facts[s.project.id]?.fees?.total ?? 0,
-                Recebido: facts[s.project.id]?.fees?.received ?? 0,
-                'A receber': (facts[s.project.id]?.fees?.total ?? 0) - (facts[s.project.id]?.fees?.received ?? 0),
-              }
-            : {}),
+          'Alerta de prazo': facts[s.project.id]?.alerts.map((a) => `${a.task.title} (${a.days < 0 ? 'atrasada' : a.days === 0 ? 'vence hoje' : `vence em ${a.days} d`})`).join('; ') ?? '',
           'Área (m²)': s.project.area_m2 ?? '',
           Equipe: s.people.map((p) => p.name).join(', '),
           Cidade: s.project.site_city ?? '',
@@ -145,6 +140,14 @@ export default function ProjectsPage() {
                 {' · '}
                 <button type="button" className="text-warning-fg hover:underline" onClick={() => { setScope('ativos'); setDeadline('soon'); }}>
                   {kpis.soon} {kpis.soon === 1 ? 'vence' : 'vencem'} em {settings.due_soon_days} dias
+                </button>
+              </>
+            )}
+            {kpis.alerts > 0 && (
+              <>
+                {' · '}
+                <button type="button" className="text-warning-fg hover:underline" onClick={() => { setScope('ativos'); setDeadline('alerta'); }}>
+                  {kpis.alerts} {kpis.alerts === 1 ? 'tarefa em andamento vence' : 'tarefas em andamento vencem'} em até {TASK_ALERT_DAYS} dias
                 </button>
               </>
             )}
@@ -190,7 +193,8 @@ export default function ProjectsPage() {
               onChange={(v) => setDeadline(v as DeadlineFilter)}
               options={[
                 { value: 'overdue', label: 'Vencidos' },
-                { value: 'soon', label: `Vencem em ${settings.due_soon_days} dias` },
+                { value: 'soon', label: `Entrega em ${settings.due_soon_days} dias` },
+                { value: 'alerta', label: 'Tarefa em andamento com prazo perto' },
               ]}
             />
             <FilterPick
