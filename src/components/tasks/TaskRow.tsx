@@ -35,7 +35,7 @@ export function TaskRow({
   const status = TASK_STATUS_STYLE[task.status];
 
   return (
-    <div className="group flex items-center gap-3 px-4 py-2.5 transition-colors duration-[120ms] hover:bg-subtle">
+    <div data-task-row className="group flex items-center gap-3 px-4 py-2.5 transition-colors duration-[120ms] hover:bg-subtle">
       <TaskCheck
         done={done}
         overdue={overdue}

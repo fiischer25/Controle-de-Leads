@@ -25,12 +25,23 @@ export function ProjectTasksTable({
   phases,
   hideDone,
   onOpen,
+  bare = false,
+  allowAdd = true,
+  phaseNumbers,
+  taskNumbers,
 }: {
   project: Project;
   tasks: Task[];
   phases: string[];
   hideDone: boolean;
   onOpen: (taskId: string) => void;
+  /** Sem borda própria (dentro de outro cartão, ex.: Minhas tarefas). */
+  bare?: boolean;
+  /** Botão "+" para criar tarefa na etapa. */
+  allowAdd?: boolean;
+  /** Numeração do projeto inteiro quando a tabela mostra só parte das tarefas. */
+  phaseNumbers?: Record<string, number>;
+  taskNumbers?: Record<string, string>;
 }) {
   const { db, maps, me, isAdmin, updateTask, deleteTask, createTask } = useData();
   const toast = useToast();
@@ -77,7 +88,7 @@ export function ProjectTasksTable({
   const dateCls = (task: Task) => (task.status !== 'done' && task.due_date && task.due_date < t ? 'text-danger-fg' : 'text-stone-600');
 
   return (
-    <div className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
+    <div className={cn('overflow-hidden bg-surface', !bare && 'rounded-[16px] border border-line shadow-card')}>
       <div className={cn(cols, 'border-b border-line/70 bg-stone-50 px-3 py-2 text-[11.5px] font-medium text-stone-500')}>
         <span>Nº</span>
         <span>Etapas / tarefas</span>
@@ -107,7 +118,7 @@ export function ProjectTasksTable({
         return (
           <div key={phase} className="border-b border-line/70 last:border-b-0">
             <div className={cn(cols, 'bg-stone-50/60 px-3 py-2.5')}>
-              <span className="text-[13px] tabular text-stone-500">{pi + 1}</span>
+              <span className="text-[13px] tabular text-stone-500">{phaseNumbers?.[phase] ?? pi + 1}</span>
               <span className="col-span-3 flex min-w-0 items-center gap-2">
                 <button
                   type="button"
@@ -121,9 +132,11 @@ export function ProjectTasksTable({
                 <span className="truncate text-[13.5px] font-semibold text-ink" title={phase}>
                   {phase}
                 </span>
-                <IconButton label={`Adicionar tarefa em ${phase}`} size="xs" onClick={() => setAdding({ phase, title: '' })}>
-                  <Plus className="h-3.5 w-3.5" />
-                </IconButton>
+                {allowAdd && (
+                  <IconButton label={`Adicionar tarefa em ${phase}`} size="xs" onClick={() => setAdding({ phase, title: '' })}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </IconButton>
+                )}
                 <span className={cn('shrink-0 text-[12px] tabular', done === all.length && all.length ? 'text-success-fg' : 'text-stone-500')}>
                   {done}/{all.length} {all.length === 1 ? 'tarefa' : 'tarefas'}
                 </span>
@@ -148,9 +161,9 @@ export function ProjectTasksTable({
                 const checked = checklist.filter((c) => c.done).length;
                 const canDelete = isAdmin || task.created_by === me.id;
                 return (
-                  <div key={task.id} className={cn(cols, 'group border-t border-line/50 px-3 py-2 hover:bg-stone-50/60')}>
+                  <div key={task.id} data-task-row className={cn(cols, 'group border-t border-line/50 px-3 py-2 hover:bg-stone-50/60')}>
                     <span className="text-[12.5px] tabular text-stone-500">
-                      {pi + 1}.{ti + 1}
+                      {taskNumbers?.[task.id] ?? `${pi + 1}.${ti + 1}`}
                     </span>
                     <button type="button" onClick={() => onOpen(task.id)} className="min-w-0 pl-6 text-left">
                       <span

@@ -4,6 +4,9 @@ import { ChevronDown, FolderOpen } from 'lucide-react';
 import type { Task } from '../../lib/types';
 import { cn, formatDateShort, today } from '../../lib/utils';
 import { useProjectSummaries } from '../projects/useProjectSummaries';
+import { orderedPhases } from '../../lib/domain';
+import { useMediaQuery } from '../../lib/useMediaQuery';
+import { ProjectTasksTable } from '../projects/ProjectTasksTable';
 import { TaskRow } from './TaskRow';
 import { byDue, dueBucket } from './taskBuckets';
 
@@ -34,12 +37,33 @@ function Chip({ tone, children }: { tone: 'danger' | 'warning' | 'info' | 'neutr
 }
 
 /**
+ * Numeração igual à do projeto (etapa 3, tarefa 3.2), mesmo mostrando só parte das tarefas, e as
+ * etapas na ordem do projeto.
+ */
+function numbering(projectTasks: Task[], shown: Task[]) {
+  const all = orderedPhases(projectTasks);
+  const phaseNumbers: Record<string, number> = {};
+  const taskNumbers: Record<string, string> = {};
+  all.forEach((phase, i) => {
+    phaseNumbers[phase] = i + 1;
+    projectTasks
+      .filter((x) => (x.phase || 'Geral') === phase)
+      .sort((a, b) => a.position - b.position)
+      .forEach((x, j) => (taskNumbers[x.id] = `${i + 1}.${j + 1}`));
+  });
+  const shownPhases = new Set(shown.map((x) => x.phase || 'Geral'));
+  return { phases: all.filter((p) => shownPhases.has(p)), phaseNumbers, taskNumbers };
+}
+
+/**
  * Tarefas abertas agrupadas por projeto: um bloco por projeto (o mais urgente primeiro), com a
- * etapa e o andamento do projeto e quantas tarefas estão atrasadas, para hoje e na semana.
+ * etapa e o andamento do projeto (%) e quantas tarefas estão atrasadas, para hoje e na semana.
+ * Em tela larga as tarefas vêm na tabela por etapas do projeto; no celular, em lista.
  * As avulsas (sem projeto) formam um bloco próprio.
  */
 export function TasksByProject({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string) => void }) {
   const summaries = useProjectSummaries();
+  const wide = useMediaQuery('(min-width: 1180px)');
   const [collapsed, setCollapsed] = useState<string[]>(readCollapsed);
   const t = today();
 
@@ -54,9 +78,11 @@ export function TasksByProject({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: 
       .map(([id, items]) => {
         const sorted = [...items].sort(byDue);
         const count = (b: string) => items.filter((x) => dueBucket(x, t) === b).length;
+        const summary = id ? info[id] : undefined;
         return {
           id,
-          summary: id ? info[id] : undefined,
+          summary,
+          numbering: numbering(summary?.tasks ?? [], items),
           tasks: sorted,
           overdue: count('overdue'),
           today: count('today'),
@@ -125,16 +151,20 @@ export function TasksByProject({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: 
                   </span>
                 </div>
                 {g.summary && (
-                  <div className="mt-1 flex min-w-0 items-center gap-2 text-[12.5px] text-muted">
-                    <span className="truncate">
-                      {g.summary.client?.name ? `${g.summary.client.name} · ` : ''}Etapa: {g.summary.phase}
+                  <div className="mt-1 truncate text-[12.5px] text-muted">
+                    {g.summary.client?.name ? `${g.summary.client.name} · ` : ''}Etapa atual: {g.summary.phase}
+                  </div>
+                )}
+                {g.summary && (
+                  // Evolução do projeto até 100% (todas as tarefas, não só as desta lista)
+                  <div className="mt-2 flex max-w-[420px] items-center gap-2.5" title={`Projeto ${g.summary.progress}% concluído`} data-project-progress>
+                    <span className="h-2 flex-1 overflow-hidden rounded-full bg-stone-200">
+                      <span
+                        className={cn('block h-full rounded-full', g.summary.progress >= 100 ? 'bg-success-solid' : 'bg-ink/75')}
+                        style={{ width: `${Math.min(100, g.summary.progress)}%` }}
+                      />
                     </span>
-                    <span className="flex shrink-0 items-center gap-1.5" title={`Projeto ${g.summary.progress}% concluído`}>
-                      <span className="h-1.5 w-16 overflow-hidden rounded-full bg-stone-200">
-                        <span className="block h-full rounded-full bg-ink/70" style={{ width: `${g.summary.progress}%` }} />
-                      </span>
-                      <span className="tabular">{g.summary.progress}%</span>
-                    </span>
+                    <span className="shrink-0 text-[12.5px] font-medium tabular text-ink">{g.summary.progress}%</span>
                   </div>
                 )}
               </div>
@@ -150,13 +180,27 @@ export function TasksByProject({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: 
                 {!g.overdue && !g.today && g.next && <span className="text-[12.5px] text-faint">próximo prazo {formatDateShort(g.next)}</span>}
               </div>
             </header>
-            {open && (
-              <div className="divide-y divide-hairline-surface md:[&>div]:px-6">
-                {g.tasks.map((x) => (
-                  <TaskRow key={x.id} task={x} onOpen={() => onOpen(x.id)} showPhase />
-                ))}
-              </div>
-            )}
+            {open &&
+              (wide && g.summary ? (
+                // Como no projeto: etapas numeradas e recolhíveis, status, duração, datas, horas, responsável e prioridade
+                <ProjectTasksTable
+                  project={g.summary.project}
+                  tasks={g.tasks}
+                  phases={g.numbering.phases}
+                  phaseNumbers={g.numbering.phaseNumbers}
+                  taskNumbers={g.numbering.taskNumbers}
+                  hideDone={false}
+                  onOpen={onOpen}
+                  bare
+                  allowAdd={false}
+                />
+              ) : (
+                <div className="divide-y divide-hairline-surface md:[&>div]:px-6" data-task-rows>
+                  {g.tasks.map((x) => (
+                    <TaskRow key={x.id} task={x} onOpen={() => onOpen(x.id)} showPhase />
+                  ))}
+                </div>
+              ))}
           </section>
         );
       })}

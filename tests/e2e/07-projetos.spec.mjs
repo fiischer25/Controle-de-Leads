@@ -230,16 +230,20 @@ export default async function ({ browser }) {
       // Cada tarefa aparece no bloco do seu projeto
       const first = await blocks.first().getAttribute('data-task-project');
       const inFirst = open.filter((t) => (t.project_id ?? 'avulsas') === first).length;
-      eq(await blocks.first().locator('.divide-y > div').count(), inFirst, 'tarefas do primeiro bloco');
+      eq(await blocks.first().locator('[data-task-row]').count(), inFirst, 'tarefas do primeiro bloco');
+      // Como no projeto: tabela por etapas com status, duração, datas, horas, responsável e prioridade, e a evolução em %
+      const proj = page.locator('[data-task-project]:not([data-task-project="avulsas"])').first();
+      for (const h of ['Etapas / tarefas', 'Status', 'Duração', 'Início', 'Fim', 'Responsável', 'Prioridade']) await proj.getByText(h, { exact: true }).first().waitFor();
+      ok(/\d+%/.test(await proj.locator('[data-project-progress]').innerText()), 'evolução do projeto');
       // Recolher e expandir
       await blocks.first().getByRole('button', { name: /^Recolher/ }).click();
-      eq(await blocks.first().locator('.divide-y > div').count(), 0, 'bloco recolhido');
+      eq(await blocks.first().locator('[data-task-row]').count(), 0, 'bloco recolhido');
       await blocks.first().getByRole('button', { name: /^Expandir/ }).click();
       // Resumo: "Em andamento" mostra só as em andamento
       const doing = open.filter((t) => t.status === 'doing' || t.status === 'review').length;
       await page.getByRole('group', { name: 'Resumo das tarefas' }).getByRole('button', { name: /Em andamento/ }).click();
       await page.getByText(/Mostrando só: em andamento/).waitFor();
-      eq(await page.locator('[data-task-project] .divide-y > div').count(), doing, 'tarefas em andamento');
+      eq(await page.locator('[data-task-project] [data-task-row]').count(), doing, 'tarefas em andamento');
       await page.getByRole('button', { name: 'Ver todas' }).click();
       // A visão escolhida fica lembrada
       await page.getByRole('tab', { name: 'Por prazo' }).click();
