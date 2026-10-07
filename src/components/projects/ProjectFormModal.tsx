@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, UserCheck, UserPlus } from 'lucide-react';
+import { Plus, UserCheck, UserPlus, Wallet } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import {
   applyContractToClient,
   applyContractToProject,
-  contractDeal,
+  contractPlan,
   findClientByContract,
   type ContractExtraction,
   type ReadContract,
@@ -16,15 +16,16 @@ import type { Client, LeadPaymentPlan } from '../../lib/types';
 import { digitsOnly, suggestProjectName, today } from '../../lib/utils';
 import { emptyClient } from '../clients/ClientFields';
 import { ClientFormModal } from '../clients/ClientFormModal';
-import { ContractDealOption } from '../leads/ContractDealOption';
+import { ContractFields } from '../leads/ContractFields';
 import { ContractReader } from '../leads/ContractReader';
-import { Button, Field, Modal, Select } from '../ui';
+import { useContract } from '../leads/useContract';
+import { Button, Field, Modal, SectionHeader, Select } from '../ui';
 import { ProjectFields, validateProject, type ProjectDraft, type ProjectErrors } from './ProjectFields';
 
 /**
  * Novo projeto. "Preencher com o contrato" lê o PDF: seleciona o cliente (mesmo CPF/CNPJ) ou abre o
- * Novo cliente já preenchido, preenche área, endereço da obra e escopo, oferece lançar as parcelas
- * no Financeiro e guarda o PDF nos documentos do projeto.
+ * Novo cliente já preenchido, preenche área, endereço da obra e escopo, preenche os honorários
+ * (valor e parcelas, lançados no Financeiro ao criar) e guarda o PDF nos documentos do projeto.
  */
 export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose: () => void; clientId?: string }) {
   const { db, me, can, createProject, updateProject, ensureClientLead, closeDeal } = useData();
@@ -53,8 +54,11 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
   const [errors, setErrors] = useState<ProjectErrors>({});
   const [busy, setBusy] = useState(false);
   const [contract, setContract] = useState<ReadContract | null>(null);
-  const [deal, setDeal] = useState<LeadPaymentPlan | null>(null);
-  const [saveDeal, setSaveDeal] = useState(true);
+  // Honorários: valor e parcelas do contrato, lançados em contas a receber ao criar o projeto
+  const canFees = can('comercial');
+  const fees = useContract(null);
+  const [feesOn, setFeesOn] = useState(false);
+  const [feesError, setFeesError] = useState('');
   // Resultado da busca do cliente do contrato (mostrado abaixo do leitor)
   const [contractClient, setContractClient] = useState<'found' | 'new' | null>(null);
 
@@ -69,7 +73,12 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
   const applyContract = (read: ReadContract) => {
     setContract(read);
     setDraft((d) => applyContractToProject(read.extraction, d));
-    setDeal(can('comercial') ? contractDeal(read.extraction, db.finance_accounts.find((a) => a.active)?.id ?? null) : null);
+    const plan = contractPlan(read.extraction, today());
+    if (plan && canFees) {
+      fees.apply(plan.total, plan.draft);
+      setFeesOn(true);
+      setFeesError('');
+    }
   };
 
   const readContract = (extraction: ContractExtraction, fileName: string, file?: File) => {
@@ -92,19 +101,29 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
     const errs = validateProject(draft);
     setErrors(errs);
     if (!clientId) setClientError('Selecione o cliente');
+    let plan: LeadPaymentPlan | null = null;
+    if (feesOn) {
+      const built = fees.build();
+      setFeesError('error' in built ? built.error : '');
+      if ('error' in built) {
+        document.getElementById('novo-projeto-honorarios')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      plan = built.plan;
+    }
     if (Object.keys(errs).length || !clientId) return;
     setBusy(true);
     try {
-      // Parcelas do contrato: ficam numa oportunidade ganha do cliente, ligada a este projeto
-      const lead = deal && saveDeal ? await ensureClientLead(clientId, { newDeal: true, projectTypeId: draft.project_type_id }) : null;
+      // Honorários: ficam numa oportunidade ganha do cliente (contrato), ligada a este projeto
+      const lead = plan ? await ensureClientLead(clientId, { newDeal: true, projectTypeId: draft.project_type_id }) : null;
       const p = await createProject({ ...draft, client_id: clientId, lead_id: lead?.id ?? null });
       const problems: string[] = [];
       let launched = 0;
-      if (lead && deal) {
+      if (lead && plan) {
         try {
-          launched = await closeDeal(lead.id, deal, true, true);
+          launched = await closeDeal(lead.id, plan, true, true);
         } catch (e) {
-          problems.push(`as parcelas não foram lançadas (${e instanceof Error ? e.message : e})`);
+          problems.push(`os honorários não foram lançados (${e instanceof Error ? e.message : e})`);
         }
       }
       if (contract?.file) {
@@ -117,7 +136,7 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
       }
       if (problems.length) toast.error(`O projeto foi criado, mas ${problems.join(' e ')}.`);
       toast.success(
-        `Projeto ${p.name} criado${launched > 0 ? ` e ${launched} ${launched === 1 ? 'parcela lançada' : 'parcelas lançadas'} no Financeiro` : ''}.`,
+        `Projeto ${p.name} criado${launched > 0 ? ` e ${launched} ${launched === 1 ? 'parcela lançada' : 'parcelas lançadas'} nos honorários` : ''}.`,
       );
       onClose();
       navigate(`/projetos/${p.id}`);
@@ -165,14 +184,6 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
               </Button>
             </p>
           )}
-          {deal && (
-            <ContractDealOption
-              deal={deal}
-              checked={saveDeal}
-              onChange={setSaveDeal}
-              hint="As parcelas entram em contas a receber no Financeiro, ligadas a este projeto."
-            />
-          )}
         </div>
         <div className="mb-5 flex items-end gap-2">
           <Field label="Cliente" required error={clientError} className="flex-1">
@@ -188,6 +199,42 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
           </Button>
         </div>
         <ProjectFields value={draft} onChange={setDraft} errors={errors} />
+        {canFees &&
+          (feesOn ? (
+            <section id="novo-projeto-honorarios" aria-labelledby="novo-projeto-honorarios-titulo" className="mt-8 border-t border-hairline-surface pt-6">
+              <SectionHeader
+                id="novo-projeto-honorarios-titulo"
+                title="Honorários"
+                aside={
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => {
+                      setFeesOn(false);
+                      setFeesError('');
+                    }}
+                  >
+                    Não lançar agora
+                  </Button>
+                }
+              />
+              <p className="-mt-2 mb-4 text-[13px] text-muted">
+                {contract ? 'Lidos do contrato: confira. ' : ''}Ao criar o projeto, as parcelas entram automaticamente nos honorários do projeto, em
+                contas a receber no Financeiro.
+              </p>
+              <ContractFields c={fees} showLaunch={false} />
+              {feesError && <p className="mt-3 text-[13px] text-danger-fg">{feesError}</p>}
+            </section>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setFeesOn(true)}
+              className="mt-8 flex w-full items-center gap-2 rounded-[10px] border border-dashed border-line-strong px-3 py-3 text-left text-[13px] text-faint hover:border-stone-300 hover:text-muted"
+            >
+              <Wallet className="h-4 w-4 shrink-0" strokeWidth={1.6} />
+              Definir os honorários agora (valor e parcelas)
+            </button>
+          ))}
       </Modal>
       {newClient && (
         <ClientFormModal

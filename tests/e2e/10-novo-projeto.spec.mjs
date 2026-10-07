@@ -55,7 +55,9 @@ export default async function ({ browser }) {
       await c.getByRole('button', { name: 'Salvar cliente' }).click();
       await c.waitFor({ state: 'detached' });
       ok((await d.getByRole('combobox', { name: 'Cliente' }).innerText()).includes('Thiago Moreira dos Santos'), 'cliente não selecionado');
-      await d.getByText(/Salvar também a forma de pagamento do contrato: R\$\s30\.000,00/).waitFor();
+      // Honorários preenchidos com o contrato, lançados sem precisar marcar nada
+      await d.getByRole('heading', { name: 'Honorários' }).waitFor();
+      eq(await d.getByLabel('Valor fechado').inputValue(), '30.000,00', 'valor dos honorários');
       eq(await d.getByLabel('Área (m²)').inputValue(), '185', 'área');
       first = await finishProject(page, d);
       const client = (await ls(page, 'clients')).find((x) => x.name === 'Thiago Moreira dos Santos');
@@ -77,6 +79,7 @@ export default async function ({ browser }) {
       const d = await openNewProject(page);
       await d.getByLabel('Arquivo do contrato').setInputFiles(FIXTURES + 'contrato-a.pdf');
       await d.getByText(/já é cliente \(mesmo CPF\/CNPJ do contrato\)/).waitFor({ timeout: 20000 });
+      eq(await d.getByLabel('Valor fechado').inputValue(), '30.000,00', 'valor dos honorários');
       ok(!(await page.getByRole('dialog', { name: 'Novo cliente' }).count()), 'abriu o Novo cliente');
       const second = await finishProject(page, d);
       eq(second.client_id, first.client_id, 'cliente');
@@ -85,6 +88,32 @@ export default async function ({ browser }) {
       eq((await entriesOf(page, first.id)).length, 3, 'parcelas do primeiro projeto continuam');
       const client = (await ls(page, 'clients')).find((x) => x.id === first.client_id);
       eq(client.lead_id, first.lead_id, 'cliente segue no primeiro contrato');
+    },
+    page,
+  );
+
+  await s.step(
+    'Novo projeto sem contrato: honorários definidos na hora e conferidos antes de criar',
+    async () => {
+      const d = await openNewProject(page);
+      await d.getByRole('combobox', { name: 'Cliente' }).click();
+      await page.getByRole('option', { name: /^Beatriz Fontana/ }).click();
+      await d.getByRole('button', { name: /Definir os honorários agora/ }).click();
+      // Sem valor não cria: avisa na seção
+      await d.getByRole('combobox', { name: 'Tipo de projeto' }).click();
+      await page.getByRole('option', { name: 'Interiores', exact: true }).click();
+      await d.getByText(/^Selecione/).first().click();
+      await page.getByRole('option', { name: new RegExp(ADMIN.name.split(' ')[0]) }).first().click();
+      await d.getByRole('button', { name: 'Criar projeto' }).click();
+      await d.locator('#novo-projeto-honorarios .text-danger-fg').first().waitFor();
+      ok(await d.count(), 'criou sem o valor dos honorários');
+      await d.getByLabel('Valor fechado').fill('20.000,00');
+      await d.getByRole('button', { name: 'Criar projeto' }).click();
+      await page.waitForURL(/projetos\/[^/?]+$/);
+      const id = new URL(page.url()).pathname.split('/').pop();
+      const fin = await entriesOf(page, id);
+      eq([fin.length, fin.reduce((a, e) => a + e.amount, 0)], [3, 20000], 'honorários lançados');
+      ok(fin.every((e) => e.kind === 'receita' && !e.paid_at), 'parcelas a receber');
     },
     page,
   );
