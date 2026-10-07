@@ -126,7 +126,7 @@ export default function ProjectsPage() {
               </>
             )}
             {' · '}
-            {kpis.doneYear} {kpis.doneYear === 1 ? 'concluído' : 'concluídos'} no ano
+            {kpis.doneYear} {kpis.doneYear === 1 ? 'finalizado' : 'finalizados'} no ano
           </>
         }
         actions={
@@ -173,7 +173,7 @@ export default function ProjectsPage() {
           <Tabs<Scope>
             tabs={[
               { id: 'ativos', label: 'Ativos', count: counts.ativos },
-              { id: 'concluidos', label: 'Concluídos', count: counts.concluidos },
+              { id: 'concluidos', label: 'Finalizados', count: counts.concluidos },
               { id: 'todos', label: 'Todos', count: counts.todos },
             ]}
             value={scope}
@@ -224,14 +224,14 @@ export default function ProjectsPage() {
                         {active ? (
                           <>
                             <StageRail phases={phases} current={current} />
-                            <div className="mt-2 flex min-w-0 items-baseline gap-2 text-[12.5px]">
+                            <div className="mt-2 flex min-w-0 items-center gap-2 text-[12.5px]">
+                              <StatusBadge kind="project" value={p.status} />
                               <span className="truncate text-muted">{current >= 0 && current < phases.length ? phases[current] : s.phase}</span>
                               {current >= 0 && current < phases.length && (
                                 <span className="shrink-0 tabular text-muted">
                                   · {current + 1}/{phases.length}
                                 </span>
                               )}
-                              {p.status === 'pausado' && <span className="shrink-0 text-faint">· pausado</span>}
                               {s.overdueTasks > 0 && (
                                 <span className="shrink-0 text-danger-fg">
                                   · {s.overdueTasks} {s.overdueTasks === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}

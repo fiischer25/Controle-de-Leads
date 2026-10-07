@@ -130,7 +130,7 @@ function short(key: string): string {
 
 // --------------------------------------------------------------------------- regras
 const DEFAULT_MODULES: ModuleKey[] = ['projetos', 'comercial', 'relatorios', 'equipe'];
-const ACTIVE = new Set(['nao_iniciado', 'em_andamento', 'pausado']);
+const ACTIVE = new Set(['nao_iniciado', 'em_andamento', 'obra', 'pausado']);
 /** Itens por seção antes do "e mais N". */
 const LIMIT = 6;
 

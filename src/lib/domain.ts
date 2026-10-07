@@ -1,4 +1,4 @@
-import type { Project, Task, TaskTemplate, TimeEntry } from './types';
+import type { Project, ProjectStatus, Task, TaskTemplate, TimeEntry } from './types';
 import { addBusinessDays, addDays, byPosition, nextBusinessDay, nowIso, today, uid } from './utils';
 
 /**
@@ -141,5 +141,15 @@ export function isTaskOpen(t: Task): boolean {
 }
 
 export function isProjectActive(p: Project): boolean {
-  return p.status === 'em_andamento' || p.status === 'nao_iniciado' || p.status === 'pausado';
+  return p.status === 'em_andamento' || p.status === 'nao_iniciado' || p.status === 'obra' || p.status === 'pausado';
+}
+
+/** Status automático pelas tarefas: alguma tarefa saiu de "A fazer" = em andamento. */
+export function autoProjectStatus(tasks: Pick<Task, 'status'>[]): ProjectStatus {
+  return tasks.some((t) => t.status !== 'todo') ? 'em_andamento' : 'nao_iniciado';
+}
+
+/** As tarefas mudam o status só enquanto ele é automático (não iniciado / em andamento). */
+export function followsTasks(p: Project): boolean {
+  return !p.status_manual && (p.status === 'nao_iniciado' || p.status === 'em_andamento');
 }

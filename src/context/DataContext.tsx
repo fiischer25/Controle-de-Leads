@@ -11,7 +11,7 @@ import {
 import { backend, type NewUserInput } from '../lib/backend';
 import { removeTeamFiles } from '../lib/teamFiles';
 import { defaultFinanceAccount, defaultFinanceCategories, defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from '../lib/defaults';
-import { buildProjectTasks, nextProjectCode, tasksToTemplates } from '../lib/domain';
+import { autoProjectStatus, buildProjectTasks, followsTasks, nextProjectCode, tasksToTemplates } from '../lib/domain';
 import { SWATCHES } from '../lib/constants';
 import {
   TABLES,
@@ -805,10 +805,14 @@ export function DataProvider({ userId, children }: { userId: string; children: R
           await notify(before.created_by, 'Tarefa concluída', `${me.name} concluiu "${before.title}".`, `/tarefas?tarefa=${id}`);
         }
       }
-      // Projeto começa automaticamente quando a primeira tarefa avança
-      if (changes.status && changes.status !== 'todo' && before.project_id) {
+      // Status automático do projeto: em andamento quando alguma tarefa avança (definido à mão, fica)
+      if (changes.status && changes.status !== before.status && before.project_id) {
         const project = dbRef.current.projects.find((p) => p.id === before.project_id);
-        if (project?.status === 'nao_iniciado') await patch('projects', project.id, { status: 'em_andamento' });
+        if (project && followsTasks(project)) {
+          const tasks = dbRef.current.tasks.filter((t) => t.project_id === project.id).map((t) => (t.id === id ? { ...t, status: changes.status! } : t));
+          const next = autoProjectStatus(tasks);
+          if (next !== project.status) await patch('projects', project.id, { status: next });
+        }
       }
     },
     [patch, notify, log, me.name, userId],

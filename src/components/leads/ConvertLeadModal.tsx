@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, CheckCircle2, Circle } from 'lucide-react';
 import { useData, type ClientInput } from '../../context/DataContext';
@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import {
   applyContractToClient,
   applyContractToProject,
-  contractDeal,
+  contractPlan,
   forgetContract,
   recalledContract,
   type ContractExtraction,
@@ -17,15 +17,16 @@ import { cn, maskPhone, suggestProjectName, today } from '../../lib/utils';
 import { ClientFields, emptyClient, REQUIRED_CLIENT_FIELDS, validateClient, type ClientErrors } from '../clients/ClientFields';
 import { ProjectFields, validateProject, type ProjectDraft, type ProjectErrors } from '../projects/ProjectFields';
 import { Button, Checkbox, Modal } from '../ui';
-import { ContractDealOption } from './ContractDealOption';
 import { ContractReader } from './ContractReader';
+import { FeesSection } from './FeesSection';
+import { buildFees, useContract } from './useContract';
 
 /**
  * "Virar cliente": só conclui quando todos os dados obrigatórios do cliente
  * e do projeto estiverem preenchidos. Cria cliente + projeto + tarefas do modelo.
  */
 export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
-  const { db, me, convertLead, closeDeal, updateProject, can, maps } = useData();
+  const { me, convertLead, closeDeal, updateProject, can, maps } = useData();
   const toast = useToast();
   const navigate = useNavigate();
   // Contrato lido no fechamento (Oportunidade ganha): já preenche o cadastro
@@ -35,9 +36,22 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
     const base = emptyClient({ name: lead.name, phone: maskPhone(lead.phone), email: lead.email ?? '', city: lead.city, state: lead.state ?? 'PR' });
     return recalled ? applyContractToClient(recalled.extraction, base) : base;
   });
-  // Contrato lido aqui, com a oportunidade ainda sem forma de pagamento: oferece salvar as parcelas
-  const [deal, setContractDeal] = useState<LeadPaymentPlan | null>(null);
-  const [saveDeal, setSaveDeal] = useState(true);
+  // Honorários: só quando a oportunidade foi ganha sem forma de pagamento (senão já foram definidos
+  // no fechamento). Lidos do contrato e lançados automaticamente ao criar o projeto.
+  const canFees = can('comercial') && !(maps.leads[lead.id] ?? lead).payment_plan;
+  const fees = useContract(maps.leads[lead.id] ?? lead);
+  const [feesOn, setFeesOn] = useState(false);
+  const [feesError, setFeesError] = useState('');
+  // Contrato lido no fechamento (ganho sem forma de pagamento): honorários já preenchidos
+  useEffect(() => {
+    const plan = recalled ? contractPlan(recalled.extraction, today()) : null;
+    if (plan && canFees) {
+      fees.apply(plan.total, plan.draft);
+      setFeesOn(true);
+    }
+    // Só ao abrir
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [clientErrors, setClientErrors] = useState<ClientErrors>({});
   const [sameAddress, setSameAddress] = useState(false);
   const typeId = lead.project_type_id ?? '';
@@ -66,8 +80,12 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
     setClient((c) => applyContractToClient(x, c));
     setProject((p) => applyContractToProject(x, p));
     setClientErrors({});
-    const current = maps.leads[lead.id] ?? lead;
-    setContractDeal(current.payment_plan ? null : contractDeal(x, db.finance_accounts.find((a) => a.active)?.id ?? null));
+    const plan = contractPlan(x, today());
+    if (plan && canFees) {
+      fees.apply(plan.total, plan.draft);
+      setFeesOn(true);
+      setFeesError('');
+    }
   };
   const [projectErrors, setProjectErrors] = useState<ProjectErrors>({});
   const [busy, setBusy] = useState(false);
@@ -98,11 +116,25 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
       : project;
     const errs = validateProject(draft);
     setProjectErrors(errs);
+    let plan: LeadPaymentPlan | null = null;
+    if (canFees && feesOn) {
+      const built = buildFees(fees);
+      setFeesError('error' in built ? built.error : '');
+      if ('error' in built) return;
+      plan = built.plan;
+    }
     if (Object.keys(errs).length) return;
     setBusy(true);
     try {
       const created = await convertLead(lead.id, client, draft);
-      const launched = deal && saveDeal ? await closeDeal(lead.id, deal, true, true) : 0;
+      let launched = 0;
+      if (plan) {
+        try {
+          launched = await closeDeal(lead.id, plan, true, true);
+        } catch (e) {
+          toast.error(`O projeto foi criado, mas os honorários não foram lançados: ${e instanceof Error ? e.message : e}`);
+        }
+      }
       if (contractFile) {
         try {
           const att = await uploadTeamFile(`projetos/${created.id}`, contractFile, me.id);
@@ -113,7 +145,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
       }
       forgetContract(lead.id);
       toast.success(
-        `${client.name} agora é cliente! Projeto ${created.name} criado${launched > 0 ? ` e ${launched} ${launched === 1 ? 'parcela lançada' : 'parcelas lançadas'} no Financeiro` : ''}.`,
+        `${client.name} agora é cliente! Projeto ${created.name} criado${launched > 0 ? ` e ${launched} ${launched === 1 ? 'parcela lançada' : 'parcelas lançadas'} nos honorários` : ''}.`,
       );
       onClose();
       if (can('projetos')) navigate(`/projetos/${created.id}`);
@@ -176,7 +208,6 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
             description="Envie o contrato assinado (PDF ou Word) e o sistema preenche os dados do cliente e do projeto."
             onRead={readContract}
           />
-          {deal && <ContractDealOption deal={deal} checked={saveDeal} onChange={setSaveDeal} />}
         </div>
       )}
 
@@ -205,6 +236,18 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
         <div className="space-y-4">
           <Checkbox checked={sameAddress} onChange={setSameAddress} label="O endereço da obra é o mesmo do cliente" />
           <ProjectFields value={project} onChange={setProject} errors={projectErrors} />
+          {canFees && (
+            <FeesSection
+              fees={fees}
+              on={feesOn}
+              onToggle={(on) => {
+                setFeesOn(on);
+                setFeesError('');
+              }}
+              error={feesError}
+              fromContract={!!contractFile || !!recalled}
+            />
+          )}
         </div>
       )}
     </Modal>

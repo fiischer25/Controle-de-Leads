@@ -10,7 +10,7 @@ import { PRIORITY_STYLE, PROJECT_STATUS_STYLE, TASK_STATUS_STYLE } from './statu
 
 // Cores de status vêm do mapa semântico (src/lib/status.ts).
 export const PROJECT_STATUS: Record<ProjectStatus, { label: string; dot: string; badge: string }> = PROJECT_STATUS_STYLE;
-export const PROJECT_STATUS_ORDER: ProjectStatus[] = ['nao_iniciado', 'em_andamento', 'pausado', 'concluido', 'cancelado'];
+export const PROJECT_STATUS_ORDER: ProjectStatus[] = ['nao_iniciado', 'em_andamento', 'obra', 'pausado', 'concluido', 'cancelado'];
 
 export const TASK_STATUS: Record<TaskStatus, { label: string; dot: string; badge: string }> = TASK_STATUS_STYLE;
 export const TASK_STATUS_ORDER: TaskStatus[] = ['todo', 'doing', 'review', 'paused', 'done'];
