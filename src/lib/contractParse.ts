@@ -38,8 +38,11 @@ function validDate(y: number, m: number, d: number): string {
 
 /** "10/10/2026", "10.10.26" ou "10 de outubro de 2026" → "2026-10-10". */
 export function brDate(s: string): string {
-  const num = s.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b/);
-  if (num) return validDate(Number(num[3]), Number(num[2]), Number(num[1]));
+  // A primeira data válida ("9.747,50-25/11/2026" não vira dia 50)
+  for (const num of s.matchAll(/(?<![\d,])(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?!\d)/g)) {
+    const d = validDate(Number(num[3]), Number(num[2]), Number(num[1]));
+    if (d) return d;
+  }
   const ext = s.match(/\b(\d{1,2})º?\s+de\s+([a-zç]+)\s+de\s+(\d{4})\b/i);
   if (ext && MONTHS[ext[2].toLowerCase()]) return validDate(Number(ext[3]), MONTHS[ext[2].toLowerCase()], Number(ext[1]));
   return '';
@@ -210,45 +213,78 @@ function labelFor(s: string, i: number): string {
 
 const EXCLUDE = /multa|juros|mora\b|rescis|reajust|corre[çc][ãa]o|IPCA|IGP|INCC|desconto|atraso|penalidade|cl[áa]usula penal|taxa|RRT|ART\b/i;
 
+const ORDINAL_WORDS =
+  'primeira|segunda|terceira|quarta|quinta|sexta|s[ée]tima|oitava|nona|d[ée]cima(?:\\s+(?:primeira|segunda|terceira|quarta|quinta|sexta|s[ée]tima|oitava|nona))?|vig[ée]sima|[úu]ltima';
+/** Início de uma linha da tabela de vencimentos ("ENTRADA", "1ª PARCELA", "Parcela 2/5", "SEGUNDA PARCELA"). */
+const SCHEDULE_LABEL = new RegExp(
+  `(?<![A-Za-zÀ-ú\\d])(entrada|sinal|saldo|parcela\\s+[úu]nica|(?:${ORDINAL_WORDS})\\s+(?:parcela|presta[çc][ãa]o)|\\d{1,2}\\s*[ªaº°]?\\s*(?:parcela|presta[çc][ãa]o)|parcela\\s*(?:n[º°.]?\\s*)?\\d{1,2}(?:\\s*(?:de|\\/)\\s*\\d{1,2})?)(?![A-Za-zÀ-ú])`,
+  'gi',
+);
+/** Próxima cláusula ("3.2 ", "CLÁUSULA QUARTA"), parágrafo ou rodapé: fim da última linha da tabela. */
+const SCHEDULE_END = /\n\s*\d+(?:\.\d+)+\s|\n\s*CL[ÁA]USULA|\n\s*\n|\n\s*ANEXO|\n\s*PAR[ÁA]GRAFO/i;
+
+type Rows = ContractExtraction['contract']['installments'];
+
 /**
- * Tabela de vencimentos, uma parcela por linha:
- * "ENTRADA - R$ 9.747,50, no dia 25/11/2026." / "1ª PARCELA - R$ 5.848,50, no dia 15/12/2026."
+ * Tabela de vencimentos, uma parcela por item, mesmo quando o PDF junta as linhas, quebra a data
+ * na linha de baixo ou põe a data antes do valor:
+ * "ENTRADA - R$ 9.747,50, no dia 25/11/2026." / "1ª PARCELA: R$ 5.848,50 com vencimento em 15/12/2026"
+ * / "SEGUNDA PARCELA – 15/01/2027 – R$ 5.848,50". Linhas repetidas (ex.: anexo) contam uma vez.
  */
-function parseSchedule(text: string, signed: string) {
-  const rows: ContractExtraction['contract']['installments'] = [];
-  const line = /^[ \t]*((?:entrada|sinal|saldo|assinatura|\d{1,2}\s*[ªaº°]?\s*parcela|parcela\s*(?:n[º°]\s*)?\d{1,2}(?:\s*(?:de|\/)\s*\d{1,2})?)[^\n]{0,25}?)\s*[-–:]\s*R\$\s*([\d.]+,\d{2})([^\n]*)/gim;
-  for (const m of text.matchAll(line)) {
+function parseSchedule(text: string, signed: string): Rows {
+  const rows: Rows = [];
+  const seen = new Set<string>();
+  const labels = [...text.matchAll(SCHEDULE_LABEL)];
+  labels.forEach((m, i) => {
+    const from = m.index! + m[0].length;
+    const next = i + 1 < labels.length ? labels[i + 1].index! : text.length;
+    let seg = text.slice(from, Math.min(next, from + 220));
+    const stop = seg.search(SCHEDULE_END);
+    if (stop >= 0) seg = seg.slice(0, stop);
+    const money = seg.match(MONEY);
+    // O valor vem logo depois do rótulo; "saldo em 5 parcelas de R$..." é frase, não linha da tabela
+    if (!money || money.index! > 90) return;
+    const before = seg.slice(0, money.index!);
+    if (/parcelas|presta[çc][õo]es|\d+\s*%/i.test(before) || EXCLUDE.test(before)) return;
     const raw = clean(m[1]);
     const label = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-    const due = brDate(m[3]) || (/entrada|sinal|assinatura/i.test(raw) && !/\d{1,2}\/\d/.test(m[3]) ? signed : '');
-    rows.push({ label, amount: brMoney(m[2]), percent: 0, due_date: due });
-  }
+    const amount = brMoney(money[1]);
+    const due = brDate(seg) || (/entrada|sinal|assinatura/i.test(raw) || /assinatura|no ato/i.test(seg) ? signed : '');
+    const key = `${label.toLowerCase()}|${amount}|${due}`;
+    if (!amount || seen.has(key)) return;
+    seen.add(key);
+    rows.push({ label, amount, percent: 0, due_date: due });
+  });
   return rows;
 }
 
-function parsePayments(text: string, signed: string) {
-  const schedule = parseSchedule(text, signed);
-  if (schedule.length) return schedule;
-  const rows: ContractExtraction['contract']['installments'] = [];
+/** Parcelas descritas em frases: mensais, percentuais ou valores com evento. */
+function parseSentences(text: string, signed: string, total: number): Rows {
+  const rows: Rows = [];
   const sentences = text
     .replace(/\r/g, '')
-    .split(/;|\n(?=\s*(?:[a-z]\)|[IVX]+\s*[-–.)]|\d+[.)]\s|[-•]))|\.\s+(?=[A-ZÀ-Ú])|\n\s*\n/)
+    // Frases, itens ("a)", "I -", "•") e cláusulas numeradas ("3.1 ", "4 ")
+    .split(/;|\n(?=\s*(?:[a-z]\)|[IVX]+\s*[-–.)]|\d+(?:\.\d+)*[.)]?\s|[-•]))|\.\s+(?=[A-ZÀ-Ú]|\d+(?:\.\d+)*\.?\s)|\n\s*\n/)
     .map((s) => s.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
 
   for (const s of sentences) {
     if (EXCLUDE.test(s)) continue;
-    // Parcelas mensais: "10 (dez) parcelas mensais e sucessivas de R$ 1.000,00"
-    const monthly = s.match(/(\d{1,2}|[a-zçê]+(?:\s+e\s+[a-z]+)?)\s*(?:\([^)]*\))?\s*(?:parcelas|presta[çc][õo]es|pagamentos)\s+(?:mensais|iguais|sucessivas|consecutivas)/i);
+    // Parcelas mensais: "10 (dez) parcelas mensais e sucessivas de R$ 1.000,00" / "saldo em 5 parcelas de R$ 5.848,50"
+    const monthly = s.match(
+      /(\d{1,2}|[a-zçê]+(?:\s+e\s+[a-z]+)?)\s*(?:\([^)]*\))?\s*(?:parcelas|presta[çc][õo]es|pagamentos)(?=\s+(?:mensais|iguais|sucessivas|consecutivas|fixas|de\s+R\$|no valor|cada)|\s*R\$)/i,
+    );
     if (monthly) {
       const n = /^\d+$/.test(monthly[1]) ? Number(monthly[1]) : NUMBER_WORDS[monthly[1].toLowerCase()] ?? 0;
-      const each = s.slice(monthly.index! + monthly[0].length).match(MONEY);
-      const amount = each ? brMoney(each[1]) : 0;
       if (n >= 2 && n <= 60) {
         // Entrada na mesma frase: "entrada de R$ 5.000,00 e o saldo em 5 parcelas..."
-        const entry = s.match(/(?:entrada|sinal)[^R]{0,30}R\$\s*([\d.]+,\d{2})/i);
-        if (entry) rows.push({ label: 'Entrada', amount: brMoney(entry[1]), percent: 0, due_date: brDate(s.slice(0, s.search(/parcelas/i))) || signed });
-        let first = brDate(s.slice(s.search(/parcelas|presta/i)));
+        const entry = s.match(/(?:entrada|sinal)[^R]{0,30}R\$\s*([\d.]+(?:,\d{1,2})?)/i);
+        const entryAmount = entry ? brMoney(entry[1]) : 0;
+        if (entry) rows.push({ label: 'Entrada', amount: entryAmount, percent: 0, due_date: brDate(s.slice(0, s.search(/parcelas|presta|pagamentos/i))) || signed });
+        const each = s.slice(monthly.index! + monthly[0].length).match(MONEY);
+        // Sem o valor de cada parcela: divide o que falta do total
+        const amount = each ? brMoney(each[1]) : total > entryAmount ? Math.round(((total - entryAmount) / n) * 100) / 100 : 0;
+        let first = brDate(s.slice(s.search(/parcelas|presta|pagamentos/i)));
         const day = s.match(/(?:todo|cada)\s+dia\s+(\d{1,2})/i);
         if (!first && day && signed) {
           const [y, m] = signed.split('-').map(Number);
@@ -303,11 +339,37 @@ function parsePayments(text: string, signed: string) {
   return rows;
 }
 
+/** Fecha com o total: valores somam o total, ou percentuais somam 100%. */
+function closes(rows: Rows, total: number): boolean {
+  if (!rows.length) return false;
+  const amounts = rows.reduce((a, r) => a + r.amount, 0);
+  const pct = rows.reduce((a, r) => a + r.percent, 0);
+  return (total > 0 && Math.abs(amounts - total) <= 0.05) || Math.abs(pct - 100) <= 0.1;
+}
+
+/** Tabela de vencimentos ou frases; fica com a leitura que fecha com o valor total. */
+function parsePayments(text: string, signed: string, total: number): Rows {
+  const schedule = parseSchedule(text, signed);
+  if (closes(schedule, total)) return schedule;
+  const sentences = parseSentences(text, signed, total);
+  if (closes(sentences, total)) return sentences;
+  if (schedule.length >= 2) return schedule;
+  return sentences.length ? sentences : schedule;
+}
+
 function parseTotal(text: string): number {
   const flat = text.replace(/\s+/g, ' ');
-  const labelled = flat.match(/(?:valor total|valor global|valor dos honor[áa]rios|honor[áa]rios (?:totais|no valor|totalizam)|totaliza(?:m|ndo)?|pagar[áa] (?:a[oà]s?|à) CONTRATAD[AO]S?|pre[çc]o (?:total|global)|import[âa]ncia (?:total|de))[^R]{0,80}R\$\s*([\d.]+,\d{2})/i);
+  const labelled = flat.match(
+    /(?:valor total|valor global|valor dos honor[áa]rios|honor[áa]rios (?:totais|no valor|totalizam|(?:s[ãa]o|ser[ãa]o|ser[áa]|[ée]) de)|totaliza(?:m|ndo)?|pagar[áa] (?:a[oà]s?|à) CONTRATAD[AO]S?|pre[çc]o (?:total|global)|import[âa]ncia (?:total|de))[^R]{0,80}R\$\s*([\d.]+(?:,\d{2})?)/i,
+  );
   if (labelled) return brMoney(labelled[1]);
-  const all = [...flat.matchAll(MONEY_G)].filter((m) => !EXCLUDE.test(flat.slice(Math.max(0, m.index! - 80), m.index!))).map((m) => brMoney(m[1]));
+  // Sem rótulo: o maior valor fora de multa, juros, reajuste... (olhando só a mesma frase)
+  const all = [...flat.matchAll(MONEY_G)]
+    .filter((m) => {
+      const before = flat.slice(Math.max(0, m.index! - 80), m.index!);
+      return !EXCLUDE.test(before.slice(Math.max(before.lastIndexOf('. '), before.lastIndexOf('\n'), before.lastIndexOf(';')) + 1));
+    })
+    .map((m) => brMoney(m[1]));
   return all.length ? Math.max(...all) : 0;
 }
 
@@ -319,7 +381,7 @@ export function parseContractText(text: string): ContractExtraction {
   const signedMatch = [...flat.matchAll(/\b(\d{1,2})º?\s+de\s+([A-Za-zçÇ]+)\s+de\s+(\d{4})\b/gi)].filter((m) => MONTHS[m[2].toLowerCase()]).pop();
   const signed = signedMatch ? brDate(`${signedMatch[1]} de ${signedMatch[2].toLowerCase()} de ${signedMatch[3]}`) : '';
   const total = parseTotal(flat);
-  const installments = parsePayments(flat, signed);
+  const installments = parsePayments(flat, signed, total);
   const area = flat.match(/(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:,\d{1,2})?)\s*(?:m²|m2|metros quadrados)/i);
   const site = flat.match(/(?:im[óo]vel|obra|unidade|resid[êe]ncia|apartamento|casa|terreno)\s+(?:situad[oa]|localizad[oa]|sito)\s+(?:na|no|à|ao|em)\s+([\s\S]{5,400})/i);
   const objeto = flat.match(/(?:tem (?:como|por) objeto|objeto d[oe]st[ea] (?:contrato|instrumento) (?:é|consiste em|:)|(?<![A-Za-zÀ-ú])O objeto (?:é|consiste em))\s*:?\s*([\s\S]{10,600})/i);

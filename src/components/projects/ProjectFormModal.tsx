@@ -78,7 +78,7 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
   const [feesOn, setFeesOn] = useState(false);
   const [feesError, setFeesError] = useState('');
   // Cliente do contrato: achado pelo CPF/CNPJ, pelo nome, o já escolhido (sem CPF) ou novo
-  const [contractClient, setContractClient] = useState<'document' | 'name' | 'selected' | 'new' | null>(null);
+  const [contractClient, setContractClient] = useState<'document' | 'name' | 'selected' | 'new' | 'missing' | null>(null);
 
   const pickClient = (id: string, saved?: Client) => {
     setClientId(id);
@@ -112,6 +112,8 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
     if (current && !digitsOnly(current.document) && (!extraction.client.name.trim() || sameClientName(current.name, extraction.client.name))) {
       return setContractClient('selected');
     }
+    // Contrato sem nome nem CPF do contratante (ex.: PDF escaneado ou fora do modelo): não abre cadastro vazio
+    if (!extraction.client.name.trim() && !digitsOnly(extraction.client.document)) return setContractClient('missing');
     setClientId('');
     setContractClient('new');
     setNewClient({ prefilled: true });
@@ -202,6 +204,13 @@ export function ProjectFormModal({ onClose, clientId: initialClient }: { onClose
                   : `${selected.name} já é cliente (${contractClient === 'document' ? 'mesmo CPF/CNPJ do contrato' : 'mesmo nome do contrato'}) e foi selecionado.`}
                 {completeLabels.length > 0 && ` Ao criar o projeto, o cadastro é completado com o que falta: ${completeLabels.join(', ')}.`}
               </span>
+            </p>
+          )}
+          {contractClient === 'missing' && (
+            <p className="mt-2 flex items-start gap-1.5 text-[13px] text-warning-fg">
+              <UserPlus className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} />
+              Não encontrei o nome e o CPF do contratante neste contrato. Selecione ou cadastre o cliente abaixo, ou use “Ler com o Claude.ai” no
+              quadro acima para uma leitura completa.
             </p>
           )}
           {contractClient === 'new' && !clientId && contract && (
