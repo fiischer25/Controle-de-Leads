@@ -6,17 +6,18 @@ import { useToast } from '../../context/ToastContext';
 import {
   applyContractToClient,
   applyContractToProject,
-  contractPlan,
+  contractDeal,
   forgetContract,
   recalledContract,
   type ContractExtraction,
 } from '../../lib/contract';
-import { finalizeRows, planSummary, validatePlan } from '../../lib/paymentPlan';
+import { uploadTeamFile } from '../../lib/teamFiles';
 import type { Lead, LeadPaymentPlan } from '../../lib/types';
-import { cn, formatMoney, maskPhone, nowIso, suggestProjectName, today } from '../../lib/utils';
+import { cn, maskPhone, suggestProjectName, today } from '../../lib/utils';
 import { ClientFields, emptyClient, REQUIRED_CLIENT_FIELDS, validateClient, type ClientErrors } from '../clients/ClientFields';
 import { ProjectFields, validateProject, type ProjectDraft, type ProjectErrors } from '../projects/ProjectFields';
 import { Button, Checkbox, Modal } from '../ui';
+import { ContractDealOption } from './ContractDealOption';
 import { ContractReader } from './ContractReader';
 
 /**
@@ -24,7 +25,7 @@ import { ContractReader } from './ContractReader';
  * e do projeto estiverem preenchidos. Cria cliente + projeto + tarefas do modelo.
  */
 export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
-  const { db, convertLead, closeDeal, can, maps } = useData();
+  const { db, me, convertLead, closeDeal, updateProject, can, maps } = useData();
   const toast = useToast();
   const navigate = useNavigate();
   // Contrato lido no fechamento (Oportunidade ganha): já preenche o cadastro
@@ -35,7 +36,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
     return recalled ? applyContractToClient(recalled.extraction, base) : base;
   });
   // Contrato lido aqui, com a oportunidade ainda sem forma de pagamento: oferece salvar as parcelas
-  const [contractDeal, setContractDeal] = useState<LeadPaymentPlan | null>(null);
+  const [deal, setContractDeal] = useState<LeadPaymentPlan | null>(null);
   const [saveDeal, setSaveDeal] = useState(true);
   const [clientErrors, setClientErrors] = useState<ClientErrors>({});
   const [sameAddress, setSameAddress] = useState(false);
@@ -58,21 +59,15 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
     return recalled ? applyContractToProject(recalled.extraction, draft) : draft;
   });
 
-  const readContract = (x: ContractExtraction) => {
+  // PDF do contrato: vai para os documentos do projeto criado
+  const [contractFile, setContractFile] = useState<File | null>(() => recalled?.file ?? null);
+  const readContract = (x: ContractExtraction, _name: string, file?: File) => {
+    setContractFile(file ?? null);
     setClient((c) => applyContractToClient(x, c));
     setProject((p) => applyContractToProject(x, p));
     setClientErrors({});
-    const plan = contractPlan(x, today());
     const current = maps.leads[lead.id] ?? lead;
-    if (plan?.draft && !current.payment_plan && !validatePlan(plan.total, plan.draft.rows)) {
-      setContractDeal({
-        total: plan.total,
-        rows: finalizeRows(plan.total, plan.draft.rows),
-        account_id: db.finance_accounts.find((a) => a.active)?.id ?? null,
-        preset: plan.draft.preset,
-        defined_at: nowIso(),
-      });
-    } else setContractDeal(null);
+    setContractDeal(current.payment_plan ? null : contractDeal(x, db.finance_accounts.find((a) => a.active)?.id ?? null));
   };
   const [projectErrors, setProjectErrors] = useState<ProjectErrors>({});
   const [busy, setBusy] = useState(false);
@@ -107,7 +102,15 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
     setBusy(true);
     try {
       const created = await convertLead(lead.id, client, draft);
-      const launched = contractDeal && saveDeal ? await closeDeal(lead.id, contractDeal, true, true) : 0;
+      const launched = deal && saveDeal ? await closeDeal(lead.id, deal, true, true) : 0;
+      if (contractFile) {
+        try {
+          const att = await uploadTeamFile(`projetos/${created.id}`, contractFile, me.id);
+          await updateProject(created.id, { attachments: [att] });
+        } catch (e) {
+          toast.error(`O projeto foi criado, mas o PDF do contrato não foi guardado: ${e instanceof Error ? e.message : e}`);
+        }
+      }
       forgetContract(lead.id);
       toast.success(
         `${client.name} agora é cliente! Projeto ${created.name} criado${launched > 0 ? ` e ${launched} ${launched === 1 ? 'parcela lançada' : 'parcelas lançadas'} no Financeiro` : ''}.`,
@@ -173,16 +176,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
             description="Envie o contrato assinado (PDF ou Word) e o sistema preenche os dados do cliente e do projeto."
             onRead={readContract}
           />
-          {contractDeal && (
-            <div className="mt-3 rounded-[12px] border border-line bg-surface px-4 py-3">
-              <Checkbox
-                checked={saveDeal}
-                onChange={setSaveDeal}
-                label={`Salvar também a forma de pagamento do contrato: ${formatMoney(contractDeal.total)}, ${planSummary(contractDeal.rows)}`}
-              />
-              <p className="mt-1 pl-6 text-[12.5px] text-faint">As parcelas entram em contas a receber no Financeiro. Dá para ajustar depois em Editar cliente → Contrato.</p>
-            </div>
-          )}
+          {deal && <ContractDealOption deal={deal} checked={saveDeal} onChange={setSaveDeal} />}
         </div>
       )}
 

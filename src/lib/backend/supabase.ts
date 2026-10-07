@@ -30,6 +30,9 @@ function translateError(message: string): string {
   if (/attachments/i.test(message) && /'tasks'|"tasks"|\btasks\b/i.test(message) && /column|schema cache/i.test(message)) {
     return 'O banco ainda não tem os arquivos nas tarefas. Abra Configurações → Banco de dados e aplique “Arquivos (PDF) nas tarefas” (migração 20261015000000_task_attachments.sql).';
   }
+  if (/attachments/i.test(message) && /'projects'|"projects"|\bprojects\b/i.test(message) && /column|schema cache/i.test(message)) {
+    return 'O banco ainda não tem os documentos do projeto. Abra Configurações → Banco de dados e aplique “Documentos do projeto” (migração 20261017000000_project_documents.sql).';
+  }
   if (/bucket not found/i.test(message)) {
     return 'O espaço de arquivos ainda não foi criado no banco. Abra Configurações → Banco de dados e aplique as atualizações que faltam.';
   }

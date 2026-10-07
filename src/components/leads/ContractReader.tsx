@@ -25,7 +25,8 @@ export function ContractReader({
   initial,
   className,
 }: {
-  onRead: (x: ContractExtraction, fileName: string) => void;
+  /** `file`: o arquivo enviado (para guardar o PDF); ausente quando veio do Claude.ai. */
+  onRead: (x: ContractExtraction, fileName: string, file?: File) => void;
   description?: string;
   /** Contrato já lido antes (ex.: no fechamento da oportunidade). */
   initial?: { extraction: ContractExtraction; fileName: string } | null;
@@ -39,10 +40,10 @@ export function ContractReader({
   const [answer, setAnswer] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const finish = (extraction: ContractExtraction, fileName: string) => {
+  const finish = (extraction: ContractExtraction, fileName: string, file?: File) => {
     setDone({ extraction, fileName });
     setError('');
-    onRead(extraction, fileName);
+    onRead(extraction, fileName, file);
   };
 
   const pick = async (file: File | undefined) => {
@@ -50,7 +51,7 @@ export function ContractReader({
     setError('');
     setBusy(file.name);
     try {
-      finish(await readContract(file), file.name);
+      finish(await readContract(file), file.name, file);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível ler o contrato.');
       if (e instanceof ContractNeedsAiError) setClaude(true);

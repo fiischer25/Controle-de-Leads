@@ -36,6 +36,7 @@ const REQUIRED: Array<{ file: string; label: string; probe: (b: SupabaseBackend)
     probe: (b) => b.probeRpc('create_lead_receivables', { p_lead: NO_LEAD, p_replace: false }),
   },
   { file: '20261015000000_task_attachments.sql', label: 'Arquivos (PDF) nas tarefas', probe: (b) => b.probe('tasks', 'attachments') },
+  { file: '20261017000000_project_documents.sql', label: 'Documentos do projeto (contrato em PDF)', probe: (b) => b.probe('projects', 'attachments') },
   {
     file: '20261014000000_finance_access_repair.sql',
     label: 'Permissões do Financeiro (administrador com acesso total)',

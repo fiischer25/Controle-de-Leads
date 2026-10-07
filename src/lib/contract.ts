@@ -5,8 +5,9 @@
 import type { ClientInput, ProjectInput } from '../context/DataContext';
 import { BR_STATES } from './constants';
 import { addMonthsKey, type FeePreset, type PlanRow } from './finance';
-import type { PlanDraft } from './paymentPlan';
-import { digitsOnly, formatCurrency, maskCep, maskDocument, maskPhone } from './utils';
+import { finalizeRows, validatePlan, type PlanDraft } from './paymentPlan';
+import type { Client, LeadPaymentPlan } from './types';
+import { digitsOnly, formatCurrency, maskCep, maskDocument, maskPhone, nowIso, today } from './utils';
 
 export interface ContractExtraction {
   client: {
@@ -364,12 +365,39 @@ export function contractWarnings(x: ContractExtraction, fallbackFirst: string): 
   return out;
 }
 
+/** Forma de pagamento do contrato pronta para salvar (só quando valor e parcelas fecham). */
+export function contractDeal(x: ContractExtraction, accountId: string | null): LeadPaymentPlan | null {
+  const plan = contractPlan(x, today());
+  if (!plan?.draft || validatePlan(plan.total, plan.draft.rows)) return null;
+  return {
+    total: plan.total,
+    rows: finalizeRows(plan.total, plan.draft.rows),
+    account_id: accountId,
+    preset: plan.draft.preset,
+    defined_at: nowIso(),
+  };
+}
+
+/** Cliente já cadastrado com o mesmo CPF/CNPJ do contrato. */
+export function findClientByContract(clients: Client[], x: ContractExtraction): Client | null {
+  const doc = digitsOnly(x.client.document);
+  if (doc.length !== 11 && doc.length !== 14) return null;
+  return clients.find((c) => digitsOnly(c.document) === doc) ?? null;
+}
+
 // ---------- Contrato lido no fechamento, usado em seguida no "Virar cliente" ----------
 
-const pending = new Map<string, { extraction: ContractExtraction; fileName: string }>();
+export interface ReadContract {
+  extraction: ContractExtraction;
+  fileName: string;
+  /** Arquivo enviado (guardado nos documentos do projeto); ausente quando veio do Claude.ai. */
+  file?: File;
+}
 
-export function rememberContract(leadId: string, extraction: ContractExtraction, fileName: string) {
-  pending.set(leadId, { extraction, fileName });
+const pending = new Map<string, ReadContract>();
+
+export function rememberContract(leadId: string, extraction: ContractExtraction, fileName: string, file?: File) {
+  pending.set(leadId, { extraction, fileName, file });
 }
 
 export function recalledContract(leadId: string) {
