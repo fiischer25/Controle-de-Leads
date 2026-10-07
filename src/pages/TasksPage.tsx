@@ -12,11 +12,16 @@ import { ActionLink, Avatar, Button, DueBadge, EmptyState, FilterPick, PageHeade
 import { TaskRow } from '../components/tasks/TaskRow';
 import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { useOpenTask } from '../components/tasks/useOpenTask';
+import { TasksByProject } from '../components/tasks/TasksByProject';
+import { dueBucket } from '../components/tasks/taskBuckets';
 import { AttentionPanel } from '../components/dashboard/AttentionPanel';
 import { useHomeData } from '../components/dashboard/useHomeData';
 
 type Scope = 'assigned' | 'delegated';
-type View = 'list' | 'board';
+type View = 'projeto' | 'prazo' | 'board';
+/** Recorte pelo resumo do topo. */
+type Focus = '' | 'overdue' | 'today' | 'week' | 'doing' | 'nodate';
+const VIEW_KEY = 'airos:tarefas-visao';
 type PageTab = 'tarefas' | 'atencao';
 
 /** Minhas tarefas, com a aba "Pede sua atenção" (fila que antes ficava no Início). */
@@ -65,7 +70,23 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
   const teamView = can('projetos');
   const openTask = useOpenTask();
   const [scope, setScope] = useState<Scope>('assigned');
-  const [view, setView] = useState<View>('list');
+  const [view, setViewState] = useState<View>(() => {
+    try {
+      const v = localStorage.getItem(VIEW_KEY);
+      return v === 'prazo' || v === 'board' ? v : 'projeto';
+    } catch {
+      return 'projeto';
+    }
+  });
+  const setView = (v: View) => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* só lembra neste navegador */
+    }
+  };
+  const [focus, setFocus] = useState<Focus>('');
   const [personPick, setPerson] = useState<string>(me.id);
   const person = teamView ? personPick : me.id;
   const [query, setQuery] = useState('');
@@ -89,8 +110,23 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
   }, [db.tasks, scope, person, me.id, project, query, maps.projects]);
 
   const t = today();
+  const allOpen = useMemo(() => base.filter((x) => x.status !== 'done'), [base]);
+  // Resumo do topo: quantas em cada faixa (sobre todas as abertas) e o recorte escolhido
+  const counts = useMemo(() => {
+    const c = { overdue: 0, today: 0, week: 0, doing: 0, nodate: 0 };
+    for (const x of allOpen) {
+      const b = dueBucket(x, t);
+      if (b !== 'later') c[b]++;
+      if (x.status === 'doing' || x.status === 'review') c.doing++;
+    }
+    return c;
+  }, [allOpen, t]);
+  const visibleOpen = useMemo(
+    () => (!focus ? allOpen : allOpen.filter((x) => (focus === 'doing' ? x.status === 'doing' || x.status === 'review' : dueBucket(x, t) === focus))),
+    [allOpen, focus, t],
+  );
   const groups = useMemo(() => {
-    const open = base.filter((x) => x.status !== 'done');
+    const open = visibleOpen;
     const sortFn = (a: Task, b: Task) =>
       (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999') || TASK_PRIORITY[b.priority].weight - TASK_PRIORITY[a.priority].weight;
     const week = addDays(t, 7);
@@ -105,7 +141,7 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
         .sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''))
         .slice(0, 50),
     };
-  }, [base, t]);
+  }, [base, visibleOpen, t]);
 
   const weekMinutes = useMemo(() => {
     const ws = startOfWeek(t);
@@ -214,7 +250,8 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
             <span className="h-4 w-px bg-line max-md:hidden" aria-hidden />
             <Tabs<View>
               tabs={[
-                { id: 'list', label: 'Lista' },
+                { id: 'projeto', label: 'Por projeto' },
+                { id: 'prazo', label: 'Por prazo' },
                 { id: 'board', label: 'Quadro' },
               ]}
               value={view}
@@ -222,11 +259,61 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
               size="sm"
               underline={1}
               bordered={false}
-              className="max-md:hidden"
             />
           </>
         }
       />
+
+      {view !== 'board' && base.length > 0 && (
+        <div
+          className="scrollbar-none -mx-5 mt-6 flex gap-2.5 overflow-x-auto px-5 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0"
+          role="group"
+          aria-label="Resumo das tarefas"
+        >
+          {(
+            [
+              ['overdue', 'Atrasadas', counts.overdue, 'danger'],
+              ['today', 'Para hoje', counts.today, 'warning'],
+              ['week', 'Próximos 7 dias', counts.week, 'neutral'],
+              ['doing', 'Em andamento', counts.doing, 'info'],
+              ['nodate', 'Sem prazo', counts.nodate, 'neutral'],
+            ] as const
+          ).map(([id, label, n, tone]) => {
+            const active = focus === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setFocus(active ? '' : id)}
+                className={cn(
+                  'min-w-[124px] shrink-0 rounded-[14px] border px-4 py-3 text-left transition-colors sm:min-w-0',
+                  active ? 'border-ink bg-surface shadow-card' : 'border-line bg-surface hover:border-stone-300',
+                  n === 0 && !active && 'opacity-60',
+                )}
+              >
+                <div className="text-[12.5px] text-muted">{label}</div>
+                <div
+                  className={cn(
+                    'mt-1 font-display text-[24px] font-semibold leading-7 tabular',
+                    n > 0 && tone === 'danger' ? 'text-danger-fg' : n > 0 && tone === 'warning' ? 'text-warning-fg' : n > 0 && tone === 'info' ? 'text-info-fg' : 'text-ink',
+                  )}
+                >
+                  {n}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {focus && view !== 'board' && (
+        <p className="mt-3 text-[13px] text-muted">
+          Mostrando só: {{ overdue: 'atrasadas', today: 'para hoje', week: 'próximos 7 dias', doing: 'em andamento', nodate: 'sem prazo' }[focus]}.{' '}
+          <button type="button" className="text-ink underline decoration-stone-300 underline-offset-4" onClick={() => setFocus('')}>
+            Ver todas
+          </button>
+        </p>
+      )}
 
       <div className="mt-6 md:mt-8">
         {view === 'board' ? (
@@ -244,7 +331,11 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
           </div>
         ) : (
           <>
-            {openCount > 0 ? (
+            {visibleOpen.length === 0 ? (
+              <p className="py-6 text-[13px] text-faint">Nenhuma tarefa pendente{focus ? ' neste recorte' : ''}.</p>
+            ) : view === 'projeto' ? (
+              <TasksByProject tasks={visibleOpen} onOpen={openTask} />
+            ) : (
               <div className="overflow-hidden rounded-[16px] border border-line bg-surface pb-1.5 shadow-card">
                 {sections
                   .filter((s) => s.tasks.length > 0)
@@ -261,8 +352,6 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
                     </div>
                   ))}
               </div>
-            ) : (
-              <p className="py-6 text-[13px] text-faint">Nenhuma tarefa pendente.</p>
             )}
             {groups.done.length > 0 && (
               <div className="mt-6">

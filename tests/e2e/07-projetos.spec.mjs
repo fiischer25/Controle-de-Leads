@@ -215,6 +215,45 @@ export default async function ({ browser }) {
     page,
   );
 
+  await s.step(
+    'Minhas tarefas: organizadas por projeto, com resumo que filtra',
+    async () => {
+      await page.goto(BASE + '/tarefas');
+      await page.getByRole('combobox', { name: 'Pessoa' }).click();
+      await page.getByRole('option', { name: 'Toda a equipe' }).click();
+      const blocks = page.locator('[data-task-project]');
+      await blocks.first().waitFor();
+      const projects = (await ls(page, 'projects')).filter((p) => p.status !== 'cancelado');
+      const open = (await ls(page, 'tasks')).filter((t) => t.status !== 'done' && (!t.project_id || projects.some((p) => p.id === t.project_id)));
+      const expected = new Set(open.map((t) => t.project_id ?? 'avulsas'));
+      eq(await blocks.count(), expected.size, 'um bloco por projeto');
+      // Cada tarefa aparece no bloco do seu projeto
+      const first = await blocks.first().getAttribute('data-task-project');
+      const inFirst = open.filter((t) => (t.project_id ?? 'avulsas') === first).length;
+      eq(await blocks.first().locator('.divide-y > div').count(), inFirst, 'tarefas do primeiro bloco');
+      // Recolher e expandir
+      await blocks.first().getByRole('button', { name: /^Recolher/ }).click();
+      eq(await blocks.first().locator('.divide-y > div').count(), 0, 'bloco recolhido');
+      await blocks.first().getByRole('button', { name: /^Expandir/ }).click();
+      // Resumo: "Em andamento" mostra só as em andamento
+      const doing = open.filter((t) => t.status === 'doing' || t.status === 'review').length;
+      await page.getByRole('group', { name: 'Resumo das tarefas' }).getByRole('button', { name: /Em andamento/ }).click();
+      await page.getByText(/Mostrando só: em andamento/).waitFor();
+      eq(await page.locator('[data-task-project] .divide-y > div').count(), doing, 'tarefas em andamento');
+      await page.getByRole('button', { name: 'Ver todas' }).click();
+      // A visão escolhida fica lembrada
+      await page.getByRole('tab', { name: 'Por prazo' }).click();
+      await page.getByRole('group', { name: 'Atrasadas' }).or(page.getByRole('group', { name: 'Hoje' })).or(page.getByRole('group', { name: 'Próximos 7 dias' })).first().waitFor();
+      await page.reload();
+      await page.getByRole('heading', { level: 1 }).waitFor();
+      await page.waitForTimeout(300);
+      ok(!(await page.locator('[data-task-project]').count()), 'visão não lembrada (voltou por projeto)');
+      eq(await page.evaluate(() => localStorage.getItem('airos:tarefas-visao')), 'prazo', 'visão salva');
+      await page.getByRole('tab', { name: 'Por projeto' }).click();
+    },
+    page,
+  );
+
   await ctx.close();
   return s;
 }
