@@ -133,17 +133,12 @@ export function AppLayout() {
     return db.leads.filter((l) => openStages.has(l.stage_id) && l.next_contact_date && l.next_contact_date <= t).length;
   }, [db.leads, db.lead_stages, can]);
 
-  // Grupos com rótulo (Trabalho, Comercial, Gestão). Primeiro bloco: telas iniciais, projetos
-  // e tarefas. O administrador abre no dashboard do escritório e tem o próprio painel ao lado;
-  // os demais abrem no próprio painel.
+  // Grupos com rótulo (Trabalho, Comercial, Gestão). Trabalho: o que é da pessoa (painel,
+  // projetos e tarefas). O dashboard do escritório é só do administrador e fica em Gestão,
+  // separado do Meu painel; o administrador continua abrindo o sistema nele.
   const groups: NavItem[][] = [
     [
-      ...(isAdmin
-        ? [
-            { to: '/', label: 'Escritório', icon: LayoutDashboard, end: true },
-            { to: '/meu-painel', label: 'Meu painel', icon: LayoutGrid },
-          ]
-        : [{ to: '/', label: 'Meu painel', icon: LayoutGrid, end: true }]),
+      isAdmin ? { to: '/meu-painel', label: 'Meu painel', icon: LayoutGrid } : { to: '/', label: 'Meu painel', icon: LayoutGrid, end: true },
       { to: '/projetos', label: 'Projetos', icon: Building2, module: 'projetos' },
       { to: '/tarefas', label: 'Minhas tarefas', icon: ListChecks, count: myOpenTasks },
     ],
@@ -152,6 +147,7 @@ export function AppLayout() {
       { to: '/clientes', label: 'Clientes', icon: Contact, module: 'comercial' },
     ],
     [
+      ...(isAdmin ? [{ to: '/', label: 'Escritório', icon: LayoutDashboard, end: true }] : []),
       { to: '/financeiro', label: 'Financeiro', icon: Wallet, module: 'financeiro' },
       { to: '/relatorios', label: 'Relatórios', icon: BarChart3, module: 'relatorios' },
       { to: '/equipe', label: 'Equipe', icon: Users, module: 'equipe' },
@@ -230,9 +226,9 @@ export function AppLayout() {
 // ---------------------------------------------------------------- Sidebar
 /** Rótulo do grupo do menu pelo primeiro item dele. */
 function groupLabel(g: NavItem[]): string {
-  const first = g[0]?.to ?? '';
-  if (['/oportunidades', '/clientes'].includes(first)) return 'Comercial';
-  if (['/financeiro', '/relatorios', '/equipe', '/configuracoes'].includes(first)) return 'Gestão';
+  const has = (paths: string[]) => g.some((n) => paths.includes(n.to));
+  if (has(['/oportunidades', '/clientes'])) return 'Comercial';
+  if (has(['/financeiro', '/relatorios', '/equipe', '/configuracoes']) || g[0]?.label === 'Escritório') return 'Gestão';
   return 'Trabalho';
 }
 

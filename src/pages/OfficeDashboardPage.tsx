@@ -12,7 +12,7 @@ import { MobileTimerBar } from '../components/layout/MobileTimerBar';
 import { AgendaView } from '../components/agenda/AgendaView';
 import { MonthBars } from '../components/charts/MonthBars';
 import { useHomeData } from '../components/dashboard/useHomeData';
-import { FunnelSection, ProjectsSection, TeamSection, TodayColumn } from '../components/dashboard/HomeSections';
+import { FunnelSection, ProjectsSection, TeamSection } from '../components/dashboard/HomeSections';
 import { FinanceSnapshot } from '../components/dashboard/FinanceSnapshot';
 import { useFinance } from '../components/finance/useFinance';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
@@ -30,7 +30,7 @@ function longDate() {
  * comercial (funil, retornos, conversão), carga da equipe e a agenda do escritório.
  */
 export default function OfficeDashboardPage() {
-  const { db, maps, me, settings, can } = useData();
+  const { db, maps, settings, can } = useData();
   const [params, setParams] = useSearchParams();
   const tab: Tab = params.get('aba') === 'agenda' ? 'agenda' : 'geral';
   const setTab = (t: Tab) =>
@@ -119,7 +119,6 @@ export default function OfficeDashboardPage() {
     return fin.entries.filter((e) => e.kind === 'receita' && !e.paid_at && e.due_date < t).reduce((a, e) => a + e.amount, 0);
   }, [fin.entries]);
 
-  const calendarConnected = !!(settings.calendar_embed_url || me.calendar_embed_url);
   const attention = home.items.length;
   const maxPhase = Math.max(1, ...charts.phases.map(([, n]) => n));
   const maxStatus = Math.max(1, ...charts.byStatus.map((b) => b.count));
@@ -231,10 +230,8 @@ export default function OfficeDashboardPage() {
               ]}
             />
 
-            <div className="grid items-start gap-12 lg:grid-cols-[1fr_300px] lg:gap-16">
-              <ProjectsSection projects={home.projects} soonDays={home.soonDays} title="Andamento dos projetos" limit={8} />
-              <TodayColumn todayEvents={home.todayEvents} upcoming={home.upcomingEvents} calendarConnected={calendarConnected} />
-            </div>
+            {/* Agenda do dia fica no Meu painel; aqui só o que é do escritório inteiro */}
+            <ProjectsSection projects={home.projects} soonDays={home.soonDays} title="Andamento dos projetos" limit={8} />
 
             {can('financeiro') && <FinanceSnapshot variant="office" />}
 

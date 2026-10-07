@@ -36,7 +36,7 @@ function greeting() {
  * meus projetos e prazos, retornos de leads e a minha agenda.
  */
 export default function HomePage() {
-  const { db, maps, me, settings, can } = useData();
+  const { db, maps, me, settings, can, isAdmin } = useData();
   const openTask = useOpenTask();
   const [params, setParams] = useSearchParams();
   const tab: Tab = params.get('aba') === 'agenda' ? 'agenda' : 'geral';
@@ -305,7 +305,8 @@ export default function HomePage() {
 
             <ProjectsSection projects={mine.projects} soonDays={home.soonDays} title="Meus projetos" limit={8} empty="Você não está em nenhum projeto ativo." />
 
-            {can('financeiro') && <FinanceSnapshot variant="personal" />}
+            {/* O administrador vê o Financeiro no dashboard do escritório; aqui só para quem não o tem */}
+            {can('financeiro') && !isAdmin && <FinanceSnapshot variant="personal" />}
           </div>
         )}
       </div>

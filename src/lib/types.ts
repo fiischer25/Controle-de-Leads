@@ -208,6 +208,8 @@ export interface Task {
   estimated_hours: number | null;
   position: number;
   checklist: ChecklistItem[];
+  /** PDFs e outros arquivos da tarefa (contrato, planta, orçamento...). */
+  attachments?: FileAttachment[];
   completed_at: string | null;
   created_by: string | null;
   created_at: string;
@@ -316,15 +318,20 @@ export interface FinanceCategory {
 }
 
 /** Comprovante, boleto ou nota anexados a um lançamento (arquivo no Storage). */
-export interface FinanceAttachment {
+/** Arquivo guardado no Storage (comprovante do Financeiro, PDF anexado a uma tarefa...). */
+export interface FileAttachment {
   id: string;
   name: string;
-  /** Caminho no bucket finance-docs. */
+  /** Caminho no bucket (finance-docs ou task-files). */
   path: string;
   size: number;
   type: string;
   uploaded_at: string;
+  /** Quem anexou (anexos de tarefas). */
+  uploaded_by?: string | null;
 }
+
+export type FinanceAttachment = FileAttachment;
 
 /** Lançamento: conta a receber, conta a pagar ou transferência entre contas. */
 export interface FinanceEntry {

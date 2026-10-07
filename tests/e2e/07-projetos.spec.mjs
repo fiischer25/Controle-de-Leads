@@ -1,7 +1,14 @@
 // Projetos e tarefas: tarefas-modelo sem datas/duração, tarefas geradas sem data, início/
 // duração/fim definidos no projeto, duração na gaveta, cronograma, cronômetro e comentário,
 // "Usar como modelo" (tipo novo e substituir) e reuniões.
-import { BASE, eq, ls, ok, openApp, patchTable, setupAdmin, spec } from './lib.mjs';
+import { BASE, FIXTURES, eq, ls, ok, openApp, patchTable, setupAdmin, spec } from './lib.mjs';
+
+const EXEC_INT = [
+  'Detalhamento de Pontos elétricos', 'Detalhamento de Pontos hidráulicos', 'Detalhamento de Pontos de Esgoto',
+  'Detalhamento de Pontos de Ar-Condicionado', 'Projeto Luminotécnico', 'Paginação de Piso e Parede', 'Detalhamento de Bancadas',
+  'Detalhamento de Marcenaria', 'Detalhamento de Forro', 'Especificação de Revestimentos', 'Especificação de Mármores e Granitos',
+  'Especificação de Louças e Metais', 'Especificação de Iluminação', 'Paisagismo', 'Orçamentos',
+];
 
 export default async function ({ browser }) {
   const s = spec('projetos');
@@ -33,6 +40,25 @@ export default async function ({ browser }) {
   );
 
   await s.step(
+    'Executivo de Interiores com as 15 tarefas (Interiores e A+I; Arquitetura não)',
+    async () => {
+      const types = await ls(page, 'project_types');
+      const tpl = await ls(page, 'task_templates');
+      const phaseTitles = (typeName) => {
+        const t = types.find((x) => x.name === typeName);
+        return tpl
+          .filter((x) => x.project_type_id === t.id && /executivo de interiores/i.test(x.phase))
+          .sort((a, b) => a.position - b.position)
+          .map((x) => x.title);
+      };
+      eq(phaseTitles('Arquitetura e Interiores'), EXEC_INT, 'Arquitetura e Interiores');
+      eq(phaseTitles('Interiores'), EXEC_INT, 'Interiores');
+      eq(phaseTitles('Arquitetura'), [], 'Arquitetura');
+    },
+    page,
+  );
+
+  await s.step(
     'gerar tarefas do modelo: chegam sem data',
     async () => {
       await patchTable(page, 'tasks', 'return rows.filter((t) => t.project_id !== arg);', pid);
@@ -42,6 +68,7 @@ export default async function ({ browser }) {
       const tasks = (await ls(page, 'tasks')).filter((t) => t.project_id === pid);
       ok(tasks.length >= 20, `poucas tarefas geradas: ${tasks.length}`);
       ok(tasks.every((t) => !t.start_date && !t.due_date), 'tarefas com data');
+      eq(tasks.filter((t) => /executivo de interiores/i.test(t.phase ?? '')).length, 15, 'tarefas do executivo de interiores no projeto');
       task = tasks.find((t) => t.title === 'Coleta de Documentos');
     },
     page,
@@ -98,6 +125,31 @@ export default async function ({ browser }) {
       await dr.getByLabel('Novo comentário').fill('Documentos recebidos do cliente.');
       await page.keyboard.press('Enter');
       await dr.getByText('Documentos recebidos do cliente.').waitFor();
+      await page.keyboard.press('Escape');
+    },
+    page,
+  );
+
+  await s.step(
+    'anexar PDF à tarefa, abrir a lista de novo e remover',
+    async () => {
+      await page.getByRole('button', { name: task.title, exact: true }).first().click();
+      const dr = page.getByRole('dialog');
+      await dr.getByLabel('Anexar arquivo à tarefa').setInputFiles(FIXTURES + 'nota.pdf');
+      await dr.getByText('nota.pdf').waitFor();
+      const saved = (await ls(page, 'tasks')).find((t) => t.id === task.id).attachments ?? [];
+      eq(saved.map((a) => a.name), ['nota.pdf'], 'anexo salvo na tarefa');
+      ok(await page.evaluate((p) => !!localStorage.getItem('airos:v1:file:task-files/' + p), saved[0].path), 'arquivo não guardado');
+      await page.keyboard.press('Escape');
+      // Clipe na linha da tarefa (Minhas tarefas) e o arquivo continua ao reabrir
+      await page.reload();
+      await page.getByRole('button', { name: task.title, exact: true }).first().click();
+      await dr.getByText('nota.pdf').waitFor();
+      await dr.getByRole('button', { name: 'Remover nota.pdf' }).click();
+      await page.getByRole('button', { name: 'Remover', exact: true }).click();
+      await dr.getByText('nota.pdf').waitFor({ state: 'detached' });
+      eq((await ls(page, 'tasks')).find((t) => t.id === task.id).attachments, [], 'anexo removido');
+      ok(!(await page.evaluate((p) => localStorage.getItem('airos:v1:file:task-files/' + p), saved[0].path)), 'arquivo ficou guardado');
       await page.keyboard.press('Escape');
     },
     page,

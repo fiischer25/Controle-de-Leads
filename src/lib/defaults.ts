@@ -70,6 +70,29 @@ const CHECKLISTS: Record<string, string[]> = {
   'Especificações e lista de compras': ['Revestimentos', 'Louças e metais', 'Iluminação', 'Mobiliário e decoração'],
 };
 
+/**
+ * Executivo de Interiores (Interiores e Arquitetura e Interiores; Arquitetura não): mesmas
+ * tarefas da migração 20261016000000_interiores_executivo.sql.
+ */
+export const EXECUTIVO_INTERIORES = [
+  'Detalhamento de Pontos elétricos',
+  'Detalhamento de Pontos hidráulicos',
+  'Detalhamento de Pontos de Esgoto',
+  'Detalhamento de Pontos de Ar-Condicionado',
+  'Projeto Luminotécnico',
+  'Paginação de Piso e Parede',
+  'Detalhamento de Bancadas',
+  'Detalhamento de Marcenaria',
+  'Detalhamento de Forro',
+  'Especificação de Revestimentos',
+  'Especificação de Mármores e Granitos',
+  'Especificação de Louças e Metais',
+  'Especificação de Iluminação',
+  'Paisagismo',
+  'Orçamentos',
+];
+CHECKLISTS['Detalhamento de Marcenaria'] = CHECKLISTS['Detalhamento de marcenaria'];
+
 const ARQ: PhaseSpec[] = [
   ['Levantamento', [
     'Briefing com o cliente',
@@ -119,13 +142,7 @@ const INT: PhaseSpec[] = [
     'Renderizações',
     'Apresentação e ajustes do 3D',
   ]],
-  ['Executivo de Interiores', [
-    'Paginação de piso e revestimentos',
-    'Projeto luminotécnico',
-    'Detalhamento de marcenaria',
-    'Pontos elétricos e hidráulicos',
-    'Especificações e lista de compras',
-  ]],
+  ['Executivo de Interiores', EXECUTIVO_INTERIORES],
   ['Entrega', [
     'Caderno de projeto',
     'Entrega do projeto ao cliente',
@@ -177,10 +194,7 @@ export const ARQ_INT: RichPhaseSpec[] = [
   ['PE - Projeto Executivo', [
     { title: 'Projeto executivo de arquitetura', checklist: ['Plantas executivas', 'Cortes e fachadas', 'Detalhes construtivos', 'Esquadrias', 'Memorial descritivo e especificações', 'Revisão final e conferência'] },
   ]],
-  ['PEI - Projeto Executivo de Interiores', [
-    { title: 'Detalhamento de marcenaria', checklist: CHECKLISTS['Detalhamento de marcenaria'] },
-    { title: 'Paginações, luminotécnico e especificações', checklist: ['Paginação de piso e revestimentos', 'Projeto luminotécnico', 'Pontos elétricos e hidráulicos', 'Especificações e lista de compras'] },
-  ]],
+  ['PEI - Projeto Executivo de Interiores', EXECUTIVO_INTERIORES.map((title) => ({ title, checklist: CHECKLISTS[title] }))],
   ['VL - Visita em Lojas', [
     { title: 'Visita às lojas com o cliente', checklist: ['Agendar com as lojas', 'Revestimentos, louças e metais', 'Iluminação e mobiliário', 'Registrar escolhas e orçamentos'] },
   ]],

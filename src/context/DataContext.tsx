@@ -803,7 +803,10 @@ export function DataProvider({ userId, children }: { userId: string; children: R
     async (id: string) => {
       await removeRows('time_entries', dbRef.current.time_entries.filter((e) => e.task_id === id).map((e) => e.id));
       await removeRows('task_comments', dbRef.current.task_comments.filter((c) => c.task_id === id).map((c) => c.id));
+      const files = (dbRef.current.tasks.find((t) => t.id === id)?.attachments ?? []).map((a) => a.path);
       await removeRows('tasks', [id]);
+      // Arquivos anexados vão junto (falha aqui não desfaz a exclusão)
+      if (files.length) await backend.removeFiles('task-files', files).catch(() => undefined);
     },
     [removeRows],
   );
