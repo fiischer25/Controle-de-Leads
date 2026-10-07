@@ -7,6 +7,7 @@ import { TASK_PRIORITY, TASK_PRIORITY_ORDER, TASK_STATUS, TASK_STATUS_ORDER } fr
 import { businessDaysBetween, datesForDuration, entryMinutes, totalMinutes } from '../../lib/domain';
 import type { Task, TaskPriority } from '../../lib/types';
 import { cn, formatClock, formatDate, formatDateTime, formatMinutes, formatRelative, today, toDateKey, uid } from '../../lib/utils';
+import { TaskFiles } from './TaskFiles';
 import { Avatar, Button, Checkbox, ConfirmDialog, Drawer, DueBadge, Field, IconButton, Input, Select, Textarea, UserSelect } from '../ui';
 
 export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () => void }) {
@@ -335,6 +336,8 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
             )}
           </form>
         </section>
+
+        <TaskFiles task={task} />
 
         {/* Comentários */}
         <section className="border-t border-hairline-surface py-5">

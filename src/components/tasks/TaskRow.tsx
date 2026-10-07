@@ -1,4 +1,4 @@
-import { Clock, Flag, MessageSquare, Timer } from 'lucide-react';
+import { Clock, Flag, MessageSquare, Paperclip, Timer } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { TASK_STATUS_ORDER } from '../../lib/constants';
@@ -67,6 +67,12 @@ export function TaskRow({
           {task.checklist?.length > 0 && (
             <span>
               ☑ {task.checklist.filter((c) => c.done).length}/{task.checklist.length}
+            </span>
+          )}
+          {(task.attachments?.length ?? 0) > 0 && (
+            <span className="inline-flex items-center gap-1" title="Arquivos anexados">
+              <Paperclip className="h-3 w-3" aria-label={`${task.attachments!.length} arquivo(s)`} />
+              {task.attachments!.length}
             </span>
           )}
         </div>

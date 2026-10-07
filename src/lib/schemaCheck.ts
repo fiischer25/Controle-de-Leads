@@ -35,6 +35,7 @@ const REQUIRED: Array<{ file: string; label: string; probe: (b: SupabaseBackend)
     label: 'Parcelas em R$ e edição do contrato depois do ganho',
     probe: (b) => b.probeRpc('create_lead_receivables', { p_lead: NO_LEAD, p_replace: false }),
   },
+  { file: '20261015000000_task_attachments.sql', label: 'Arquivos (PDF) nas tarefas', probe: (b) => b.probe('tasks', 'attachments') },
   {
     file: '20261014000000_finance_access_repair.sql',
     label: 'Permissões do Financeiro (administrador com acesso total)',
@@ -72,6 +73,14 @@ function optionalChecks(db: Db): SchemaItem[] {
   }
   if (!db.lead_stages.some((s) => s.name === 'Qualificado')) {
     out.push({ file: '20261011000000_crm_defaults.sql', label: 'Etapas do funil e origens no padrão de CRM', status: 'optional' });
+  }
+  const execInt = db.task_templates.filter((t) => /executivo de interiores/i.test(t.phase));
+  if (execInt.length && !execInt.some((t) => t.title.toLowerCase() === 'detalhamento de pontos de esgoto')) {
+    out.push({
+      file: '20261016000000_interiores_executivo.sql',
+      label: 'Executivo de Interiores detalhado (15 tarefas em Interiores e Arquitetura e Interiores)',
+      status: 'optional',
+    });
   }
   if (!db.lead_stages.some((s) => s.name === 'Não ganho' && s.kind === 'lost')) {
     out.push({ file: '20261012000000_won_lost_stages.sql', label: 'Etapas fixas Ganho e Não ganho', status: 'optional' });

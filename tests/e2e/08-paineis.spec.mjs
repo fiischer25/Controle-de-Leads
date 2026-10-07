@@ -1,7 +1,7 @@
 // Escritório, Meu painel e "Pede sua atenção": blocos de cada painel (Financeiro, Comercial,
 // próximas tarefas), filtros da fila, registrar contato (foco, lista, Tab preso no modal),
 // camadas com Esc e ações do celular (criar, lançar horas, deslizar para concluir).
-import { BASE, ok, openApp, patchTable, setupAdmin, spec } from './lib.mjs';
+import { BASE, eq, navLabels, ok, openApp, patchTable, setupAdmin, spec } from './lib.mjs';
 
 export default async function ({ browser }) {
   const s = spec('paineis');
@@ -21,6 +21,19 @@ export default async function ({ browser }) {
       await page.getByText(/A receber em 30 dias:/).waitFor();
       for (const t of ['Oportunidades abertas', 'Valor no funil']) await page.getByText(t, { exact: true }).first().waitFor();
       await page.getByRole('heading', { name: 'Equipe esta semana' }).waitFor();
+      // Agenda pessoal fica no Meu painel, não no Escritório
+      ok(!(await page.getByRole('heading', { name: 'Hoje', exact: true }).count()), 'coluna Hoje no Escritório');
+    },
+    page,
+  );
+
+  await s.step(
+    'menu: Meu painel em Trabalho e Escritório separado, em Gestão',
+    async () => {
+      const nav = await navLabels(page);
+      eq(nav[0], 'Meu painel', 'primeiro item do menu');
+      eq(nav[nav.indexOf('Escritório') + 1], 'Financeiro', 'Escritório junto da Gestão');
+      ok(nav.indexOf('Escritório') > nav.indexOf('Clientes'), 'Escritório fora do grupo Trabalho');
     },
     page,
   );
@@ -36,14 +49,15 @@ export default async function ({ browser }) {
   );
 
   await s.step(
-    'Meu painel: tarefas, comercial e financeiro',
+    'Meu painel do administrador: só o que é dele (sem repetir o Escritório)',
     async () => {
       await page.goto(BASE + '/meu-painel');
       await page.getByRole('heading', { name: 'Minhas tarefas' }).waitFor();
       await page.getByRole('heading', { name: 'Meu comercial' }).waitFor();
       for (const t of ['Em negociação', 'Em propostas', 'Ganhos no mês']) await page.getByText(t, { exact: true }).waitFor();
-      await page.getByText(/^Financeiro · /).waitFor();
+      await page.getByRole('heading', { name: 'Hoje', exact: true }).waitFor();
       await page.getByRole('heading', { name: 'Meus projetos' }).waitFor();
+      ok(!(await page.getByText(/^Financeiro · /).count()), 'Financeiro repetido no Meu painel do administrador');
     },
     page,
   );
