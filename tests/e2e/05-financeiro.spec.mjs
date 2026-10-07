@@ -186,6 +186,64 @@ export default async function ({ browser }) {
     page,
   );
 
+  await s.step(
+    'Receber parcela vencida grava a data do pagamento combinada, não a de hoje',
+    async () => {
+      const day = (n) => new Date(Date.now() + n * 864e5 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+      const due = day(-40);
+      await page.evaluate((d) => {
+        const rows = JSON.parse(localStorage.getItem('airos:v1:finance_entries'));
+        const base = rows.find((r) => r.kind === 'receita');
+        rows.push({ ...base, id: 'e2e-receber', description: 'Honorários teste · parcela antiga', amount: 1234, due_date: d, paid_at: null, series_id: null, installment: null, installments: null, bank_ref: null });
+        localStorage.setItem('airos:v1:finance_entries', JSON.stringify(rows));
+      }, due);
+      await page.goto(BASE + '/financeiro?aba=lancamentos');
+      // Parcela de 40 dias atrás: aparece no filtro de vencidos (todos os meses)
+      await page.getByRole('combobox', { name: 'Situação' }).click();
+      await page.getByRole('option', { name: /Vencidos/ }).click();
+      await page.getByText('Honorários teste · parcela antiga').first().waitFor();
+      await page.locator('li', { hasText: 'Honorários teste · parcela antiga' }).getByRole('button', { name: 'Receber' }).click();
+      await page.waitForTimeout(300);
+      eq((await ls(page, 'finance_entries')).find((e) => e.id === 'e2e-receber').paid_at, due, 'data do recebimento');
+    },
+    page,
+  );
+
+  await s.step(
+    'corrigir recebimentos antigos marcados com a data do dia',
+    async () => {
+      const day = (n) => new Date(Date.now() + n * 864e5 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+      const now = new Date().toISOString();
+      // Como um projeto em andamento cadastrado hoje: 3 parcelas de meses passados recebidas "hoje"
+      await page.evaluate(({ rows: extra }) => {
+        const rows = JSON.parse(localStorage.getItem('airos:v1:finance_entries'));
+        const base = rows.find((r) => r.kind === 'receita');
+        for (const x of extra) rows.push({ ...base, series_id: null, installment: null, installments: null, bank_ref: null, ...x });
+        localStorage.setItem('airos:v1:finance_entries', JSON.stringify(rows));
+      }, {
+        rows: [
+          { id: 'e2e-old-1', description: 'Honorários CASA NOVA · Entrada', amount: 5000, due_date: day(-90), paid_at: day(0), created_at: now },
+          { id: 'e2e-old-2', description: 'Honorários CASA NOVA · Parcela 1', amount: 3000, due_date: day(-60), paid_at: day(0), created_at: now },
+          { id: 'e2e-old-3', description: 'Honorários CASA NOVA · Parcela 2', amount: 3000, due_date: day(-30), paid_at: day(0), created_at: now },
+        ],
+      });
+      await page.goto(BASE + '/financeiro');
+      const notice = page.getByRole('region', { name: 'Datas de recebimento para revisar' });
+      await notice.getByText(/3 parcelas antigas foram marcadas como recebidas/).waitFor();
+      await notice.getByRole('button', { name: 'Revisar e corrigir' }).click();
+      const d = page.getByRole('dialog', { name: /Corrigir datas de recebimento/ });
+      // Desmarca uma: fica como está
+      await d.getByLabel('Corrigir Honorários CASA NOVA · Parcela 2').click();
+      await d.getByRole('button', { name: 'Corrigir 2 recebimentos' }).click();
+      await d.waitFor({ state: 'detached' });
+      const rows = await ls(page, 'finance_entries');
+      const paid = (id) => rows.find((e) => e.id === id).paid_at;
+      eq([paid('e2e-old-1'), paid('e2e-old-2'), paid('e2e-old-3')], [day(-90), day(-60), day(0)], 'datas corrigidas');
+      ok(!(await notice.count()), 'aviso continuou');
+    },
+    page,
+  );
+
   await ctx.close();
   return s;
 }

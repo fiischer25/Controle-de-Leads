@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, ExternalLink, HardHat, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
@@ -142,7 +142,7 @@ export default function ProjectDetailPage() {
       <PageHeader
         className="md:pt-4"
         eyebrow={[project.code, type?.name, project.site_city].filter(Boolean).join(' · ')}
-        title={project.name}
+        title={<ProjectName project={project} />}
         description={
           <>
             {client ? (
@@ -651,6 +651,67 @@ function InfoTab({ project, onEditProject }: { project: Project; onEditProject: 
         />
       )}
     </div>
+  );
+}
+
+/** Nome do projeto no título: clicar para renomear (Enter salva, Esc cancela). */
+function ProjectName({ project }: { project: Project }) {
+  const { updateProject } = useData();
+  const toast = useToast();
+  const [value, setValue] = useState<string | null>(null);
+  const done = useRef(false);
+
+  if (value === null)
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          done.current = false;
+          setValue(project.name);
+        }}
+        className="group inline-flex max-w-full items-center gap-2 text-left"
+        title="Clique para renomear"
+        aria-label={`Renomear projeto ${project.name}`}
+      >
+        <span className="min-w-0 break-words">{project.name}</span>
+        <Pencil className="h-4 w-4 shrink-0 text-faint opacity-50 transition-opacity group-hover:opacity-100" strokeWidth={1.6} />
+      </button>
+    );
+
+  const finish = async (save: boolean) => {
+    if (done.current) return;
+    done.current = true;
+    const name = value.trim();
+    setValue(null);
+    if (!save || !name || name === project.name) return;
+    try {
+      await updateProject(project.id, { name });
+      toast.success(`Projeto renomeado para ${name}.`);
+    } catch (e) {
+      toast.error(e);
+    }
+  };
+
+  return (
+    <input
+      autoFocus
+      value={value}
+      aria-label="Nome do projeto"
+      onChange={(e) => setValue(e.target.value.toUpperCase())}
+      onFocus={(e) => e.target.select()}
+      onBlur={() => finish(true)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          finish(true);
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          finish(false);
+        }
+      }}
+      className="w-full max-w-[640px] rounded-[10px] border border-line-strong bg-surface px-2 py-0.5 font-display text-[inherit] font-semibold leading-[inherit] tracking-[inherit] text-ink outline-none focus:border-ink"
+    />
   );
 }
 

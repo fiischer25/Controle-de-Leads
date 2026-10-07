@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { FileText, Paperclip, Trash2, X } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
-import { splitEqual, type EntryDraft, type RepeatMode } from '../../lib/finance';
+import { settledDate, splitEqual, type EntryDraft, type RepeatMode } from '../../lib/finance';
 import type { FinanceEntry, FinanceKind } from '../../lib/types';
 import { formatMoney, today } from '../../lib/utils';
 import { Button, Checkbox, ConfirmDialog, Field, IconButton, Input, Modal, Segmented, Select, Spinner, Textarea } from '../ui';
@@ -270,7 +270,7 @@ export function EntryFormModal({
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 sm:col-span-2">
             <Checkbox
               checked={!!v.paid_at}
-              onChange={(on) => set('paid_at', on ? (v.due_date <= today() ? v.due_date : today()) : null)}
+              onChange={(on) => set('paid_at', on ? settledDate(v.due_date, today()) : null)}
               label={v.kind === 'receita' ? 'Já foi recebido' : 'Já foi pago'}
             />
             {v.paid_at && (

@@ -3,6 +3,7 @@ import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import type { FinanceEntry } from '../../lib/types';
 import { cn, formatMoney, formatDateShort, today } from '../../lib/utils';
+import { settledDate } from '../../lib/finance';
 import { Badge } from '../ui';
 import { STATUS_STYLE, useFinance } from './useFinance';
 
@@ -32,8 +33,9 @@ export function EntryList({
 
   const settle = async (e: FinanceEntry) => {
     try {
-      await fin.setPaid(e, today());
-      toast.success(e.kind === 'receita' ? 'Recebimento registrado.' : 'Pagamento registrado.');
+      const date = settledDate(e.due_date, today());
+      await fin.setPaid(e, date);
+      toast.success(`${e.kind === 'receita' ? 'Recebimento' : 'Pagamento'} registrado em ${formatDateShort(date)}.`);
     } catch (err) {
       toast.error(err);
     }
@@ -106,7 +108,7 @@ export function EntryList({
                     type="button"
                     onClick={() => settle(e)}
                     className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[12.5px] font-medium text-accent-fg transition-colors hover:bg-ink/5"
-                    title={e.kind === 'receita' ? 'Registrar recebimento hoje' : 'Registrar pagamento hoje'}
+                    title={`Registrar ${e.kind === 'receita' ? 'recebimento' : 'pagamento'} em ${formatDateShort(settledDate(e.due_date, today()))}`}
                   >
                     <Check className="h-3.5 w-3.5" strokeWidth={2} />
                     {e.kind === 'receita' ? 'Receber' : 'Pagar'}

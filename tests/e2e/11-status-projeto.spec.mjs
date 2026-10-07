@@ -137,6 +137,25 @@ export default async function ({ browser }) {
     page,
   );
 
+  await s.step(
+    'renomear o projeto clicando no nome',
+    async () => {
+      const name = (await project()).name;
+      await page.goto(`${BASE}/projetos/${pid}`);
+      await page.getByRole('button', { name: `Renomear projeto ${name}` }).click();
+      await page.getByLabel('Nome do projeto').fill('apto novo nome');
+      await page.keyboard.press('Enter');
+      await page.getByRole('button', { name: 'Renomear projeto APTO NOVO NOME' }).waitFor();
+      eq((await project()).name, 'APTO NOVO NOME', 'nome salvo');
+      // Esc desiste
+      await page.getByRole('button', { name: 'Renomear projeto APTO NOVO NOME' }).click();
+      await page.getByLabel('Nome do projeto').fill('OUTRO');
+      await page.keyboard.press('Escape');
+      eq((await project()).name, 'APTO NOVO NOME', 'Esc não salva');
+    },
+    page,
+  );
+
   await ctx.close();
   return s;
 }
