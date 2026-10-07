@@ -13,11 +13,14 @@ export function TaskRow({
   task,
   onOpen,
   showProject,
+  showPhase,
   showDates = true,
 }: {
   task: Task;
   onOpen: () => void;
   showProject?: boolean;
+  /** Só a etapa (a lista já está agrupada por projeto). */
+  showPhase?: boolean;
   showDates?: boolean;
 }) {
   const { db, maps, settings, updateTask, runningEntry } = useData();
@@ -45,7 +48,7 @@ export function TaskRow({
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
           {showProject && <span className="font-medium text-stone-700">{project ? project.name : 'Avulsa'}</span>}
-          {showProject && task.phase && <span>{task.phase}</span>}
+          {(showProject || showPhase) && task.phase && <span className={showPhase && !showProject ? 'font-medium text-stone-700' : undefined}>{task.phase}</span>}
           {task.priority !== 'media' && (
             <span className={cn('inline-flex items-center gap-1', PRIORITY_STYLE[task.priority].text)}>
               <Flag className="h-3 w-3" strokeWidth={1.8} />
