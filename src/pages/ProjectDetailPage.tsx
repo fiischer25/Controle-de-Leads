@@ -58,6 +58,8 @@ import { useOpenTask } from '../components/tasks/useOpenTask';
 import { GanttChart } from '../components/projects/GanttChart';
 import { MemberPicker } from '../components/projects/ProjectFields';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
+import { AssigneePicker } from '../components/tasks/AssigneePicker';
+import { commonAssignee } from '../components/tasks/taskBuckets';
 
 /** Opção do seletor de status que volta ao automático. */
 const AUTO = '__auto';
@@ -66,7 +68,7 @@ type Tab = 'tasks' | 'timeline' | 'team' | 'info' | 'finance' | 'activity';
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
-  const { db, maps, isAdmin, settings, updateProject, deleteProject, applyTemplates, createTask, can } = useData();
+  const { db, maps, isAdmin, settings, updateProject, deleteProject, applyTemplates, createTask, assignTasks, can } = useData();
   const summary = useProjectSummaries().find((s) => s.project.id === id);
   const toast = useToast();
   const navigate = useNavigate();
@@ -303,7 +305,22 @@ export default function ProjectDetailPage() {
                         {done}/{pt.length}
                       </span>
                     </h3>
-                    {pMinutes > 0 && <span className="shrink-0 text-[12.5px] tabular text-faint">{formatMinutes(pMinutes)}</span>}
+                    <span className="flex shrink-0 items-center gap-3">
+                      {pMinutes > 0 && <span className="text-[12.5px] tabular text-faint">{formatMinutes(pMinutes)}</span>}
+                      {pt.length > 0 && (
+                        <AssigneePicker
+                          value={commonAssignee(pt.some((t) => t.status !== 'done') ? pt.filter((t) => t.status !== 'done') : pt)}
+                          label={`Responsável pela etapa ${p}`}
+                          hint="Vale para as tarefas abertas da etapa."
+                          onChange={(id) => {
+                            const targets = pt.some((t) => t.status !== 'done') ? pt.filter((t) => t.status !== 'done') : pt;
+                            assignTasks(targets.map((t) => t.id), id, `“${p}” (${project.name})`)
+                              .then((n) => n && toast.success(`${n} ${n === 1 ? 'tarefa' : 'tarefas'} de ${p} atualizadas.`))
+                              .catch(toast.error);
+                          }}
+                        />
+                      )}
+                    </span>
                   </div>
                   <div className="divide-y divide-hairline-surface [&>div]:px-0 md:[&>div]:px-2">
                     {visible.map((t) => (

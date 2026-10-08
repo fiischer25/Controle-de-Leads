@@ -140,6 +140,8 @@ interface DataApi {
   // Tarefas
   createTask(input: TaskInput): Promise<Task>;
   updateTask(id: string, patch: Partial<Task>): Promise<void>;
+  /** Troca o responsável de várias tarefas (ex.: uma etapa inteira) com um só aviso para a pessoa. */
+  assignTasks(ids: string[], assigneeId: string | null, what: string): Promise<number>;
   deleteTask(id: string): Promise<void>;
   addComment(taskId: string, body: string): Promise<void>;
   startTimer(taskId: string): Promise<void>;
@@ -828,6 +830,19 @@ export function DataProvider({ userId, children }: { userId: string; children: R
     [patch, notify, log, me.name, userId],
   );
 
+  const assignTasks = useCallback(
+    async (ids: string[], assigneeId: string | null, what: string) => {
+      const changed = dbRef.current.tasks.filter((t) => ids.includes(t.id) && t.assignee_id !== assigneeId);
+      for (const t of changed) await patch('tasks', t.id, { assignee_id: assigneeId });
+      if (changed.length && assigneeId && assigneeId !== userId) {
+        const n = changed.length;
+        await notify(assigneeId, 'Tarefas designadas a você', `${me.name} designou ${n} ${n === 1 ? 'tarefa' : 'tarefas'} de ${what} para você.`, '/tarefas');
+      }
+      return changed.length;
+    },
+    [patch, notify, me.name, userId],
+  );
+
   const deleteTask = useCallback(
     async (id: string) => {
       await removeRows('time_entries', dbRef.current.time_entries.filter((e) => e.task_id === id).map((e) => e.id));
@@ -986,7 +1001,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
     createLead, ensureClientLead, updateLead, moveLead, deleteLead, addInteraction, convertLead, closeDeal,
     createClient: (input) => createClient(input), updateClient, deleteClient,
     createProject, updateProject, deleteProject, applyTemplates, saveProjectAsTemplate,
-    createTask, updateTask, deleteTask, addComment, startTimer, stopTimer, addTimeEntry, deleteTimeEntry, runningEntry,
+    createTask, updateTask, assignTasks, deleteTask, addComment, startTimer, stopTimer, addTimeEntry, deleteTimeEntry, runningEntry,
     createEvent, updateEvent, deleteEvent,
     markNotificationsRead, createUser, updateUser, can,
   };

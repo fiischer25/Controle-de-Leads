@@ -6,7 +6,8 @@ import { totalMinutes } from '../../lib/domain';
 import { PRIORITY_STYLE, TASK_STATUS_STYLE } from '../../lib/status';
 import type { Task, TaskStatus } from '../../lib/types';
 import { cn, formatDateShort, formatMinutes, today } from '../../lib/utils';
-import { Avatar, DueBadge, Listbox, TaskCheck } from '../ui';
+import { DueBadge, Listbox, TaskCheck } from '../ui';
+import { AssigneePicker } from './AssigneePicker';
 
 /** Linha de tarefa: concluir, título, contexto, prazo, status e responsável. */
 export function TaskRow({
@@ -102,7 +103,14 @@ export function TaskRow({
           className={cn('h-7 rounded-xs border-transparent px-2 text-xs font-medium', status.badge)}
         />
       </div>
-      <Avatar user={assignee} size="sm" className={done ? 'opacity-60' : undefined} />
+      <span className={done ? 'opacity-60' : undefined}>
+        <AssigneePicker
+          variant="avatar"
+          value={task.assignee_id}
+          label={`Responsável por ${task.title}: ${assignee?.name ?? 'ninguém'}`}
+          onChange={(id) => updateTask(task.id, { assignee_id: id }).catch(toast.error)}
+        />
+      </span>
     </div>
   );
 }

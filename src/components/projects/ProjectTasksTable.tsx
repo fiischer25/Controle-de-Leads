@@ -7,9 +7,16 @@ import { businessDaysBetween, datesForDuration, entryMinutes } from '../../lib/d
 import { TASK_STATUS_STYLE } from '../../lib/status';
 import type { Project, Task, TaskStatus } from '../../lib/types';
 import { byPosition, cn, formatDateShort, formatMinutes, formatNumber, today } from '../../lib/utils';
-import { Avatar, Badge, Button, ConfirmDialog, IconButton, Input, MenuItem, Popover } from '../ui';
+import { Badge, Button, ConfirmDialog, IconButton, Input, MenuItem, Popover } from '../ui';
+import { AssigneePicker } from '../tasks/AssigneePicker';
+import { commonAssignee } from '../tasks/taskBuckets';
 
 const phaseColor = (i: number) => SWATCHES[i % SWATCHES.length];
+/** Tarefas que a troca de responsável da etapa alcança: as abertas (ou todas, se já concluídas). */
+const phaseTargets = (all: Task[]) => {
+  const open = all.filter((x) => x.status !== 'done');
+  return open.length ? open : all;
+};
 const daysLabel = (n: number) => `${n} ${n === 1 ? 'dia' : 'dias'}`;
 const cols =
   'grid grid-cols-[48px_minmax(0,1fr)_56px_118px_64px_60px_60px_58px_70px_128px_84px_36px] items-center gap-x-2';
@@ -43,7 +50,7 @@ export function ProjectTasksTable({
   phaseNumbers?: Record<string, number>;
   taskNumbers?: Record<string, string>;
 }) {
-  const { db, maps, me, isAdmin, updateTask, deleteTask, createTask } = useData();
+  const { db, maps, me, isAdmin, updateTask, assignTasks, deleteTask, createTask } = useData();
   const toast = useToast();
   const t = today();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -78,6 +85,16 @@ export function ProjectTasksTable({
   };
 
   const setStatus = (task: Task, status: TaskStatus) => updateTask(task.id, { status }).catch(toast.error);
+  /** Responsável da etapa inteira de uma vez. */
+  const assignPhase = async (phase: string, targets: Task[], id: string | null) => {
+    try {
+      const n = await assignTasks(targets.map((x) => x.id), id, `“${phase}” (${project.name})`);
+      const who = id ? maps.profiles[id]?.name.split(' ')[0] : null;
+      if (n) toast.success(`${n} ${n === 1 ? 'tarefa' : 'tarefas'} de ${phase} ${who ? `agora com ${who}` : 'sem responsável'}.`);
+    } catch (e) {
+      toast.error(e);
+    }
+  };
   /** Datas digitadas na tabela; mantém o fim depois do início. */
   const setDates = (task: Task, patch: { start_date?: string | null; due_date?: string | null }) => {
     const next = { ...patch };
@@ -146,7 +163,17 @@ export function ProjectTasksTable({
               <span className="text-[12.5px] tabular text-stone-600">{pEnd ? formatDateShort(pEnd) : ''}</span>
               <span className="text-right text-[12.5px] tabular text-stone-600">{est ? `${formatNumber(est, 1)}h` : ''}</span>
               <span className="text-right text-[12.5px] tabular text-stone-600">{real ? formatMinutes(real) : ''}</span>
-              <span />
+              <span className="min-w-0">
+                {/* Responsável da etapa: vale para as tarefas abertas (as concluídas ficam como estão) */}
+                {all.length > 0 && (
+                  <AssigneePicker
+                    value={commonAssignee(phaseTargets(all))}
+                    label={`Responsável pela etapa ${phase}`}
+                    hint={`Vale para ${phaseTargets(all).length === 1 ? 'a tarefa' : `as ${phaseTargets(all).length} tarefas`} ${all.some((x) => x.status !== 'done') ? 'abertas ' : ''}da etapa.`}
+                    onChange={(id) => assignPhase(phase, phaseTargets(all), id)}
+                  />
+                )}
+              </span>
               <span />
               <span />
             </div>
@@ -223,15 +250,12 @@ export function ProjectTasksTable({
                     <DateCell value={task.due_date} label={`Fim de ${task.title}`} className={dateCls(task)} onChange={(d) => setDates(task, { due_date: d })} />
                     <span className="text-right text-[12.5px] tabular text-stone-600">{task.estimated_hours ? `${formatNumber(task.estimated_hours, 1)}h` : '—'}</span>
                     <span className="text-right text-[12.5px] tabular text-stone-600">{minutesByTask[task.id] ? formatMinutes(minutesByTask[task.id]) : '—'}</span>
-                    <span className="flex min-w-0 items-center gap-1.5 text-[12.5px]">
-                      {person ? (
-                        <>
-                          <Avatar user={person} size="xs" />
-                          <span className="truncate text-stone-700">{person.name.split(' ')[0]}</span>
-                        </>
-                      ) : (
-                        <span className="text-stone-400">—</span>
-                      )}
+                    <span className="min-w-0">
+                      <AssigneePicker
+                        value={task.assignee_id}
+                        label={`Responsável por ${task.title}: ${person?.name ?? 'ninguém'}`}
+                        onChange={(id) => updateTask(task.id, { assignee_id: id }).catch(toast.error)}
+                      />
                     </span>
                     <span className={cn('flex items-center gap-1 text-[12.5px]', pr.className)}>
                       <Flag className="h-3.5 w-3.5" />

@@ -166,6 +166,34 @@ export default async function ({ browser }) {
   );
 
   await s.step(
+    'responsável da etapa e da tarefa direto na tabela do projeto',
+    async () => {
+      await page.goto(`${BASE}/projetos/${pid}`);
+      const profiles = await ls(page, 'profiles');
+      const ana = profiles.find((p) => p.name.startsWith('Ana'));
+      const bruno = profiles.find((p) => p.name.startsWith('Bruno'));
+      const tasks = (await ls(page, 'tasks')).filter((t) => t.project_id === pid).sort((a, b) => a.position - b.position);
+      const phase = tasks.find((t) => t.phase && tasks.filter((x) => x.phase === t.phase && x.status !== 'done').length > 1).phase;
+      // Etapa inteira: todas as tarefas abertas ficam com a Ana
+      await page.getByRole('button', { name: `Responsável pela etapa ${phase}`, exact: true }).click();
+      await page.getByRole('button', { name: new RegExp(`${ana.name}$`) }).last().click();
+      await page.getByText(new RegExp(`tarefas de ${phase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} agora com Ana`)).waitFor();
+      const after = (await ls(page, 'tasks')).filter((t) => t.project_id === pid && t.phase === phase && t.status !== 'done');
+      ok(after.length > 1 && after.every((t) => t.assignee_id === ana.id), 'etapa sem a Ana');
+      // Uma tarefa: Bruno, sem abrir a tarefa
+      const one = after[0];
+      await page.getByRole('button', { name: new RegExp(`^Responsável por ${one.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`) }).first().click();
+      await page.getByRole('button', { name: new RegExp(`${bruno.name}$`) }).last().click();
+      await page.waitForTimeout(300);
+      eq((await ls(page, 'tasks')).find((t) => t.id === one.id).assignee_id, bruno.id, 'responsável da tarefa');
+      ok(!(await page.getByRole('dialog').count()), 'abriu a tarefa');
+      // A etapa agora tem responsáveis diferentes
+      await page.getByRole('button', { name: `Responsável pela etapa ${phase}`, exact: true }).getByText('Vários').waitFor();
+    },
+    page,
+  );
+
+  await s.step(
     'usar o projeto como modelo de um tipo novo',
     async () => {
       await page.getByRole('button', { name: 'Usar como modelo' }).click();
