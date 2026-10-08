@@ -1,5 +1,6 @@
-import type { Profile, Task } from '../../lib/types';
-import { byPosition, diffDays } from '../../lib/utils';
+import { isProjectActive } from '../../lib/domain';
+import type { Profile, Project, Task } from '../../lib/types';
+import { byPosition, diffDays, formatDateShort, today } from '../../lib/utils';
 import type { ProjectSummary } from './useProjectSummaries';
 
 /** Tarefa em andamento com prazo a até estes dias (ou vencido) gera alerta na lista de projetos. */
@@ -48,4 +49,14 @@ export function alertWhen(a: TaskAlert, short: (d: string) => string): string {
   if (a.days === 0) return 'vence hoje';
   if (a.days === 1) return 'vence amanhã';
   return `vence em ${a.days} dias (${short(a.task.due_date!)})`;
+}
+
+/** Entrega do projeto atrasada ou dentro da janela de "prazo perto" (Configurações). */
+export function projectDeadlineAlert(project: Project, soonDays: number): { late: boolean; text: string } | null {
+  if (!project.due_date || !isProjectActive(project) || project.status === 'obra') return null;
+  const d = diffDays(today(), project.due_date);
+  if (d < 0) return { late: true, text: `Entrega do projeto atrasada · venceu ${formatDateShort(project.due_date)}` };
+  if (d > soonDays) return null;
+  const when = d === 0 ? 'é hoje' : d === 1 ? 'é amanhã' : `em ${d} dias (${formatDateShort(project.due_date)})`;
+  return { late: false, text: `Entrega do projeto ${when}` };
 }

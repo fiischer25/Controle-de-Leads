@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, CalendarClock, CheckCircle2, Clock, ListChecks, MapPin, UserRound } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CalendarX2, CheckCircle2, Clock, ListChecks, UserRound } from 'lucide-react';
 import type { Project } from '../../lib/types';
-import { cn, formatDateShort, formatMinutes, formatNumber } from '../../lib/utils';
-import { alertWhen, type ProjectFactsData } from './facts';
+import { cn, formatDateShort, formatMinutes } from '../../lib/utils';
+import { alertWhen, projectDeadlineAlert, type ProjectFactsData } from './facts';
 
 const first = (name: string) => name.split(' ')[0];
 
@@ -16,39 +16,56 @@ function Fact({ icon, children, className, title, truncate = false }: { icon: Re
   );
 }
 
-/** Alerta de prazo: tarefa em andamento atrasada ou vencendo nos próximos dias. */
-function DeadlineAlert({ facts }: { facts: ProjectFactsData }) {
-  const [a, ...rest] = facts.alerts;
-  if (!a) return null;
-  const late = a.days < 0;
+function Alert({ late, children, ...data }: { late: boolean; children: ReactNode } & Record<`data-${string}`, string>) {
   return (
     <div
-      className={cn(
-        'col-span-full -mt-1 flex w-fit max-w-full items-start gap-2 rounded-[9px] px-2.5 py-1.5 text-[12.5px]',
-        late ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg',
-      )}
-      data-deadline-alert={late ? 'atrasada' : 'perto'}
+      {...data}
+      className={cn('flex w-fit max-w-full items-start gap-2 rounded-[9px] px-2.5 py-1.5 text-[12.5px]', late ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg')}
     >
       <AlertTriangle className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-      <span className="min-w-0">
-        <span className="font-medium">Em andamento e {alertWhen(a, formatDateShort)}:</span> {a.task.title}
-        {a.assignee && ` · ${first(a.assignee.name)}`}
-        {rest.length > 0 && ` · +${rest.length} ${rest.length === 1 ? 'outra' : 'outras'} com prazo perto`}
-      </span>
+      <span className="min-w-0">{children}</span>
     </div>
   );
 }
 
-/** Detalhes do projeto na lista, focados em prazos: o essencial sem precisar abrir o projeto. */
-export function ProjectFacts({ project, facts, overdueTasks, minutes }: { project: Project; facts: ProjectFactsData; overdueTasks: number; minutes: number }) {
+/** Alertas e detalhes do projeto na lista, focados em prazos: o essencial sem precisar abrir o projeto. */
+export function ProjectFacts({
+  project,
+  facts,
+  overdueTasks,
+  minutes,
+  soonDays,
+}: {
+  project: Project;
+  facts: ProjectFactsData;
+  overdueTasks: number;
+  minutes: number;
+  soonDays: number;
+}) {
   const { manager } = facts;
-  // A tarefa do alerta já aparece em destaque: não repete como próximo prazo
-  const next = facts.next && facts.next.task.id !== facts.alerts[0]?.task.id ? facts.next : null;
-  const place = [project.site_city, project.area_m2 ? `${formatNumber(project.area_m2)} m²` : null].filter(Boolean).join(' · ');
+  const [task, ...rest] = facts.alerts;
+  const delivery = projectDeadlineAlert(project, soonDays);
+  // A tarefa do alerta já aparece em destaque; tarefa sem prazo não entra como "próximo prazo"
+  const next = facts.next && facts.next.task.due_date && facts.next.task.id !== task?.task.id ? facts.next : null;
   return (
     <>
-      <DeadlineAlert facts={facts} />
-      <div className="col-span-full -mt-1 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px] text-muted" data-project-facts>
+      {(delivery || task) && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {delivery && (
+            <Alert late={delivery.late} data-project-deadline-alert={delivery.late ? 'atrasada' : 'perto'}>
+              <span className="font-medium">{delivery.text}</span>
+            </Alert>
+          )}
+          {task && (
+            <Alert late={task.days < 0} data-deadline-alert={task.days < 0 ? 'atrasada' : 'perto'}>
+              <span className="font-medium">Em andamento e {alertWhen(task, formatDateShort)}:</span> {task.task.title}
+              {task.assignee && ` · ${first(task.assignee.name)}`}
+              {rest.length > 0 && ` · +${rest.length} ${rest.length === 1 ? 'outra' : 'outras'} com prazo perto`}
+            </Alert>
+          )}
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-hairline-surface pt-3 text-[12.5px] text-muted" data-project-facts>
         {manager && <Fact icon={<UserRound strokeWidth={1.8} />}>Responsável: {first(manager.name)}</Fact>}
         {facts.total > 0 && (
           <Fact icon={<ListChecks strokeWidth={1.8} />}>
@@ -66,19 +83,19 @@ export function ProjectFacts({ project, facts, overdueTasks, minutes }: { projec
         ) : (
           next && (
             <Fact
-              icon={<CalendarClock strokeWidth={1.8} />}
-              className={cn('max-w-[min(100%,440px)]', next.overdue && 'text-danger-fg')}
+              icon={next.overdue ? <CalendarX2 strokeWidth={1.8} /> : <CalendarClock strokeWidth={1.8} />}
+              className={cn(next.overdue && 'text-danger-fg')}
               title={next.task.title}
-              truncate
             >
-              Próximo prazo: <span className={next.overdue ? undefined : 'text-ink'}>{next.task.title}</span>
-              {next.task.due_date ? ` · ${next.overdue ? 'venceu ' : ''}${formatDateShort(next.task.due_date)}` : ' · sem prazo'}
+              Próximo prazo:{' '}
+              {/* Só o nome da tarefa encurta; data e pessoa ficam sempre inteiras */}
+              <span className={cn('inline-block max-w-[150px] truncate align-bottom sm:max-w-[280px]', !next.overdue && 'text-ink')}>{next.task.title}</span>
+              {` · ${next.overdue ? 'venceu ' : ''}${formatDateShort(next.task.due_date!)}`}
               {next.assignee && ` · ${first(next.assignee.name)}`}
             </Fact>
           )
         )}
         {minutes > 0 && <Fact icon={<Clock strokeWidth={1.8} />}>{formatMinutes(minutes)} registradas</Fact>}
-        {place && <Fact icon={<MapPin strokeWidth={1.8} />}>{place}</Fact>}
       </div>
     </>
   );
