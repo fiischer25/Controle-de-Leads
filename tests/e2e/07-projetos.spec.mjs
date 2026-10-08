@@ -236,9 +236,10 @@ export default async function ({ browser }) {
       for (const h of ['Etapas / tarefas', 'Status', 'Duração', 'Início', 'Fim', 'Responsável', 'Prioridade']) await proj.getByText(h, { exact: true }).first().waitFor();
       ok(/\d+%/.test(await proj.locator('[data-project-progress]').innerText()), 'evolução do projeto');
       // Recolher e expandir
-      await blocks.first().getByRole('button', { name: /^Recolher/ }).click();
+      const firstName = await blocks.first().getAttribute('aria-label');
+      await blocks.first().getByRole('button', { name: `Recolher ${firstName}`, exact: true }).click();
       eq(await blocks.first().locator('[data-task-row]').count(), 0, 'bloco recolhido');
-      await blocks.first().getByRole('button', { name: /^Expandir/ }).click();
+      await blocks.first().getByRole('button', { name: `Expandir ${firstName}`, exact: true }).click();
       // Resumo: "Em andamento" mostra só as em andamento
       const doing = open.filter((t) => t.status === 'doing' || t.status === 'review').length;
       await page.getByRole('group', { name: 'Resumo das tarefas' }).getByRole('button', { name: /Em andamento/ }).click();

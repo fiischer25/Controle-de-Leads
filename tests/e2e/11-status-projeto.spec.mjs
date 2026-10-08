@@ -62,6 +62,18 @@ export default async function ({ browser }) {
       await patchTable(page, 'tasks', `rows.forEach((t) => { if (t.project_id === arg && t.status === 'doing') t.due_date = '${day(-1)}'; });`, pid);
       await page.reload();
       await page.locator(`a[href="/projetos/${pid}"] [data-deadline-alert="atrasada"]`).getByText(/Em andamento e atrasada/).waitFor();
+      // Entrega do projeto perto: alerta próprio; sem prazo e cidade não aparecem
+      const city = (await project()).site_city;
+      await patchTable(page, 'projects', `rows.forEach((p) => { if (p.id === arg) p.due_date = '${day(3)}'; });`, pid);
+      await page.reload();
+      const card = page.locator(`a[href="/projetos/${pid}"]`);
+      await card.locator('[data-project-deadline-alert="perto"]').getByText(/Entrega do projeto em 3 dias/).waitFor();
+      await patchTable(page, 'projects', "rows.forEach((p) => { if (p.id === arg) p.due_date = null; });", pid);
+      await page.reload();
+      await card.waitFor();
+      ok(!(await card.getByText('Sem prazo').count()), '"Sem prazo" no cartão');
+      ok(!(await card.locator('[data-project-deadline-alert]').count()), 'alerta de entrega sem prazo');
+      if (city) ok(!(await card.getByText(city, { exact: false }).count()), 'cidade no cartão');
     },
     page,
   );

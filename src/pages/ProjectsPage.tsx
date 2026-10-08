@@ -4,14 +4,14 @@ import { Download, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { PROJECT_STATUS } from '../lib/constants';
 import { isProjectActive } from '../lib/domain';
-import { byPosition, downloadFile, formatDate, matches, toCsv, today } from '../lib/utils';
+import { byPosition, cn, downloadFile, formatDate, formatNumber, matches, toCsv, today } from '../lib/utils';
 import { ActionLink, Avatar, AvatarStack, Button, EmptyState, FilterPick, PageHeader, SearchField, StatusBadge, Tabs, Toolbar } from '../components/ui';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { useProjectSummaries, type ProjectSummary } from '../components/projects/useProjectSummaries';
 import { projectRail, templatePhasesByType } from '../components/projects/rail';
 import { ProjectDeadline, StageRail } from '../components/projects/StageRail';
 import { ProjectFacts } from '../components/projects/ProjectFacts';
-import { projectFacts, TASK_ALERT_DAYS, type ProjectFactsData } from '../components/projects/facts';
+import { projectDeadlineAlert, projectFacts, TASK_ALERT_DAYS, type ProjectFactsData } from '../components/projects/facts';
 
 type Scope = 'ativos' | 'concluidos' | 'todos';
 type DeadlineFilter = '' | 'overdue' | 'soon' | 'alerta';
@@ -118,7 +118,6 @@ export default function ProjectsPage() {
   };
 
   const activeFilters = [type, person, deadline].filter(Boolean).length;
-  const cols = 'grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[200px_minmax(0,1fr)_44px_130px_64px]';
 
   return (
     <div>
@@ -241,58 +240,65 @@ export default function ProjectsPage() {
             className="py-16"
           />
         ) : (
-          <div className="panel pb-2 pt-3">
-            <div className={`hidden gap-6 border-b border-hairline pb-2.5 text-[12.5px] text-faint md:grid ${cols}`}>
-              <span>Projeto</span>
-              <span>Status e etapa atual</span>
-              <span className="text-right">%</span>
-              <span>Entrega</span>
-              <span className="sr-only">Equipe</span>
-            </div>
-            <ul>
+          <>
+            <ul className="space-y-3">
               {filtered.map((s) => {
                 const p = s.project;
                 const { phases, current } = projectRail(s, templates[p.project_type_id]);
                 const active = isProjectActive(p);
+                const delivery = projectDeadlineAlert(p, settings.due_soon_days);
+                const stage = current >= 0 && current < phases.length ? phases[current] : s.phase;
                 return (
                   <li key={p.id}>
                     <Link
                       to={`/projetos/${p.id}`}
-                      className={`grid items-center gap-x-6 gap-y-2.5 border-b border-hairline py-4 transition-colors hover:bg-ink/[0.025] ${cols}`}
+                      className={cn(
+                        'block rounded-[16px] border bg-surface px-4 py-4 shadow-card transition-colors hover:border-stone-300 md:px-6',
+                        delivery?.late ? 'border-danger-fg/40' : delivery ? 'border-warning-fg/40' : 'border-line',
+                      )}
                     >
-                      <div className="min-w-0">
-                        <div className="truncate font-display text-[14.5px] font-semibold tracking-[0.01em] text-ink">{p.name}</div>
-                        <div className="truncate text-[12.5px] text-faint">
-                          {s.client?.name ?? 'Cliente removido'}
-                          {s.type && <> · {s.type.name}</>}
+                      <div className="grid gap-x-8 gap-y-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_200px] md:items-center">
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+                            <span className="min-w-0 truncate font-display text-[16px] font-semibold tracking-[0.01em] text-ink">{p.name}</span>
+                            <StatusBadge kind="project" value={p.status} />
+                          </div>
+                          <div className="mt-0.5 truncate text-[12.5px] text-faint">
+                            {s.client?.name ?? 'Cliente removido'}
+                            {s.type && <> · {s.type.name}</>}
+                            {p.area_m2 ? <> · {formatNumber(p.area_m2)} m²</> : null}
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-baseline justify-between gap-3 text-[12.5px]">
+                            <span className="min-w-0 truncate text-muted">
+                              {active && phases.length > 0 && current >= 0 && current < phases.length ? (
+                                <>
+                                  Etapa {current + 1} de {phases.length}: <span className="text-ink">{stage}</span>
+                                </>
+                              ) : (
+                                stage
+                              )}
+                            </span>
+                            <span className="shrink-0 text-[13px] font-semibold tabular text-ink">{s.progress}%</span>
+                          </div>
+                          <StageRail phases={phases} current={p.status === 'concluido' ? phases.length : current} thick className="mt-2" />
+                        </div>
+                        <div className="flex items-center justify-between gap-5 md:justify-end">
+                          {p.due_date ? (
+                            <div className="md:text-right">
+                              <div className="text-[11.5px] text-faint">Entrega</div>
+                              <ProjectDeadline due={p.due_date} soonDays={settings.due_soon_days} done={p.status === 'concluido'} />
+                            </div>
+                          ) : (
+                            <span />
+                          )}
+                          <AvatarStack users={s.people} max={3} size={24} ring="ring-surface" />
                         </div>
                       </div>
-                      <div className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:row-start-auto">
-                        {active ? (
-                          <>
-                            <StageRail phases={phases} current={current} />
-                            <div className="mt-2 flex min-w-0 items-center gap-2 text-[12.5px]">
-                              <StatusBadge kind="project" value={p.status} />
-                              <span className="truncate text-muted">{current >= 0 && current < phases.length ? phases[current] : s.phase}</span>
-                              {current >= 0 && current < phases.length && (
-                                <span className="shrink-0 tabular text-muted">
-                                  · {current + 1}/{phases.length}
-                                </span>
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <StatusBadge kind="project" value={p.status} />
-                        )}
-                      </div>
-                      <div className="hidden text-right text-[13px] tabular text-muted md:block">{s.progress}%</div>
-                      <div className="col-start-2 row-start-1 text-right md:col-start-auto md:row-start-auto md:text-left">
-                        <ProjectDeadline due={p.due_date} soonDays={settings.due_soon_days} done={p.status === 'concluido'} />
-                      </div>
-                      <div className="hidden justify-end md:flex">
-                        <AvatarStack users={s.people} max={3} size={22} ring="ring-canvas" />
-                      </div>
-                      {facts[p.id] && <ProjectFacts project={p} facts={facts[p.id]} overdueTasks={s.overdueTasks} minutes={s.minutes} />}
+                      {facts[p.id] && (
+                        <ProjectFacts project={p} facts={facts[p.id]} overdueTasks={s.overdueTasks} minutes={s.minutes} soonDays={settings.due_soon_days} />
+                      )}
                     </Link>
                   </li>
                 );
@@ -301,7 +307,7 @@ export default function ProjectsPage() {
             <p className="mt-3 text-[12.5px] text-faint">
               {filtered.length} {filtered.length === 1 ? 'projeto' : 'projetos'}
             </p>
-          </div>
+          </>
         )}
       </div>
 
