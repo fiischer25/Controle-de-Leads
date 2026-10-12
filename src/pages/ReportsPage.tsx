@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Download } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { CSS_COLOR } from '../lib/status';
 import { entryMinutes } from '../lib/domain';
 import { addDays, cn, diffDays, downloadFile, formatDate, formatCurrency, formatMinutes, formatMoney, formatNumber, MONTHS_FULL, toCsv, toDateKey, today } from '../lib/utils';
 import { planSummary } from '../lib/paymentPlan';
-import { Avatar, BarRow, Button, Listbox, MetricRow, PageHeader, SectionHeader } from '../components/ui';
+import { Avatar, BarRow, Button, Listbox, MetricRow, PageHeader, SectionHeader, Tabs } from '../components/ui';
 import { MonthBars } from '../components/charts/MonthBars';
+import { OfficeHealthReport } from '../components/reports/OfficeHealthReport';
 
 const PERIODS = [
   { id: '30', label: 'Últimos 30 dias' },
@@ -15,7 +17,37 @@ const PERIODS = [
   { id: '365', label: 'Últimos 12 meses' },
 ];
 
+type Tab = 'geral' | 'saude';
+
+/** Relatórios: visão geral (comercial, valores, produção e horas) e saúde do escritório. */
 export default function ReportsPage() {
+  const [params, setParams] = useSearchParams();
+  const tab: Tab = params.get('aba') === 'saude' ? 'saude' : 'geral';
+  const tabs = (
+    <Tabs<Tab>
+      tabs={[
+        { id: 'geral', label: 'Visão geral' },
+        { id: 'saude', label: 'Saúde do escritório' },
+      ]}
+      value={tab}
+      onChange={(t) => setParams(t === 'geral' ? {} : { aba: t }, { replace: true })}
+      underline={1}
+      className="mb-8 border-hairline md:mb-10"
+    />
+  );
+  if (tab === 'saude') {
+    return (
+      <div>
+        <PageHeader title="Relatórios" description="Como está o escritório, o que melhorar primeiro e onde analisar" />
+        {tabs}
+        <OfficeHealthReport />
+      </div>
+    );
+  }
+  return <ReportsOverview tabs={tabs} />;
+}
+
+function ReportsOverview({ tabs }: { tabs: ReactNode }) {
   const { db, maps, can } = useData();
   const [period, setPeriod] = useState('90');
   const [showTable, setShowTable] = useState(false);
@@ -197,6 +229,7 @@ export default function ReportsPage() {
           </>
         }
       />
+      {tabs}
 
       <div className="space-y-12 md:space-y-14">
         <MetricRow

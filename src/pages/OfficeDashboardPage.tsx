@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { HeartPulse, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { openCreate } from '../lib/create';
 import { isProjectActive, totalMinutes } from '../lib/domain';
@@ -31,6 +31,7 @@ function longDate() {
  */
 export default function OfficeDashboardPage() {
   const { db, maps, settings, can } = useData();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const tab: Tab = params.get('aba') === 'agenda' ? 'agenda' : 'geral';
   const setTab = (t: Tab) =>
@@ -179,6 +180,11 @@ export default function OfficeDashboardPage() {
         }
         actions={
           <div className="hidden items-center gap-2 md:flex">
+            {can('relatorios') && (
+              <Button variant="ghost" icon={<HeartPulse className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate('/relatorios?aba=saude')}>
+                Saúde do escritório
+              </Button>
+            )}
             <Button variant="ghost" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => openCreate('event')}>
               Reunião
             </Button>
