@@ -262,9 +262,9 @@ export function defaultSettings(): AppSettings {
  */
 export const FINANCE_CATEGORY_PRESETS: Array<[string, FinanceCategory['kind'], string]> = [
   ['Honorários de projeto', 'receita', '#3f7d5a'],
-  ['Reserva técnica (RT)', 'receita', '#5b8f6f'],
   ['Acompanhamento de obra', 'receita', '#7aa386'],
   ['Consultoria e laudos', 'receita', '#4f8a72'],
+  ['Reserva técnica (RT)', 'receita', '#5b8f6f'],
   ['Projetos complementares (repasse)', 'receita', '#6d9c84'],
   ['Reembolso de despesas', 'receita', '#86ad97'],
   ['Rendimentos financeiros', 'receita', '#a3c1ae'],

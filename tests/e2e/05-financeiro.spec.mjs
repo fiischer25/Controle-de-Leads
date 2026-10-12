@@ -54,6 +54,37 @@ export default async function ({ browser }) {
   );
 
   await s.step(
+    'categorias do escritório cadastradas sozinhas: projeto, acompanhamento, consultoria',
+    async () => {
+      // Banco só com as categorias iniciais (sem Consultoria) e navegador que ainda não aplicou as sugeridas
+      const INITIAL = ['Honorários de projeto', 'Reserva técnica (RT)', 'Acompanhamento de obra', 'Outras receitas', 'Salários e pró-labore', 'Aluguel e condomínio', 'Impostos', 'Contabilidade'];
+      await page.evaluate((keep) => {
+        const rows = JSON.parse(localStorage.getItem('airos:v1:finance_categories'));
+        localStorage.setItem('airos:v1:finance_categories', JSON.stringify(rows.filter((c) => keep.includes(c.name))));
+        localStorage.removeItem('airos:finance-presets');
+      }, INITIAL);
+      await page.goto(BASE + '/financeiro');
+      await page.getByRole('heading', { level: 1, name: 'Financeiro' }).waitFor();
+      await page.waitForFunction(() => JSON.parse(localStorage.getItem('airos:v1:finance_categories')).some((c) => c.name === 'Consultoria e laudos'));
+      await page.getByRole('button', { name: 'Receita', exact: true }).click();
+      const d = page.getByRole('dialog');
+      await d.getByRole('combobox', { name: 'Categoria' }).click();
+      const options = await page.getByRole('option').allInnerTexts();
+      const names = options.map((o) => o.trim()).filter((o) => o && !/^Sem categoria/.test(o));
+      for (const n of ['Honorários de projeto', 'Acompanhamento de obra', 'Consultoria e laudos']) ok(names.includes(n), `faltou ${n}: ${names.join(', ')}`);
+      eq(names.slice(0, 3), ['Honorários de projeto', 'Acompanhamento de obra', 'Consultoria e laudos'], 'mais usadas primeiro');
+      eq(names[names.length - 1], 'Outras receitas', '"Outras" no fim');
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+      await d.waitFor({ state: 'detached' });
+      const cats = await ls(page, 'finance_categories');
+      eq(cats.filter((c) => c.name === 'Honorários de projeto').length, 1, 'sem repetir as que existiam');
+      ok(cats.some((c) => c.name === 'Seguros' && c.kind === 'despesa'), 'despesas sugeridas também');
+    },
+    page,
+  );
+
+  await s.step(
     'categorias sugeridas para o escritório: adiciona as que faltam',
     async () => {
       await page.evaluate(() => {
