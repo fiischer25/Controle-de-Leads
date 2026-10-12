@@ -19,6 +19,7 @@ const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const PricingPage = lazy(() => import('./pages/PricingPage'));
 const FinancePage = lazy(() => import('./pages/FinancePage'));
 const FinanceReportPage = lazy(() => import('./pages/FinanceReportPage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
@@ -73,6 +74,8 @@ function AuthenticatedApp() {
           <Route path="clientes" element={<RequireModule module="comercial"><ClientsPage /></RequireModule>} />
           <Route path="clientes/:id" element={<RequireModule module="comercial"><ClientDetailPage /></RequireModule>} />
           <Route path="financeiro" element={<RequireModule module="financeiro"><FinancePage /></RequireModule>} />
+          <Route path="precificacao" element={<RequireModule module="financeiro"><PricingPage /></RequireModule>} />
+          <Route path="precificacao/:id" element={<RequireModule module="financeiro"><PricingPage /></RequireModule>} />
           <Route path="relatorios" element={<RequireModule module="relatorios"><ReportsPage /></RequireModule>} />
           <Route path="equipe" element={<RequireModule module="equipe"><TeamPage /></RequireModule>} />
           <Route path="configuracoes" element={<RequireModule module="configuracoes"><SettingsPage /></RequireModule>} />
