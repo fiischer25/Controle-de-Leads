@@ -378,11 +378,15 @@ export interface FinanceMemberCost {
 }
 
 // ---------------------------------------------------------------- Precificação
-/** Etapa do projeto e quantos dias de trabalho ela leva. */
+/** Etapa do projeto, quantos dias de trabalho ela leva e quem faz. */
 export interface PricingStage {
   id: string;
   label: string;
   days: number;
+  /** Quem faz a etapa; null = equipe (custo/hora médio). */
+  assignee_id?: string | null;
+  /** Custo/hora usado na etapa (da pessoa, ou a média da equipe), guardado ao escolher. */
+  rate?: number | null;
 }
 /** Custo fixo mensal do escritório (aluguel, salários, softwares…). */
 export interface PricingFixedCost {
@@ -409,6 +413,8 @@ export interface PricingData {
   fixed: PricingFixedCost[];
   /** Dias úteis de trabalho por mês (divide os custos fixos). */
   work_days: number;
+  /** Horas de trabalho num dia (dias da etapa × horas × custo/hora da pessoa). */
+  hours_per_day?: number;
   indirect: PricingIndirect[];
   extras: PricingExtra[];
   /** Lucro desejado, em % do preço. */
