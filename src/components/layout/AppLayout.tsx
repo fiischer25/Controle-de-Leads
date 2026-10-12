@@ -41,6 +41,7 @@ import { TaskFormModal } from '../tasks/TaskFormModal';
 import { LogTimeModal } from '../tasks/LogTimeModal';
 import { LeadFormModal } from '../leads/LeadFormModal';
 import { EventFormModal } from '../events/EventFormModal';
+import { useFinanceCategoryPresets } from '../finance/useFinancePresets';
 import { AssistantPanel } from './AssistantPanel';
 import { CommandPalette } from './CommandPalette';
 import { BrandMark } from './Logo';
@@ -81,6 +82,7 @@ const ICON = 'h-4 w-4';
 
 export function AppLayout() {
   const { db, me, settings, can, isAdmin } = useData();
+  useFinanceCategoryPresets();
   const { setBranding } = useBranding();
   useEffect(() => {
     setBranding({ office_name: settings.office_name, logo_url: settings.logo_url ?? null });
