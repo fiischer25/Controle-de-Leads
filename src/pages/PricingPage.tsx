@@ -1,15 +1,26 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Calculator, Plus, Trash2, X } from 'lucide-react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { AlertTriangle, Calculator, Plus, Trash2, X } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { MoneyInput } from '../components/finance/MoneyInput';
-import { fixedCostsFromFinance, newPricingData, pricingResult, roundPrice, type PricingResult } from '../lib/pricing';
+import {
+  DEFAULT_HOURS_PER_DAY,
+  fixedCostsFromFinance,
+  LABOR_COST,
+  newPricingData,
+  pricingResult,
+  recurringFixedCosts,
+  roundPrice,
+  teamAverageRate,
+  type PricingResult,
+} from '../lib/pricing';
 import type { Pricing, PricingData, PricingExtra, PricingFixedCost, PricingIndirect, PricingStage } from '../lib/types';
-import { byPosition, cn, formatCurrency, formatDate, formatMoney, formatNumber, nowIso, today, uid } from '../lib/utils';
+import { byPosition, cn, formatCurrency, formatDate, formatMoney, formatNumber, nowIso, suggestProjectName, today, uid } from '../lib/utils';
 import { ActionLink, BackLink, Button, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, SectionHeader, Select, Textarea } from '../components/ui';
 
 const REF_KEY = 'airos:precificacao-ref-m2';
+const LIST_COLS = 'md:grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_80px_70px_110px_130px_90px]';
 
 /** Gestão → Precificação: lista das precificações ou o editor de uma (nova ou salva). */
 export default function PricingPage() {
@@ -44,41 +55,60 @@ function PricingList() {
           />
         </div>
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {list.map((p) => {
-            const r = pricingResult(p);
-            const lead = p.lead_id ? maps.leads[p.lead_id] : null;
-            return (
-              <li key={p.id}>
-                <Link
-                  to={`/precificacao/${p.id}`}
-                  className="block h-full rounded-[16px] border border-line bg-surface p-5 shadow-card transition-colors hover:border-stone-300"
-                  data-pricing-card
-                >
-                  <div className="truncate font-display text-[16px] font-semibold text-ink">{p.name || 'Sem nome'}</div>
-                  <div className="mt-0.5 truncate text-[12.5px] text-faint">
-                    {[p.client_name || lead?.name, p.project_type_id ? maps.types[p.project_type_id]?.name : null, p.area_m2 ? `${formatNumber(p.area_m2)} m²` : null]
-                      .filter(Boolean)
-                      .join(' · ') || '—'}
-                  </div>
-                  <div className="mt-4 flex items-end justify-between gap-3">
-                    <div>
-                      <div className="text-[12px] text-muted">Proposta</div>
-                      <div className="font-display text-[22px] font-semibold tabular text-ink">{r.price != null ? formatCurrency(r.price) : '—'}</div>
-                    </div>
-                    <div className="text-right text-[12.5px] tabular text-muted">
-                      {r.perM2 != null && <div>{formatMoney(r.perM2)}/m²</div>}
-                      <div>
-                        {r.days} {r.days === 1 ? 'dia' : 'dias'}
+        <div className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
+          <div className={cn('hidden gap-x-4 border-b border-line px-5 py-2.5 text-[12px] font-medium text-faint md:grid', LIST_COLS)}>
+            <span>Precificação</span>
+            <span>Oportunidade</span>
+            <span className="text-right">Área</span>
+            <span className="text-right">Dias</span>
+            <span className="text-right">R$/m²</span>
+            <span className="text-right">Proposta</span>
+            <span className="text-right">Atualizada</span>
+          </div>
+          <ul className="divide-y divide-hairline-surface">
+            {list.map((p) => {
+              const r = pricingResult(p);
+              const lead = p.lead_id ? maps.leads[p.lead_id] : null;
+              const synced = lead && r.price != null && lead.proposal_value === r.price;
+              return (
+                <li key={p.id}>
+                  <Link
+                    to={`/precificacao/${p.id}`}
+                    className={cn('grid gap-x-4 gap-y-1 px-5 py-3.5 transition-colors hover:bg-canvas md:items-center', LIST_COLS)}
+                    data-pricing-row
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-[14px] font-semibold text-ink">{p.name || 'Sem nome'}</div>
+                      <div className="truncate text-[12.5px] text-faint">
+                        {[p.client_name || lead?.name, p.project_type_id ? maps.types[p.project_type_id]?.name : null].filter(Boolean).join(' · ') || '—'}
                       </div>
                     </div>
-                  </div>
-                  <div className="mt-3 border-t border-hairline-surface pt-2.5 text-[12px] text-faint">Atualizada em {formatDate(p.updated_at.slice(0, 10))}</div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                    <div className="min-w-0 truncate text-[13px] text-muted">
+                      {lead ? (
+                        <>
+                          <span className="md:hidden">Oportunidade: </span>
+                          {lead.name}
+                          {synced && <span className="ml-1.5 text-[11.5px] text-success-fg">· valor na proposta</span>}
+                        </>
+                      ) : (
+                        <span className="hidden text-faint md:inline">—</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 text-[12.5px] tabular text-muted md:contents">
+                      <span className="md:text-right">{p.area_m2 ? `${formatNumber(p.area_m2)} m²` : '—'}</span>
+                      <span className="md:text-right">
+                        {r.days} {r.days === 1 ? 'dia' : 'dias'}
+                      </span>
+                      <span className="md:text-right">{r.perM2 != null ? `${formatMoney(r.perM2)}/m²` : '—'}</span>
+                    </div>
+                    <div className="font-display text-[16px] font-semibold tabular text-ink md:text-right">{r.price != null ? formatCurrency(r.price) : '—'}</div>
+                    <div className="text-[12px] text-faint md:text-right">{formatDate(p.updated_at.slice(0, 10))}</div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </div>
   );
@@ -98,23 +128,68 @@ function PricingEditor({ id }: { id: string }) {
   const { db, maps, me, can, insertRows, patch, removeRows, updateLead } = useData();
   const toast = useToast();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const saved = id === 'nova' ? null : (db.pricings.find((p) => p.id === id) ?? null);
-  const categoryName = (cid: string | null) => (cid ? db.finance_categories.find((c) => c.id === cid)?.name ?? 'Sem categoria' : 'Sem categoria');
-  const financeFixed = useMemo(() => fixedCostsFromFinance(db.finance_entries, categoryName, today()), [db.finance_entries, db.finance_categories]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Equipe: custo/hora de cada pessoa (Financeiro → Rentabilidade) e a média, para etapas sem pessoa
+  const team = useMemo(() => db.profiles.filter((p) => p.active).sort((a, b) => a.name.localeCompare(b.name)), [db.profiles]);
+  const rateOf = (userId: string) => {
+    const v = db.finance_member_costs.find((c) => c.user_id === userId)?.hourly_cost;
+    return v != null && v > 0 ? v : null;
+  };
+  const teamRate = teamAverageRate(db.finance_member_costs.filter((c) => team.some((p) => p.id === c.user_id)));
+
+  // Custos fixos do Financeiro: as despesas que repetem todo mês; sem elas, a média de 3 meses.
+  // Com custo/hora da equipe, salários ficam de fora (entram pelas etapas).
+  const finance = useMemo(() => {
+    const name = (cid: string | null) => (cid ? (db.finance_categories.find((c) => c.id === cid)?.name ?? 'Sem categoria') : 'Sem categoria');
+    const skipLabor = teamRate != null;
+    const recurring = recurringFixedCosts(db.finance_entries, name, today(), { skipLabor });
+    if (recurring.length) return { rows: recurring, source: 'mensal' as const, skipLabor };
+    const avg = fixedCostsFromFinance(db.finance_entries, name, today(), 3, { skipLabor });
+    return { rows: avg, source: avg.length ? ('media' as const) : null, skipLabor };
+  }, [db.finance_entries, db.finance_categories, teamRate]);
+
+  const typePhases = (typeId: string) => {
+    const seen: string[] = [];
+    for (const t of db.task_templates.filter((x) => x.project_type_id === typeId).sort(byPosition)) if (t.phase && !seen.includes(t.phase)) seen.push(t.phase);
+    return seen;
+  };
 
   const [draft, setDraft] = useState<Pricing>(() => {
     if (saved) return saved;
-    // Nova: aproveita os custos e a margem da última precificação; sem ela, a média do Financeiro
+    // Nova: custos fixos do Financeiro; indiretos, margem e dias úteis da última precificação
     const last = [...db.pricings].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
-    const data = newPricingData({ fixed: financeFixed, refM2: last?.data.ref_m2 ?? readRef() });
+    // Aberta pela oportunidade (?oportunidade=): já vinculada, com cliente, área e tipo
+    const lead = params.get('oportunidade') ? maps.leads[params.get('oportunidade')!] : null;
+    const typeId = lead?.project_type_id ?? null;
+    const data = newPricingData({
+      fixed: finance.rows,
+      refM2: last?.data.ref_m2 ?? readRef(),
+      teamRate,
+      stages: typeId ? typePhases(typeId) : undefined,
+    });
     if (last) {
-      data.fixed = last.data.fixed.map((f) => ({ ...f, id: uid() }));
+      if (!finance.rows.length) data.fixed = last.data.fixed.map((f) => ({ ...f, id: uid() }));
       data.work_days = last.data.work_days;
+      data.hours_per_day = last.data.hours_per_day ?? DEFAULT_HOURS_PER_DAY;
       data.indirect = last.data.indirect.map((i) => ({ ...i, id: uid() }));
       data.margin = last.data.margin;
     }
     const now = nowIso();
-    return { id: uid(), name: '', client_name: null, lead_id: null, project_type_id: null, area_m2: null, data, total: 0, created_by: me.id, created_at: now, updated_at: now };
+    return {
+      id: uid(),
+      name: lead ? suggestProjectName(lead.name) : '',
+      client_name: lead?.name ?? null,
+      lead_id: lead?.id ?? null,
+      project_type_id: typeId,
+      area_m2: lead?.area_m2 ?? null,
+      data,
+      total: 0,
+      created_by: me.id,
+      created_at: now,
+      updated_at: now,
+    };
   });
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -139,14 +214,15 @@ function PricingEditor({ id }: { id: string }) {
     setDirty(true);
   };
 
-  const typePhases = (typeId: string) => {
-    const seen: string[] = [];
-    for (const t of db.task_templates.filter((x) => x.project_type_id === typeId).sort(byPosition)) if (t.phase && !seen.includes(t.phase)) seen.push(t.phase);
-    return seen;
-  };
-  const applyTypeStages = (typeId: string) => setData({ stages: typePhases(typeId).map((label) => ({ id: uid(), label, days: 0 })) });
+  const newStage = (label = ''): PricingStage => ({ id: uid(), label, days: 0, assignee_id: null, rate: teamRate });
+  const applyTypeStages = (typeId: string) => setData({ stages: typePhases(typeId).map((label) => newStage(label)) });
+  const pullFinance = () => setData({ fixed: finance.rows.map(([label, value]) => ({ id: uid(), label, value })) });
 
   const openLeads = db.leads.filter((l) => db.lead_stages.find((s) => s.id === l.stage_id)?.kind === 'open' || l.id === draft.lead_id);
+
+  const lead = draft.lead_id ? maps.leads[draft.lead_id] : null;
+  // O valor da proposta vai para a oportunidade vinculada ao salvar
+  const syncLead = can('comercial') && !!lead && r.price != null && r.price > 0;
 
   const save = async () => {
     if (!draft.name.trim()) return toast.error('Dê um nome para a precificação (ex.: CASA B.F.).');
@@ -160,23 +236,22 @@ function PricingEditor({ id }: { id: string }) {
       } catch {
         /* só lembra neste navegador */
       }
+      let leadNote = '';
+      if (syncLead && lead && lead.proposal_value !== r.price) {
+        try {
+          await updateLead(lead.id, { proposal_value: r.price });
+          leadNote = ` Proposta de ${lead.name}: ${formatMoney(r.price!)}.`;
+        } catch (e) {
+          toast.error(`A precificação foi salva, mas o valor não foi para a oportunidade: ${e instanceof Error ? e.message : e}`);
+        }
+      }
       setDirty(false);
-      toast.success('Precificação salva.');
-      if (!saved) navigate(`/precificacao/${draft.id}`, { replace: true });
+      toast.success(`Precificação salva.${leadNote}`);
+      navigate('/precificacao');
     } catch (e) {
       toast.error(e);
     } finally {
       setBusy(false);
-    }
-  };
-
-  const toLead = async () => {
-    if (!draft.lead_id || r.price == null) return;
-    try {
-      await updateLead(draft.lead_id, { proposal_value: r.price });
-      toast.success(`Valor da proposta de ${maps.leads[draft.lead_id]?.name ?? 'oportunidade'}: ${formatMoney(r.price)}.`);
-    } catch (e) {
-      toast.error(e);
     }
   };
 
@@ -281,17 +356,94 @@ function PricingEditor({ id }: { id: string }) {
             <Rows
               items={draft.data.stages}
               onChange={(stages) => setData({ stages })}
-              make={() => ({ id: uid(), label: '', days: 0 })}
+              make={() => newStage()}
               addLabel="Etapa"
-              head={['Etapa', 'Dias']}
-              cols="grid-cols-[minmax(0,1fr)_96px_28px]"
-              render={(s: PricingStage, upd) => (
-                <>
-                  <Input value={s.label} aria-label="Nome da etapa" placeholder="Nome da etapa" onChange={(e) => upd({ label: e.target.value })} />
-                  <NumberInput value={s.days} label={`Dias de ${s.label || 'etapa'}`} onChange={(days) => upd({ days })} />
-                </>
-              )}
+              head={['Etapa', 'Quem faz', 'Dias', 'Custo']}
+              cols="grid-cols-[minmax(0,1fr)_52px_76px_28px] sm:grid-cols-[minmax(0,1fr)_190px_72px_100px_28px]"
+              render={(s: PricingStage, upd) => {
+                const i = draft.data.stages.findIndex((x) => x.id === s.id);
+                const noRate = !!s.assignee_id && !(s.rate && s.rate > 0);
+                return (
+                  <>
+                    <Input
+                      value={s.label}
+                      className="col-span-4 sm:col-span-1"
+                      aria-label="Nome da etapa"
+                      placeholder="Nome da etapa"
+                      onChange={(e) => upd({ label: e.target.value })}
+                    />
+                    <Select
+                      value={s.assignee_id ?? ''}
+                      aria-label={`Quem faz ${s.label || 'a etapa'}`}
+                      className={cn(noRate && 'border-warning-solid')}
+                      onChange={(e) => {
+                        const userId = e.target.value || null;
+                        upd({ assignee_id: userId, rate: userId ? rateOf(userId) : teamRate });
+                      }}
+                    >
+                      <option value="">{teamRate != null ? 'Equipe (média)' : 'Equipe'}</option>
+                      {team.map((p) => {
+                        const rate = rateOf(p.id);
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {p.name} · {rate != null ? `${formatMoney(rate)}/h` : 'sem custo/hora'}
+                          </option>
+                        );
+                      })}
+                      {s.assignee_id && !team.some((p) => p.id === s.assignee_id) && (
+                        <option value={s.assignee_id}>{maps.profiles[s.assignee_id]?.name ?? 'Pessoa removida'}</option>
+                      )}
+                    </Select>
+                    <NumberInput value={s.days} label={`Dias de ${s.label || 'etapa'}`} onChange={(days) => upd({ days })} />
+                    <span
+                      className="text-right text-[13px] tabular text-ink"
+                      data-stage-cost
+                      title={s.rate ? `${s.days} dias × ${r.hoursPerDay} h × ${formatMoney(s.rate)}/h` : undefined}
+                    >
+                      {formatMoney(r.stageLabor[i] ?? 0)}
+                    </span>
+                  </>
+                );
+              }}
             />
+            <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 rounded-[12px] bg-canvas px-4 py-3">
+              <Field label="Horas por dia" className="w-32">
+                <NumberInput
+                  value={draft.data.hours_per_day ?? DEFAULT_HOURS_PER_DAY}
+                  label="Horas por dia"
+                  decimals
+                  onChange={(hours_per_day) => setData({ hours_per_day })}
+                />
+              </Field>
+              <div className="pb-2 text-[13px] text-muted">
+                Custo da equipe nas etapas:{' '}
+                <b className="font-semibold text-ink" data-labor>
+                  {formatMoney(r.labor)}
+                </b>
+              </div>
+            </div>
+            {teamRate == null ? (
+              <p className="mt-3 text-[12.5px] text-muted">
+                Cadastre o custo/hora de cada pessoa em{' '}
+                <ActionLink to="/financeiro?aba=rentabilidade" className="text-[length:inherit]">
+                  Financeiro → Rentabilidade
+                </ActionLink>{' '}
+                para somar o custo de quem faz cada etapa.
+              </p>
+            ) : (
+              draft.data.stages.some((x) => x.assignee_id && !(x.rate && x.rate > 0)) && (
+                <p className="mt-3 flex items-start gap-1.5 text-[12.5px] text-warning-fg">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+                  <span>
+                    Há etapa com pessoa sem custo/hora: o custo dela fica zerado. Cadastre em{' '}
+                    <ActionLink to="/financeiro?aba=rentabilidade" className="text-[length:inherit]">
+                      Financeiro → Rentabilidade
+                    </ActionLink>
+                    .
+                  </span>
+                </p>
+              )
+            )}
           </Section>
 
           {/* Custos fixos */}
@@ -299,16 +451,21 @@ function PricingEditor({ id }: { id: string }) {
             id="prec-fixos"
             title="Custos fixos do escritório (por mês)"
             aside={
-              financeFixed.length > 0 ? (
-                <ActionLink
-                  onClick={() => setData({ fixed: financeFixed.map(([label, value]) => ({ id: uid(), label, value })) })}
-                  muted
-                >
-                  Puxar do Financeiro (média de 3 meses)
+              finance.source ? (
+                <ActionLink onClick={pullFinance} muted>
+                  Atualizar com o Financeiro
                 </ActionLink>
               ) : undefined
             }
           >
+            <p className="-mt-1 mb-4 text-[12.5px] text-faint" data-fixed-source>
+              {finance.source === 'mensal'
+                ? 'Vêm do Financeiro: as despesas que repetem todo mês, com o valor deste mês.'
+                : finance.source === 'media'
+                  ? 'Vêm do Financeiro: média das despesas dos últimos 3 meses, por categoria.'
+                  : 'Lance as despesas fixas no Financeiro (repetindo todo mês) e elas aparecem aqui sozinhas.'}
+              {finance.skipLabor && ' Salários ficam fora: a equipe entra pelo custo/hora nas etapas.'}
+            </p>
             <Rows
               items={draft.data.fixed}
               onChange={(fixed) => setData({ fixed })}
@@ -323,12 +480,18 @@ function PricingEditor({ id }: { id: string }) {
                 </>
               )}
             />
+            {r.labor > 0 && draft.data.fixed.some((f) => f.value > 0 && LABOR_COST.test(f.label)) && (
+              <p className="mt-3 flex items-start gap-1.5 text-[12.5px] text-warning-fg">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+                Salários aparecem aqui e também no custo da equipe nas etapas. Remova a linha para não contar duas vezes.
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 rounded-[12px] bg-canvas px-4 py-3">
               <Field label="Dias úteis por mês" className="w-32">
                 <NumberInput value={draft.data.work_days} label="Dias úteis por mês" onChange={(work_days) => setData({ work_days })} />
               </Field>
               <div className="pb-2 text-[13px] text-muted">
-                {formatMoney(r.fixedMonthly)} por mês ÷ {draft.data.work_days || 0} dias ={' '}
+                Escritório: {formatMoney(r.fixedMonthly)} por mês ÷ {draft.data.work_days || 0} dias ={' '}
                 <b className="font-semibold text-ink" data-day-cost>
                   {formatMoney(r.dayCost)} por dia
                 </b>
@@ -406,13 +569,7 @@ function PricingEditor({ id }: { id: string }) {
           </Section>
         </div>
 
-        <Summary
-          pricing={draft}
-          r={r}
-          onFinal={(final_price) => setData({ final_price })}
-          onLead={can('comercial') && draft.lead_id ? toLead : undefined}
-          leadName={draft.lead_id ? maps.leads[draft.lead_id]?.name : undefined}
-        />
+        <Summary pricing={draft} r={r} onFinal={(final_price) => setData({ final_price })} leadName={syncLead ? lead?.name : undefined} />
       </div>
 
       {deleting && saved && (
@@ -438,18 +595,18 @@ function Summary({
   pricing,
   r,
   onFinal,
-  onLead,
   leadName,
 }: {
   pricing: Pricing;
   r: PricingResult;
   onFinal: (v: number | null) => void;
-  onLead?: () => void;
+  /** Oportunidade que recebe o valor ao salvar. */
   leadName?: string;
 }) {
   const price = r.price ?? 0;
   const parts = [
-    { label: 'Dias de trabalho', value: r.daysCost, color: 'bg-stone-700' },
+    { label: 'Equipe', value: r.labor, color: 'bg-stone-800' },
+    { label: 'Escritório (custos fixos)', value: r.daysCost, color: 'bg-stone-600' },
     { label: 'Adicionais', value: r.extras, color: 'bg-stone-400' },
     { label: 'Indiretos', value: r.indirectValue + r.indirectPctValue, color: 'bg-warning-solid' },
     { label: 'Lucro', value: Math.max(0, r.profit ?? 0), color: 'bg-success-solid' },
@@ -544,10 +701,11 @@ function Summary({
             </ActionLink>
           )}
         </div>
-        {onLead && r.price != null && (
-          <Button className="mt-4 w-full" onClick={onLead}>
-            Usar como proposta de {leadName ?? 'oportunidade'}
-          </Button>
+        {leadName && r.price != null && (
+          <p className="mt-4 rounded-[10px] bg-canvas px-3 py-2 text-[12.5px] text-muted" data-lead-sync>
+            Ao salvar, <b className="font-semibold text-ink">{formatMoney(r.price)}</b> vai como valor da proposta de{' '}
+            <b className="font-semibold text-ink">{leadName}</b>.
+          </p>
         )}
       </div>
     </aside>
@@ -595,7 +753,7 @@ function Rows<T extends { id: string; label: string }>({
     <div>
       <div className={cn('mb-1.5 hidden gap-2 text-[12px] text-faint sm:grid', cols)}>
         {head.map((h, i) => (
-          <span key={h} className={i > 0 && h !== 'Como' ? 'text-right' : undefined}>
+          <span key={h} className={i > 0 && h !== 'Como' && h !== 'Quem faz' ? 'text-right' : undefined}>
             {h}
           </span>
         ))}

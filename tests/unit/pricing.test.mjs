@@ -11,7 +11,7 @@ import { join } from 'node:path';
 const dir = mkdtempSync(join(tmpdir(), 'airos-pricing-'));
 const out = join(dir, 'pricing.mjs');
 await build({ entryPoints: [new URL('../../src/lib/pricing.ts', import.meta.url).pathname], bundle: true, format: 'esm', outfile: out, logLevel: 'silent' });
-const { pricingResult, newPricingData, fixedCostsFromFinance, roundPrice } = await import(out);
+const { pricingResult, newPricingData, fixedCostsFromFinance, recurringFixedCosts, teamAverageRate, roundPrice } = await import(out);
 rmSync(dir, { recursive: true, force: true });
 
 function casa(over = {}) {
@@ -91,4 +91,58 @@ test('custos fixos pela média do Financeiro (sem impostos nem distribuição de
     '2026-10-12',
   );
   assert.deepEqual(rows, [['Salários e pró-labore', 4000], ['Aluguel e condomínio', 3000]]);
+});
+
+test('custo de quem faz cada etapa: dias × horas por dia × custo/hora', () => {
+  const p = casa({
+    fixed: [{ id: 'b', label: 'Aluguel', value: 4200 }],
+    hours_per_day: 8,
+    stages: [
+      { id: '1', label: 'Estudo preliminar', days: 10, assignee_id: 'ana', rate: 85 },
+      { id: '2', label: 'Executivo', days: 5, assignee_id: null, rate: 70 },
+      { id: '3', label: 'Antiga', days: 2 },
+    ],
+  });
+  const r = pricingResult(p);
+  // Escritório: 4200 ÷ 21 = 200/dia × 17 dias = 3400; equipe: 10×8×85 + 5×8×70 + 0 = 9600
+  assert.equal(r.daysCost, 3400);
+  assert.deepEqual(r.stageLabor, [6800, 2800, 0]);
+  assert.equal(r.labor, 9600);
+  assert.equal(r.cost, 3400 + 9600 + 5600);
+  // Sem horas por dia (precificação antiga): 8 horas
+  assert.equal(pricingResult(casa({ hours_per_day: undefined, stages: [{ id: '1', label: 'x', days: 1, rate: 100 }] })).labor, 800);
+});
+
+test('custo/hora médio da equipe', () => {
+  assert.equal(teamAverageRate([{ hourly_cost: 120 }, { hourly_cost: 85 }, { hourly_cost: 0 }, { hourly_cost: 70 }]), 91.67);
+  assert.equal(teamAverageRate([]), null);
+});
+
+test('custos fixos do Financeiro: despesas que repetem todo mês', () => {
+  const cat = { a: 'Aluguel e condomínio', s: 'Salários e pró-labore', i: 'Impostos', m: 'Marketing', e: 'Energia, internet e telefone', o: 'Outras despesas' };
+  const e = (description, category_id, amount, due_date, extra = {}) => ({ kind: 'despesa', description, amount, due_date, category_id, ...extra });
+  const entries = [
+    // "Todo mês" (série): vale o valor do mês atual
+    ...['2026-08-05', '2026-09-05', '2026-10-05', '2026-11-05'].map((d) => e('Aluguel da sala', 'a', 3800, d, { series_id: 'S1' })),
+    ...['2026-09-05', '2026-10-05'].map((d) => e('Folha de pagamento', 's', 18500, d, { series_id: 'S2' })),
+    ...['2026-09-20', '2026-10-20'].map((d) => e('Simples Nacional', 'i', 2400, d, { series_id: 'S3' })),
+    // Lançada à mão em 2 dos 3 últimos meses: último valor
+    e('Energia e internet', 'e', 450, '2026-08-12'),
+    e('Energia e internet', 'e', 495, '2026-09-12'),
+    // Uma vez só, ou de projeto: fora
+    e('Impulsionamento', 'm', 600, '2026-09-18'),
+    e('Plotagem CASA X', 'o', 300, '2026-09-02', { project_id: 'P' }),
+    e('Plotagem CASA X', 'o', 300, '2026-08-02', { project_id: 'P' }),
+  ];
+  const name = (id) => cat[id] ?? 'Sem categoria';
+  assert.deepEqual(recurringFixedCosts(entries, name, '2026-10-12'), [
+    ['Folha de pagamento', 18500],
+    ['Aluguel da sala', 3800],
+    ['Energia e internet', 495],
+  ]);
+  // Equipe com custo/hora: salários ficam de fora (entram pelas etapas)
+  assert.deepEqual(recurringFixedCosts(entries, name, '2026-10-12', { skipLabor: true }), [
+    ['Aluguel da sala', 3800],
+    ['Energia e internet', 495],
+  ]);
 });

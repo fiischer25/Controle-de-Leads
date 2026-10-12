@@ -131,6 +131,8 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
   const t = today();
   const stage = maps.stages[lead.stage_id];
   const open = stage?.kind === 'open';
+  // Precificação vinculada (Gestão → Precificação): a mais recente
+  const pricing = db.pricings.filter((x) => x.lead_id === lead.id).sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ?? null;
   const owner = lead.owner_id ? maps.profiles[lead.owner_id] : null;
   const client = lead.client_id ? maps.clients[lead.client_id] : null;
   const project = client ? db.projects.find((p) => p.lead_id === lead.id || p.client_id === client.id) : null;
@@ -355,6 +357,21 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
             <Detail label="Proposta">
               <span className={cn('tabular', !lead.proposal_value && 'text-faint')}>{lead.proposal_value ? formatCurrency(lead.proposal_value) : 'Sem proposta'}</span>
+              {can('financeiro') && (
+                <span className="block text-[12.5px]" data-lead-pricing>
+                  {pricing ? (
+                    <ActionLink to={`/precificacao/${pricing.id}`} className="text-[length:inherit]">
+                      Precificação {pricing.name}
+                    </ActionLink>
+                  ) : (
+                    open && (
+                      <ActionLink to={`/precificacao/nova?oportunidade=${lead.id}`} className="text-[length:inherit]" muted>
+                        Precificar
+                      </ActionLink>
+                    )
+                  )}
+                </span>
+              )}
             </Detail>
             <Detail label="Previsão de fechamento">
               {lead.expected_close_date ? formatDate(lead.expected_close_date) : <span className="text-faint">—</span>}
