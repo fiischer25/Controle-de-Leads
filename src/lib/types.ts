@@ -377,6 +377,64 @@ export interface FinanceMemberCost {
   updated_at: string;
 }
 
+// ---------------------------------------------------------------- Precificação
+/** Etapa do projeto e quantos dias de trabalho ela leva. */
+export interface PricingStage {
+  id: string;
+  label: string;
+  days: number;
+}
+/** Custo fixo mensal do escritório (aluguel, salários, softwares…). */
+export interface PricingFixedCost {
+  id: string;
+  label: string;
+  value: number;
+}
+/** Custo indireto: % sobre o preço (impostos, taxas) ou valor fixo no projeto. */
+export interface PricingIndirect {
+  id: string;
+  label: string;
+  kind: 'percent' | 'valor';
+  value: number;
+}
+/** Adicional do projeto: visitas, presentes, terceirização… (quantidade × valor). */
+export interface PricingExtra {
+  id: string;
+  label: string;
+  qty: number;
+  unit: number;
+}
+export interface PricingData {
+  stages: PricingStage[];
+  fixed: PricingFixedCost[];
+  /** Dias úteis de trabalho por mês (divide os custos fixos). */
+  work_days: number;
+  indirect: PricingIndirect[];
+  extras: PricingExtra[];
+  /** Lucro desejado, em % do preço. */
+  margin: number;
+  /** R$/m² de referência, para comparar com o preço pelos dias. */
+  ref_m2: number | null;
+  /** Valor que vai na proposta (ex.: arredondado); vazio = preço sugerido. */
+  final_price: number | null;
+  notes: string;
+}
+/** Precificação de um projeto: pelos dias de trabalho, comparada com o m². */
+export interface Pricing {
+  id: string;
+  name: string;
+  client_name: string | null;
+  lead_id: string | null;
+  project_type_id: string | null;
+  area_m2: number | null;
+  data: PricingData;
+  /** Valor da proposta (ou o sugerido), para listar e ordenar. */
+  total: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Mapa tabela → tipo de linha. Usado pela camada de dados genérica. */
 export interface Tables {
   profiles: Profile;
@@ -399,12 +457,13 @@ export interface Tables {
   finance_categories: FinanceCategory;
   finance_entries: FinanceEntry;
   finance_member_costs: FinanceMemberCost;
+  pricings: Pricing;
 }
 
 export type TableName = keyof Tables;
 
 /** Tabelas que podem ainda não existir no banco (migração não executada): carregam vazias. */
-export const OPTIONAL_TABLES: TableName[] = ['finance_accounts', 'finance_categories', 'finance_entries', 'finance_member_costs'];
+export const OPTIONAL_TABLES: TableName[] = ['finance_accounts', 'finance_categories', 'finance_entries', 'finance_member_costs', 'pricings'];
 
 export const TABLES: TableName[] = [
   'profiles',
@@ -427,4 +486,5 @@ export const TABLES: TableName[] = [
   'finance_categories',
   'finance_entries',
   'finance_member_costs',
+  'pricings',
 ];

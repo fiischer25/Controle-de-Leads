@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   BarChart3,
+  Calculator,
   Bell,
   Building2,
   CalendarDays,
@@ -69,6 +70,7 @@ const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/projetos/, 'Projetos'],
   [/^\/tarefas/, 'Minhas tarefas'],
   [/^\/financeiro/, 'Financeiro'],
+  [/^\/precificacao/, 'Precificação'],
   [/^\/relatorios/, 'Relatórios'],
   [/^\/equipe/, 'Equipe'],
   [/^\/configuracoes/, 'Configurações'],
@@ -149,6 +151,7 @@ export function AppLayout() {
     [
       ...(isAdmin ? [{ to: '/', label: 'Escritório', icon: LayoutDashboard, end: true }] : []),
       { to: '/financeiro', label: 'Financeiro', icon: Wallet, module: 'financeiro' },
+      { to: '/precificacao', label: 'Precificação', icon: Calculator, module: 'financeiro' },
       { to: '/relatorios', label: 'Relatórios', icon: BarChart3, module: 'relatorios' },
       { to: '/equipe', label: 'Equipe', icon: Users, module: 'equipe' },
       { to: '/configuracoes', label: 'Configurações', icon: Settings, module: 'configuracoes' },
@@ -228,7 +231,7 @@ export function AppLayout() {
 function groupLabel(g: NavItem[]): string {
   const has = (paths: string[]) => g.some((n) => paths.includes(n.to));
   if (has(['/oportunidades', '/clientes'])) return 'Comercial';
-  if (has(['/financeiro', '/relatorios', '/equipe', '/configuracoes']) || g[0]?.label === 'Escritório') return 'Gestão';
+  if (has(['/financeiro', '/precificacao', '/relatorios', '/equipe', '/configuracoes']) || g[0]?.label === 'Escritório') return 'Gestão';
   return 'Trabalho';
 }
 
@@ -436,7 +439,7 @@ function BottomNav({ onCreate, onMore }: { onCreate: () => void; onMore: () => v
       ? { to: '/oportunidades', label: 'Oportunidades', icon: FolderKanban }
       : null;
   const moreActive =
-    /^\/(clientes|projetos|oportunidades|financeiro|relatorios|equipe|configuracoes|perfil)/.test(location.pathname) &&
+    /^\/(clientes|projetos|oportunidades|financeiro|precificacao|relatorios|equipe|configuracoes|perfil)/.test(location.pathname) &&
     !(second && location.pathname.startsWith(second.to));
   const item = (active: boolean) =>
     cn('flex h-[52px] flex-col items-center justify-center gap-1 text-[10.5px] leading-none', active ? 'font-medium text-ink' : 'text-faint');
@@ -511,6 +514,7 @@ function MoreSheet({ onClose, onAssistant }: { onClose: () => void; onAssistant:
       {can('comercial') && !comercialInBar && <SheetItem to="/oportunidades" icon={<FolderKanban strokeWidth={1.6} />} label="Oportunidades" />}
       {can('comercial') && <SheetItem to="/clientes" icon={<Contact strokeWidth={1.6} />} label="Clientes" />}
       {can('financeiro') && <SheetItem to="/financeiro" icon={<Wallet strokeWidth={1.6} />} label="Financeiro" />}
+      {can('financeiro') && <SheetItem to="/precificacao" icon={<Calculator strokeWidth={1.6} />} label="Precificação" />}
       {can('relatorios') && <SheetItem to="/relatorios" icon={<BarChart3 strokeWidth={1.6} />} label="Relatórios" />}
       {can('equipe') && <SheetItem to="/equipe" icon={<Users strokeWidth={1.6} />} label="Equipe" />}
       {can('configuracoes') && <SheetItem to="/configuracoes" icon={<Settings strokeWidth={1.6} />} label="Configurações" />}

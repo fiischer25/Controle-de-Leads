@@ -284,6 +284,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
             finance_categories: canFinance ? db.finance_categories : [],
             finance_entries: canFinance ? db.finance_entries : [],
             finance_member_costs: canFinance ? db.finance_member_costs : [],
+            pricings: canFinance ? db.pricings : [],
           },
     [db, canCommercial, canClients, canFinance],
   );

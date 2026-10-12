@@ -36,6 +36,9 @@ function translateError(message: string): string {
   if (/projects_status_check/i.test(message) || (/status_manual/i.test(message) && /column|schema cache/i.test(message))) {
     return 'O banco ainda não tem o status “Obra”. Abra Configurações → Banco de dados e aplique “Status do projeto: Obra” (migração 20261018000000_project_status_obra.sql).';
   }
+  if (/pricings/i.test(message) && /schema cache|does not exist|relation/i.test(message)) {
+    return 'O banco ainda não tem a Precificação. Abra Configurações → Banco de dados e aplique “Precificação de projetos” (migração 20261020000000_pricings.sql).';
+  }
   if (/bucket not found/i.test(message)) {
     return 'O espaço de arquivos ainda não foi criado no banco. Abra Configurações → Banco de dados e aplique as atualizações que faltam.';
   }
