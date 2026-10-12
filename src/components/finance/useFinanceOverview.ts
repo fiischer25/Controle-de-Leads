@@ -3,6 +3,7 @@ import { addMonthsKey, monthKey, monthsBack, monthTotals, sum } from '../../lib/
 import { addDays, MONTHS_FULL, today } from '../../lib/utils';
 import type { CashMonth } from './FinanceOverviewParts';
 import { useFinance } from './useFinance';
+import { useCashMode } from './cashMode';
 
 /**
  * Números do Financeiro usados na Visão geral e nos dashboards (mesma conta em todo lugar):
@@ -11,6 +12,7 @@ import { useFinance } from './useFinance';
  */
 export function useFinanceOverview(flow: { back: number; ahead: number } = { back: 5, ahead: 6 }) {
   const fin = useFinance();
+  const [mode] = useCashMode();
   const t = today();
   const month = monthKey(t);
   const { back, ahead } = flow;
@@ -34,23 +36,47 @@ export function useFinanceOverview(flow: { back: number; ahead: number } = { bac
         return { key, items, total: sum(items.map((e) => e.amount)) };
       })
       .filter((m) => m.items.length > 0);
-    // Fluxo de caixa: meses realizados, o mês atual (realizado + em aberto) e os previstos
-    const flowMonths: CashMonth[] = monthsBack(monthKey(addMonthsKey(`${month}-01`, ahead)), back + 1 + ahead).map((key) => {
-      const [, mm] = key.split('-').map(Number);
+    // Entradas e saídas de um mês: realizado nos passados, realizado + em aberto no atual, em aberto nos próximos
+    const flowOf = (key: string) => {
       const m = monthTotals(fin.entries, key);
-      const forecast = key > month;
-      const current = key === month;
       const pendingIn = sum(open.filter((e) => e.kind === 'receita' && monthKey(e.due_date) === key).map((e) => e.amount));
       const pendingOut = sum(open.filter((e) => e.kind === 'despesa' && monthKey(e.due_date) === key).map((e) => e.amount));
+      if (key > month) return { in: pendingIn, out: pendingOut };
+      if (key === month) return { in: m.inPaid + pendingIn, out: m.outPaid + pendingOut };
+      return { in: m.inPaid, out: m.outPaid };
+    };
+    const prevOf = (key: string) => monthKey(addMonthsKey(`${key}-01`, -1));
+    // Fluxo de caixa. No caixa do "mês seguinte", cada mês compara o que entrou no mês anterior com as contas do mês
+    const flowMonths: CashMonth[] = monthsBack(monthKey(addMonthsKey(`${month}-01`, ahead)), back + 1 + ahead).map((key) => {
+      const [, mm] = key.split('-').map(Number);
+      const own = flowOf(key);
       return {
         key,
         label: MONTHS_FULL[mm - 1].slice(0, 3),
-        in: forecast ? pendingIn : current ? m.inPaid + pendingIn : m.inPaid,
-        out: forecast ? pendingOut : current ? m.outPaid + pendingOut : m.outPaid,
-        forecast,
-        current,
+        in: mode === 'seguinte' ? flowOf(prevOf(key)).in : own.in,
+        out: own.out,
+        forecast: key > month,
+        current: key === month,
       };
     });
+    // Caixa do mês seguinte: recebido no mês passado x contas deste mês; e o que entra agora x contas do próximo
+    const prevMonth = prevOf(month);
+    const nextMonth = monthKey(addMonthsKey(`${month}-01`, 1));
+    const prevTotals = monthTotals(fin.entries, prevMonth);
+    const nextTotals = monthTotals(fin.entries, nextMonth);
+    const receivingNow = Math.round((totals.inPaid + totals.inOpen) * 100) / 100;
+    const cycle = {
+      prevMonth,
+      nextMonth,
+      receivedPrev: prevTotals.inPaid,
+      bills: totals.outPlanned,
+      billsPaid: totals.outPaid,
+      leftover: Math.round((prevTotals.inPaid - totals.outPlanned) * 100) / 100,
+      receivedNow: totals.inPaid,
+      receivingNow,
+      nextBills: nextTotals.outPlanned,
+      nextLeftover: Math.round((receivingNow - nextTotals.outPlanned) * 100) / 100,
+    };
     const byCategory: Record<string, number> = {};
     for (const e of fin.entries) {
       if (e.kind !== 'despesa' || monthKey(e.due_date) !== month) continue;
@@ -59,6 +85,8 @@ export function useFinanceOverview(flow: { back: number; ahead: number } = { bac
     }
     return {
       month,
+      mode,
+      cycle,
       totals,
       result: Math.round((totals.inPaid - totals.outPaid) * 100) / 100,
       balance: fin.totalBalance,
@@ -73,7 +101,7 @@ export function useFinanceOverview(flow: { back: number; ahead: number } = { bac
       pay30: total('despesa', (d) => d >= t && d <= in30),
       receivable: total('receita', () => true),
     };
-  }, [fin.entries, fin.totalBalance, month, t, back, ahead]);
+  }, [fin.entries, fin.totalBalance, month, t, back, ahead, mode]);
 }
 
 export type FinanceOverview = ReturnType<typeof useFinanceOverview>;

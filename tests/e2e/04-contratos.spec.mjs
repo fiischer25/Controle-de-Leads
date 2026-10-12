@@ -120,6 +120,9 @@ export default async function ({ browser }) {
       await c.getByRole('button', { name: 'Continuar para o projeto' }).click();
       await c.getByRole('heading', { name: 'Honorários' }).waitFor();
       eq(await c.getByLabel('Valor fechado').inputValue(), '30.000,00', 'valor dos honorários');
+      // Conforme a data de hoje, a 1ª parcela pode já ter passado: aqui ela ainda não foi paga
+      const past = c.getByText(/data já passada já fo(i|ram) recebida/);
+      if (await past.count()) await past.click();
       await c.getByRole('button', { name: 'Voltar' }).click();
       await finishConvert(page, c);
       const lead = (await ls(page, 'leads')).find((l) => l.name === others[2]);

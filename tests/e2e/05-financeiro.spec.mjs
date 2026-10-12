@@ -14,9 +14,60 @@ export default async function ({ browser }) {
     async () => {
       await page.locator('nav[aria-label="Navegação principal"]').getByTitle('Financeiro').click();
       await page.getByRole('heading', { level: 1, name: 'Financeiro' }).waitFor();
-      for (const t of ['Saldo em contas', 'Entradas do mês', 'Resultado do mês']) await page.getByText(t, { exact: true }).first().waitFor();
+      await page.getByText('Saldo em contas', { exact: true }).first().waitFor();
       await page.getByRole('heading', { name: 'Fluxo de caixa' }).waitFor();
       await page.getByRole('heading', { name: 'Vencidos e próximos 30 dias' }).waitFor();
+    },
+    page,
+  );
+
+  await s.step(
+    'caixa do mês seguinte: o recebido no mês anterior paga as contas deste mês',
+    async () => {
+      const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      const now = new Date();
+      const key = (d) => d.toISOString().slice(0, 7);
+      const cur = key(new Date(now.getFullYear(), now.getMonth(), 15));
+      const prev = key(new Date(now.getFullYear(), now.getMonth() - 1, 15));
+      const curName = MONTHS[now.getMonth()];
+      const prevName = MONTHS[(now.getMonth() + 11) % 12];
+      const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v);
+      const entries = await ls(page, 'finance_entries');
+      const received = entries.filter((e) => e.kind === 'receita' && e.paid_at?.startsWith(prev)).reduce((a, e) => a + e.amount, 0);
+      const bills = entries.filter((e) => e.kind === 'despesa' && e.due_date.startsWith(cur)).reduce((a, e) => a + e.amount, 0);
+      const card = (label) => page.locator('.metric-tile').filter({ has: page.getByText(label, { exact: true }) }).first();
+      ok((await card(`Recebido em ${prevName}`).innerText()).replace(/\s/g, ' ').includes(brl(received).replace(/\s/g, ' ')), `recebido em ${prevName}: ${brl(received)}`);
+      ok((await card(`Contas de ${curName}`).innerText()).replace(/\s/g, ' ').includes(brl(bills).replace(/\s/g, ' ')), `contas de ${curName}: ${brl(bills)}`);
+      const leftover = received - bills;
+      ok((await card(`Sobra de ${curName}`).innerText()).replace(/\s/g, ' ').includes(brl(Math.abs(leftover)).replace(/\s/g, ' ')), `sobra: ${brl(leftover)}`);
+      await page.locator('[data-next-cycle]').getByText(/contas de /).waitFor();
+      await page.getByText(/o que entrou no mês anterior × as contas do mês/).waitFor();
+      // Volta para o mesmo mês e de novo para o seguinte (fica lembrado)
+      await page.getByRole('button', { name: 'Mesmo mês' }).click();
+      for (const t of ['Entradas do mês', 'Saídas do mês', 'Resultado do mês']) await page.getByText(t, { exact: true }).first().waitFor();
+      await page.reload();
+      await page.getByText('Entradas do mês', { exact: true }).first().waitFor();
+      await page.getByRole('button', { name: 'Entradas pagam o mês seguinte' }).click();
+      await card(`Sobra de ${curName}`).waitFor();
+    },
+    page,
+  );
+
+  await s.step(
+    'categorias sugeridas para o escritório: adiciona as que faltam',
+    async () => {
+      await page.evaluate(() => {
+        const rows = JSON.parse(localStorage.getItem('airos:v1:finance_categories'));
+        localStorage.setItem('airos:v1:finance_categories', JSON.stringify(rows.filter((c) => !['Seguros', 'Consultoria e laudos'].includes(c.name))));
+      });
+      await page.goto(BASE + '/financeiro?aba=categorias');
+      const box = page.getByRole('region', { name: 'Categorias sugeridas' });
+      await box.getByText('Seguros').waitFor();
+      await box.getByRole('button', { name: 'Adicionar as 2 categorias' }).click();
+      await box.waitFor({ state: 'detached' });
+      const cats = await ls(page, 'finance_categories');
+      ok(cats.some((c) => c.name === 'Seguros' && c.kind === 'despesa') && cats.some((c) => c.name === 'Consultoria e laudos' && c.kind === 'receita'), 'categorias não adicionadas');
+      await page.goto(BASE + '/financeiro');
     },
     page,
   );

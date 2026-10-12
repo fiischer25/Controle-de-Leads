@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDownLeft, ArrowUpRight, Scale, Wallet } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import type { FinanceEntry } from '../../lib/types';
-import { cn, formatCurrency, formatDateShort, formatMoney, MONTHS_FULL, today } from '../../lib/utils';
+import { cn, formatDateShort, formatMoney, MONTHS_FULL, today } from '../../lib/utils';
 import { ActionLink, SectionHeader } from '../ui';
 import { EntryFormModal } from '../finance/EntryFormModal';
-import { CashFlowChart, KpiCard } from '../finance/FinanceOverviewParts';
+import { CashFlowChart, MonthCards } from '../finance/FinanceOverviewParts';
 import { useFinance } from '../finance/useFinance';
 import { useFinanceOverview } from '../finance/useFinanceOverview';
 
 /**
  * Financeiro nos dashboards (Escritório e Meu painel), com os mesmos números da tela Financeiro:
- * saldo, entradas, saídas e resultado do mês, a receber/pagar em 30 dias, vencidos, fluxo de caixa
+ * saldo e o mês (no caixa do "mês seguinte": recebido no mês anterior, contas e sobra), a receber/pagar em 30 dias, vencidos, fluxo de caixa
  * (no Escritório) e a lista do que venceu e vence nos próximos 30 dias.
  */
 export function FinanceSnapshot({ variant }: { variant: 'office' | 'personal' }) {
@@ -38,42 +37,7 @@ export function FinanceSnapshot({ variant }: { variant: 'office' | 'personal' })
           Abrir Financeiro
         </ActionLink>
       </div>
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-        <KpiCard
-          label="Saldo em contas"
-          value={formatCurrency(data.balance)}
-          tone={data.balance < 0 ? 'danger' : 'neutral'}
-          icon={<Wallet className="h-4 w-4" strokeWidth={1.6} />}
-          sub={
-            <>
-              Previsto no fim do mês: <b className="font-medium text-ink">{formatCurrency(data.projected)}</b>
-            </>
-          }
-        />
-        <KpiCard
-          label="Entradas do mês"
-          value={formatCurrency(data.totals.inPaid)}
-          tone="success"
-          icon={<ArrowDownLeft className="h-4 w-4" strokeWidth={1.6} />}
-          progress={{ value: data.totals.inPaid, max: data.totals.inPlanned, tone: 'success' }}
-          sub={`recebido de ${formatCurrency(data.totals.inPlanned)} previsto`}
-        />
-        <KpiCard
-          label="Saídas do mês"
-          value={formatCurrency(data.totals.outPaid)}
-          tone="danger"
-          icon={<ArrowUpRight className="h-4 w-4" strokeWidth={1.6} />}
-          progress={{ value: data.totals.outPaid, max: data.totals.outPlanned, tone: 'danger' }}
-          sub={`pago de ${formatCurrency(data.totals.outPlanned)} previsto`}
-        />
-        <KpiCard
-          label="Resultado do mês"
-          value={`${data.result < 0 ? '−' : ''}${formatCurrency(Math.abs(data.result))}`}
-          tone={data.result < 0 ? 'danger' : data.result > 0 ? 'success' : 'neutral'}
-          icon={<Scale className="h-4 w-4" strokeWidth={1.6} />}
-          sub="recebido − pago"
-        />
-      </div>
+      <MonthCards data={data} />
       <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
         {chips.map((c) => (
           <Link
@@ -96,7 +60,11 @@ export function FinanceSnapshot({ variant }: { variant: 'office' | 'personal' })
       <div className={cn('mt-6 grid items-start gap-6 md:gap-8', office && 'lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]')}>
         {office && (
           <section aria-labelledby="dash-fluxo" className="panel min-w-0">
-            <SectionHeader id="dash-fluxo" title="Fluxo de caixa" aside={<span className="text-[12.5px] text-faint">realizado · previsto</span>} />
+            <SectionHeader
+              id="dash-fluxo"
+              title="Fluxo de caixa"
+              aside={<span className="text-[12.5px] text-faint">{data.mode === 'seguinte' ? 'entrou no mês anterior × contas do mês' : 'realizado · previsto'}</span>}
+            />
             <CashFlowChart months={data.flow} />
           </section>
         )}
