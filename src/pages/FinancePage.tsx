@@ -1,7 +1,7 @@
 import { FixReceiptDates } from '../components/finance/FixReceiptDates';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, Download, FileText, Plus, Scale, Upload, Wallet } from 'lucide-react';
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, FileText, Plus, Upload } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { addMonthsKey, entryDate, monthKey, sum } from '../lib/finance';
 import type { FinanceEntry, FinanceKind } from '../lib/types';
@@ -9,7 +9,7 @@ import { cn, downloadFile, formatCurrency, formatDate, formatMoney, matches, MON
 import { ActionLink, BarRow, Button, FilterPick, IconButton, PageHeader, SearchField, SectionHeader, Tabs, Toolbar } from '../components/ui';
 import { EntryFormModal } from '../components/finance/EntryFormModal';
 import { EntryList } from '../components/finance/EntryList';
-import { CashFlowChart, KpiCard, ReceivablesByMonth } from '../components/finance/FinanceOverviewParts';
+import { CashFlowChart, CashModeSwitch, MonthCards, ReceivablesByMonth } from '../components/finance/FinanceOverviewParts';
 import { ACCOUNT_KIND_LABEL, useFinance } from '../components/finance/useFinance';
 import { FinanceAccounts } from '../components/finance/FinanceAccounts';
 import { FinanceProfitability } from '../components/finance/FinanceProfitability';
@@ -122,49 +122,16 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
 
   const data = useFinanceOverview();
 
-  const result = data.result;
   const maxCat = data.categories[0]?.[1] ?? 1;
 
   return (
     <div className="flex flex-col gap-12 md:gap-14">
       <div>
-        <div className="mb-3 text-[12px] font-medium uppercase tracking-[0.08em] text-faint">{monthLabel(month)}</div>
-        <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-          <KpiCard
-            label="Saldo em contas"
-            value={formatCurrency(fin.totalBalance)}
-            tone={fin.totalBalance < 0 ? 'danger' : 'neutral'}
-            icon={<Wallet className="h-4 w-4" strokeWidth={1.6} />}
-            sub={
-              <>
-                Previsto no fim do mês: <b className="font-medium text-ink">{formatCurrency(data.projected)}</b>
-              </>
-            }
-          />
-          <KpiCard
-            label="Entradas do mês"
-            value={formatCurrency(data.totals.inPaid)}
-            tone="success"
-            icon={<ArrowDownLeft className="h-4 w-4" strokeWidth={1.6} />}
-            progress={{ value: data.totals.inPaid, max: data.totals.inPlanned, tone: 'success' }}
-            sub={`recebido de ${formatCurrency(data.totals.inPlanned)} previsto`}
-          />
-          <KpiCard
-            label="Saídas do mês"
-            value={formatCurrency(data.totals.outPaid)}
-            tone="danger"
-            icon={<ArrowUpRight className="h-4 w-4" strokeWidth={1.6} />}
-            progress={{ value: data.totals.outPaid, max: data.totals.outPlanned, tone: 'danger' }}
-            sub={`pago de ${formatCurrency(data.totals.outPlanned)} previsto`}
-          />
-          <KpiCard
-            label="Resultado do mês"
-            value={`${result < 0 ? '−' : ''}${formatCurrency(Math.abs(result))}`}
-            tone={result < 0 ? 'danger' : result > 0 ? 'success' : 'neutral'}
-            icon={<Scale className="h-4 w-4" strokeWidth={1.6} />}
-            sub="recebido − pago"
-          />
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-faint">{monthLabel(month)}</div>
+          <CashModeSwitch />
         </div>
+        <MonthCards data={data} />
         <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
           <button
             type="button"
@@ -187,7 +154,15 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
       </div>
 
       <section aria-labelledby="fluxo">
-        <SectionHeader id="fluxo" title="Fluxo de caixa" aside={<span className="text-[12.5px] text-faint">realizado nos meses passados · previsto nos próximos</span>} />
+        <SectionHeader
+          id="fluxo"
+          title="Fluxo de caixa"
+          aside={
+            <span className="text-[12.5px] text-faint">
+              {data.mode === 'seguinte' ? 'cada mês: o que entrou no mês anterior × as contas do mês' : 'realizado nos meses passados · previsto nos próximos'}
+            </span>
+          }
+        />
         <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card">
           <CashFlowChart months={data.flow} />
         </div>

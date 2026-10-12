@@ -256,26 +256,47 @@ export function defaultSettings(): AppSettings {
   };
 }
 
-/** Categorias iniciais do Financeiro (mesmas da migração 20261006000000_finance.sql). */
+/**
+ * Categorias do Financeiro para escritório de arquitetura: as iniciais (mesmas da migração
+ * 20261006000000_finance.sql) e as sugeridas depois, que a aba Categorias oferece adicionar.
+ */
+export const FINANCE_CATEGORY_PRESETS: Array<[string, FinanceCategory['kind'], string]> = [
+  ['Honorários de projeto', 'receita', '#3f7d5a'],
+  ['Reserva técnica (RT)', 'receita', '#5b8f6f'],
+  ['Acompanhamento de obra', 'receita', '#7aa386'],
+  ['Consultoria e laudos', 'receita', '#4f8a72'],
+  ['Projetos complementares (repasse)', 'receita', '#6d9c84'],
+  ['Reembolso de despesas', 'receita', '#86ad97'],
+  ['Rendimentos financeiros', 'receita', '#a3c1ae'],
+  ['Outras receitas', 'receita', '#9bb8a3'],
+  ['Salários e pró-labore', 'despesa', '#8a4b3c'],
+  ['Prestadores de serviço', 'despesa', '#94523f'],
+  ['Projetos complementares (terceiros)', 'despesa', '#9e5c47'],
+  ['Renderização e maquetes', 'despesa', '#a5644f'],
+  ['Aluguel e condomínio', 'despesa', '#9c5a48'],
+  ['Impostos', 'despesa', '#a86b56'],
+  ['Taxas, RRT e alvarás', 'despesa', '#ad7560'],
+  ['Contabilidade', 'despesa', '#b37c65'],
+  ['Softwares e assinaturas', 'despesa', '#7c6f64'],
+  ['Equipamentos e manutenção', 'despesa', '#85786d'],
+  ['Energia, internet e telefone', 'despesa', '#8c7f73'],
+  ['Água, limpeza e copa', 'despesa', '#96897d'],
+  ['Marketing', 'despesa', '#9c8f83'],
+  ['Cursos e eventos', 'despesa', '#a2958a'],
+  ['Deslocamentos e visitas', 'despesa', '#a89c90'],
+  ['Impressões e plotagens', 'despesa', '#b4a99e'],
+  ['Material de escritório', 'despesa', '#c0b6ac'],
+  ['Seguros', 'despesa', '#c6bcb2'],
+  ['Tarifas bancárias', 'despesa', '#ccc3ba'],
+  ['Empréstimos e financiamentos', 'despesa', '#7a5a4e'],
+  ['Distribuição de lucros', 'despesa', '#6b5a50'],
+  ['Reserva e investimentos', 'despesa', '#5f5650'],
+  ['Outras despesas', 'despesa', '#d6cec6'],
+];
+
+/** Categorias iniciais do Financeiro (escritório novo). */
 export function defaultFinanceCategories(): FinanceCategory[] {
-  const rows: Array<[string, FinanceCategory['kind'], string]> = [
-    ['Honorários de projeto', 'receita', '#3f7d5a'],
-    ['Reserva técnica (RT)', 'receita', '#5b8f6f'],
-    ['Acompanhamento de obra', 'receita', '#7aa386'],
-    ['Outras receitas', 'receita', '#9bb8a3'],
-    ['Salários e pró-labore', 'despesa', '#8a4b3c'],
-    ['Aluguel e condomínio', 'despesa', '#9c5a48'],
-    ['Impostos', 'despesa', '#a86b56'],
-    ['Contabilidade', 'despesa', '#b37c65'],
-    ['Softwares e assinaturas', 'despesa', '#7c6f64'],
-    ['Energia, internet e telefone', 'despesa', '#8c7f73'],
-    ['Marketing', 'despesa', '#9c8f83'],
-    ['Deslocamentos e visitas', 'despesa', '#a89c90'],
-    ['Impressões e plotagens', 'despesa', '#b4a99e'],
-    ['Material de escritório', 'despesa', '#c0b6ac'],
-    ['Tarifas bancárias', 'despesa', '#ccc3ba'],
-    ['Outras despesas', 'despesa', '#d6cec6'],
-  ];
+  const rows = FINANCE_CATEGORY_PRESETS;
   const now = nowIso();
   const pos: Record<string, number> = { receita: 0, despesa: 0 };
   return rows.map(([name, kind, color]) => ({ id: uid(), name, kind, color, active: true, position: pos[kind]++, created_at: now }));

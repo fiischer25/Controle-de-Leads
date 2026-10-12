@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
+import { FINANCE_CATEGORY_PRESETS } from '../../lib/defaults';
 import type { FinanceCategory } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { Button, IconButton, Input, SectionHeader } from '../ui';
@@ -10,10 +11,73 @@ import { useFinance } from './useFinance';
 /** Categorias de receitas e despesas: renomear, arquivar, excluir (sem uso) e criar. */
 export function FinanceCategories() {
   return (
-    <div className="grid gap-12 md:grid-cols-2">
-      <CategoryColumn kind="receita" title="Receitas" />
-      <CategoryColumn kind="despesa" title="Despesas" />
+    <div>
+      <SuggestedCategories />
+      <div className="grid gap-12 md:grid-cols-2">
+        <CategoryColumn kind="receita" title="Receitas" />
+        <CategoryColumn kind="despesa" title="Despesas" />
+      </div>
     </div>
+  );
+}
+
+const norm = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+/** Categorias sugeridas para escritório de arquitetura que ainda não existem: adiciona de uma vez. */
+function SuggestedCategories() {
+  const fin = useFinance();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const have = new Set(fin.categories.map((c) => `${c.kind}:${norm(c.name)}`));
+  const missing = FINANCE_CATEGORY_PRESETS.filter(([name, kind]) => !have.has(`${kind}:${norm(name)}`));
+  if (!missing.length) return null;
+
+  const addAll = async () => {
+    setBusy(true);
+    try {
+      for (const [name, kind, color] of missing) await fin.saveCategory({ name, kind, color });
+      toast.success(`${missing.length} ${missing.length === 1 ? 'categoria adicionada' : 'categorias adicionadas'}.`);
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section aria-label="Categorias sugeridas" className="mb-10 rounded-[16px] border border-line bg-surface p-5 shadow-card">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="font-display text-[15.5px] font-semibold text-ink">Categorias sugeridas para o escritório</h2>
+          <p className="mt-0.5 text-[13px] text-muted">Prontas para usar nos lançamentos e nos relatórios. Dá para renomear ou arquivar depois.</p>
+        </div>
+        <Button variant="primary" size="sm" loading={busy} onClick={addAll} className="shrink-0">
+          Adicionar {missing.length === 1 ? 'a categoria' : `as ${missing.length} categorias`}
+        </Button>
+      </div>
+      {(['receita', 'despesa'] as const).map((kind) => {
+        const items = missing.filter(([, k]) => k === kind);
+        if (!items.length) return null;
+        return (
+          <div key={kind} className="mt-4">
+            <div className="mb-2 text-[12px] font-medium uppercase tracking-[0.06em] text-faint">{kind === 'receita' ? 'Receitas' : 'Despesas'}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {items.map(([name, , color]) => (
+                <span key={name} className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[12.5px] text-stone-700">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} aria-hidden />
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 
