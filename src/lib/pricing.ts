@@ -110,6 +110,17 @@ export function pricingResult(p: Pick<Pricing, 'area_m2' | 'data'>): PricingResu
 }
 
 export const DEFAULT_HOURS_PER_DAY = 8;
+/** Dias úteis num mês (padrão do escritório para dividir salários e custos fixos). */
+export const DEFAULT_WORK_DAYS = 21;
+
+/**
+ * Custo de uma pessoa: o escritório pensa por mês (salário + encargos), o sistema guarda por hora.
+ * Custo por dia = custo do mês ÷ dias úteis; custo por hora = custo por dia ÷ horas por dia.
+ */
+export const hourlyFromMonthly = (monthly: number, workDays = DEFAULT_WORK_DAYS, hoursPerDay = DEFAULT_HOURS_PER_DAY) =>
+  workDays > 0 && hoursPerDay > 0 ? monthly / (workDays * hoursPerDay) : 0;
+export const monthlyFromHourly = (hourly: number, workDays = DEFAULT_WORK_DAYS, hoursPerDay = DEFAULT_HOURS_PER_DAY) =>
+  Math.round(hourly * workDays * hoursPerDay * 100) / 100;
 
 /** Arredonda para a centena de reais mais próxima (valor de proposta). */
 export const roundPrice = (v: number) => Math.round(v / 100) * 100;
