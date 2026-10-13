@@ -16,6 +16,7 @@ import {
   type PricingResult,
 } from '../lib/pricing';
 import type { Pricing, PricingData, PricingExtra, PricingFixedCost, PricingIndirect, PricingStage } from '../lib/types';
+import { phaseKey, stageHistory, type StageHistory } from '../lib/plannedActual';
 import { byPosition, cn, formatCurrency, formatDate, formatMoney, formatNumber, nowIso, suggestProjectName, today, uid } from '../lib/utils';
 import { ActionLink, BackLink, Button, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, SectionHeader, Select, Textarea } from '../components/ui';
 
@@ -195,6 +196,14 @@ function PricingEditor({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const r = pricingResult(draft);
+  // Histórico: quantos dias cada etapa levou de verdade (por m²) nos projetos do mesmo tipo
+  const history = useMemo(
+    () =>
+      draft.project_type_id
+        ? stageHistory({ projects: db.projects, tasks: db.tasks, timeEntries: db.time_entries, typeId: draft.project_type_id, hoursPerDay: r.hoursPerDay })
+        : new Map<string, StageHistory>(),
+    [db.projects, db.tasks, db.time_entries, draft.project_type_id, r.hoursPerDay],
+  );
 
   if (id !== 'nova' && !saved) {
     return (
@@ -406,6 +415,13 @@ function PricingEditor({ id }: { id: string }) {
                 );
               }}
             />
+            <StageHistoryHint
+              stages={draft.data.stages}
+              history={history}
+              area={draft.area_m2}
+              typeName={draft.project_type_id ? maps.types[draft.project_type_id]?.name : undefined}
+              onUse={(days) => setData({ stages: draft.data.stages.map((x) => (days[x.id] != null ? { ...x, days: days[x.id] } : x)) })}
+            />
             <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 rounded-[12px] bg-canvas px-4 py-3">
               <Field label="Horas por dia" className="w-32">
                 <NumberInput
@@ -586,6 +602,53 @@ function PricingEditor({ id }: { id: string }) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- Histórico das etapas
+/** Dias que cada etapa levou de verdade nos projetos do mesmo tipo (por m²), para usar como previsão. */
+function StageHistoryHint({
+  stages,
+  history,
+  area,
+  typeName,
+  onUse,
+}: {
+  stages: PricingStage[];
+  history: Map<string, StageHistory>;
+  area: number | null;
+  typeName?: string;
+  onUse: (days: Record<string, number>) => void;
+}) {
+  if (!history.size) return null;
+  const matched = stages
+    .map((s) => ({ s, h: history.get(phaseKey(s.label)) }))
+    .filter((x): x is { s: PricingStage; h: StageHistory } => !!x.h);
+  if (!matched.length) return null;
+  const projects = Math.max(...matched.map((x) => x.h.projects));
+  // Meio dia de precisão
+  const daysFor = (h: StageHistory) => Math.max(0.5, Math.round(h.daysPerM2 * (area ?? 0) * 2) / 2);
+  return (
+    <div className="mt-4 rounded-[12px] border border-line px-4 py-3 text-[12.5px]" data-stage-history>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <span className="font-medium text-ink">
+          Histórico de {projects} {projects === 1 ? 'projeto' : 'projetos'}
+          {typeName ? ` de ${typeName}` : ''}
+        </span>
+        {area ? (
+          <ActionLink onClick={() => onUse(Object.fromEntries(matched.map(({ s, h }) => [s.id, daysFor(h)])))} className="text-[length:inherit]">
+            Usar os dias do histórico
+          </ActionLink>
+        ) : (
+          <span className="text-faint">informe a área para calcular os dias</span>
+        )}
+      </div>
+      <p className="mt-1 text-muted">
+        {matched
+          .map(({ s, h }) => `${s.label}: ${area ? `${formatNumber(daysFor(h), 1)} dias` : `${formatNumber(h.daysPerM2 * 100, 1)} dias a cada 100 m²`}`)
+          .join(' · ')}
+      </p>
     </div>
   );
 }

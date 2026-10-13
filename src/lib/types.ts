@@ -148,6 +148,8 @@ export interface Client {
   state: string;
   notes: string | null;
   lead_id: string | null;
+  /** Recebe os lembretes de cobrança no WhatsApp (migração 20261021; padrão sim). */
+  billing_reminders?: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -293,6 +295,13 @@ export interface AppSettings {
   wa_alerts_projects?: boolean;
   wa_alerts_leads?: boolean;
   wa_alerts_weekends?: boolean;
+  /** Lembretes de cobrança no WhatsApp (migração 20261021000000). */
+  billing_enabled?: boolean;
+  billing_days_before?: number;
+  billing_on_due?: boolean;
+  billing_days_after?: number;
+  billing_hour?: number;
+  billing_payment_info?: string | null;
   updated_at: string;
 }
 
@@ -424,6 +433,8 @@ export interface PricingData {
   /** Valor que vai na proposta (ex.: arredondado); vazio = preço sugerido. */
   final_price: number | null;
   notes: string;
+  /** Projeto que segue esta precificação (previsto × realizado). Sem ele, vale a da oportunidade. */
+  project_id?: string | null;
 }
 /** Precificação de um projeto: pelos dias de trabalho, comparada com o m². */
 export interface Pricing {
@@ -439,6 +450,19 @@ export interface Pricing {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Lembrete de cobrança enviado (automático pela função whatsapp-alerts ou à mão). */
+export interface BillingReminderLog {
+  id: string;
+  entry_id: string;
+  kind: 'antes' | 'no_dia' | 'depois' | 'manual';
+  due_date: string;
+  status: 'pendente' | 'enviado' | 'erro' | 'manual';
+  detail: string | null;
+  phone: string | null;
+  sent_by: string | null;
+  created_at: string;
 }
 
 /** Mapa tabela → tipo de linha. Usado pela camada de dados genérica. */
@@ -464,12 +488,13 @@ export interface Tables {
   finance_entries: FinanceEntry;
   finance_member_costs: FinanceMemberCost;
   pricings: Pricing;
+  billing_reminder_log: BillingReminderLog;
 }
 
 export type TableName = keyof Tables;
 
 /** Tabelas que podem ainda não existir no banco (migração não executada): carregam vazias. */
-export const OPTIONAL_TABLES: TableName[] = ['finance_accounts', 'finance_categories', 'finance_entries', 'finance_member_costs', 'pricings'];
+export const OPTIONAL_TABLES: TableName[] = ['finance_accounts', 'finance_categories', 'finance_entries', 'finance_member_costs', 'pricings', 'billing_reminder_log'];
 
 export const TABLES: TableName[] = [
   'profiles',
@@ -493,4 +518,5 @@ export const TABLES: TableName[] = [
   'finance_entries',
   'finance_member_costs',
   'pricings',
+  'billing_reminder_log',
 ];

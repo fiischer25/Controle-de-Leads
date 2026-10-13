@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, ExternalLink, HardHat, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ProjectFinanceTab } from '../components/finance/ProjectFinanceTab';
+import { PlannedActualTab } from '../components/projects/PlannedActualTab';
 import { ProjectTasksTable } from '../components/projects/ProjectTasksTable';
 import { ClientEditModal } from '../components/clients/ClientEditModal';
 import { WonDealModal } from '../components/leads/WonDealModal';
@@ -64,7 +65,7 @@ import { commonAssignee } from '../components/tasks/taskBuckets';
 /** Opção do seletor de status que volta ao automático. */
 const AUTO = '__auto';
 
-type Tab = 'tasks' | 'timeline' | 'team' | 'info' | 'finance' | 'activity';
+type Tab = 'tasks' | 'timeline' | 'team' | 'info' | 'finance' | 'planned' | 'activity';
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
@@ -75,7 +76,9 @@ export default function ProjectDetailPage() {
   const openTask = useOpenTask();
   const [params] = useSearchParams();
   // ?aba=financeiro abre direto no Financeiro (link da Rentabilidade)
-  const [tab, setTab] = useState<Tab>(() => (params.get('aba') === 'financeiro' && can('financeiro') ? 'finance' : 'tasks'));
+  const [tab, setTab] = useState<Tab>(() =>
+    can('financeiro') && params.get('aba') === 'financeiro' ? 'finance' : can('financeiro') && params.get('aba') === 'previsto' ? 'planned' : 'tasks',
+  );
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [newTask, setNewTask] = useState<{ phase: string | null } | null>(null);
@@ -267,7 +270,7 @@ export default function ProjectDetailPage() {
           { id: 'timeline', label: 'Cronograma' },
           { id: 'team', label: 'Equipe e horas', count: people.length },
           { id: 'info', label: 'Informações' },
-          ...(can('financeiro') ? [{ id: 'finance' as const, label: 'Financeiro' }] : []),
+          ...(can('financeiro') ? [{ id: 'finance' as const, label: 'Financeiro' }, { id: 'planned' as const, label: 'Previsto × realizado' }] : []),
           { id: 'activity', label: 'Atividade' },
         ]}
       />
@@ -362,6 +365,8 @@ export default function ProjectDetailPage() {
         {tab === 'info' && <InfoTab project={project} onEditProject={() => setEditing(true)} />}
 
         {tab === 'finance' && can('financeiro') && <ProjectFinanceTab project={project} />}
+
+        {tab === 'planned' && can('financeiro') && <PlannedActualTab project={project} />}
 
         {tab === 'activity' &&
           (activity.length === 0 ? (
