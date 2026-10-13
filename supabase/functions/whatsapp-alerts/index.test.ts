@@ -91,3 +91,29 @@ Deno.test('telefone no formato do WhatsApp', () => {
   assertEquals(toWhatsAppNumber('+55 41 98888-0002'), '5541988880002');
   assertEquals(toWhatsAppNumber('123'), null);
 });
+
+// --------------------------------------------------------------------------- lembretes de cobrança
+import { billingParams, billingSettings, dueReminders, reminderKey } from './index.ts';
+
+const BILL = billingSettings({ billing_enabled: true, billing_days_before: 3, billing_on_due: true, billing_days_after: 3, billing_payment_info: 'PIX: 123' });
+const parcela = (o: Record<string, unknown> = {}) => ({ id: 'e1', kind: 'receita', amount: 5000, due_date: '2026-10-15', paid_at: null, description: 'Honorários · 2ª parcela', client_id: 'c', ...o });
+
+Deno.test('cobrança: antes, no dia e depois, só em dias úteis (mesmas regras do sistema)', () => {
+  const kinds = (today: string, sent = new Set<string>()) => dueReminders([parcela()], BILL, today, sent).map((x) => x.kind);
+  assertEquals(kinds('2026-10-12'), ['antes']);
+  assertEquals(kinds('2026-10-15'), ['no_dia']);
+  assertEquals(kinds('2026-10-18'), []); // domingo
+  assertEquals(kinds('2026-10-19'), ['depois']);
+  assertEquals(kinds('2026-10-12', new Set([reminderKey('e1', 'antes', '2026-10-15')])), []);
+  assertEquals(dueReminders([parcela({ paid_at: '2026-10-11' })], BILL, '2026-10-12', new Set()), []);
+  assertEquals(dueReminders([parcela()], { ...BILL, enabled: false }, '2026-10-12', new Set()), []);
+});
+
+Deno.test('cobrança: parâmetros do modelo lembrete_cobranca', () => {
+  const p = billingParams({ clientName: 'Juliana Dias', amount: 5000, description: 'Honorários · 2ª parcela', due: '2026-10-15', today: '2026-10-12', paymentInfo: 'PIX: 123', officeName: 'Airos' });
+  assertEquals(p.length, 6);
+  assertEquals(p[0], 'Juliana');
+  assertMatch(p[1], /5\.000,00/);
+  assertEquals(p[3], 'vence em 15/10');
+  assertEquals(p[4], 'PIX: 123');
+});

@@ -169,8 +169,11 @@ export function officeHealth(input: HealthInput): OfficeHealth {
         value: formatMoney(overdue),
         detail: overdue > 0 ? `${overdueRows.length} ${overdueRows.length === 1 ? 'parcela vencida' : 'parcelas vencidas'} · ${pct(ratio)} de um mês de receita` : 'Nenhuma parcela vencida',
         status,
-        advice: status === 'bom' ? 'Os clientes estão pagando em dia.' : 'Cobre as parcelas vencidas e combine lembretes antes do vencimento.',
-        link: { to: '/financeiro?aba=lancamentos', label: 'Ver os lançamentos' },
+        advice:
+          status === 'bom'
+            ? 'Os clientes estão pagando em dia.'
+            : 'Cobre as parcelas vencidas pelo WhatsApp e ligue os lembretes automáticos antes do vencimento.',
+        link: { to: '/financeiro?aba=cobranca', label: 'Abrir a Cobrança' },
       });
     }
 

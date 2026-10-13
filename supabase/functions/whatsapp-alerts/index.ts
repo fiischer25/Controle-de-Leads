@@ -2,6 +2,11 @@
 // leads do dia, enviado a cada membro com telefone no horário escolhido em
 // Configurações → Resumo diário.
 //
+// Lembretes de cobrança (Financeiro → Cobrança): o cliente recebe pelo modelo aprovado
+// "lembrete_cobranca" um aviso da parcela em aberto alguns dias antes, no dia e alguns dias
+// depois do vencimento (só em dias úteis), no horário escolhido. Cada lembrete é registrado em
+// billing_reminder_log e não se repete. Migração 20261021000000_billing_reminders.sql.
+//
 // Arquivo único de propósito: pode ser publicado colando este código no painel do Supabase
 // (Edge Functions → Deploy a new function → Via Editor, nome "whatsapp-alerts") ou pela CLI:
 //   npx supabase functions deploy whatsapp-alerts --no-verify-jwt
@@ -11,6 +16,7 @@
 //   ALERTS_CRON_SECRET            frase secreta enviada pelo agendamento no cabeçalho x-cron-secret
 //   WHATSAPP_ALERT_TEMPLATE       opcional, nome do modelo aprovado na Meta (padrão resumo_diario)
 //   WHATSAPP_ALERT_TEMPLATE_LANG  opcional, idioma do modelo (padrão pt_BR)
+//   WHATSAPP_BILLING_TEMPLATE     opcional, modelo dos lembretes de cobrança (padrão lembrete_cobranca)
 //   APP_URL, AGENT_TIMEZONE       opcionais (link do sistema; fuso, padrão America/Sao_Paulo)
 //
 // Regra da Meta: texto livre só chega a quem escreveu para o número nas últimas 24 horas.
@@ -263,6 +269,88 @@ export function buildDigest(opts: { me: AlertProfile; data: AlertData; settings:
   };
 }
 
+// --------------------------------------------------------------------------- lembretes de cobrança
+// Mesmas regras de src/lib/billing.ts (o sistema mostra os próximos lembretes com elas).
+export type ReminderKind = 'antes' | 'no_dia' | 'depois';
+
+export interface BillingSettings {
+  enabled: boolean;
+  daysBefore: number;
+  onDue: boolean;
+  daysAfter: number;
+  paymentInfo: string;
+}
+
+export interface BillingEntry {
+  id: string;
+  kind: string;
+  amount: number;
+  due_date: string;
+  paid_at: string | null;
+  description: string;
+  client_id: string | null;
+  lead_id?: string | null;
+}
+
+const CATCH_UP = 2;
+const isBusinessDay = (key: string) => weekday(key) !== 0 && weekday(key) !== 6;
+export const reminderKey = (entryId: string, kind: string, due: string) => `${entryId}|${kind}|${due}`;
+
+export function billingSettings(row: Record<string, unknown>): BillingSettings {
+  return {
+    enabled: row.billing_enabled === true,
+    daysBefore: Number(row.billing_days_before ?? 3),
+    onDue: row.billing_on_due !== false,
+    daysAfter: Number(row.billing_days_after ?? 3),
+    paymentInfo: String(row.billing_payment_info ?? ''),
+  };
+}
+
+function reminderDates(due: string, s: BillingSettings): Array<{ kind: ReminderKind; date: string }> {
+  const out: Array<{ kind: ReminderKind; date: string }> = [];
+  if (s.daysBefore > 0) out.push({ kind: 'antes', date: addDaysKey(due, -s.daysBefore) });
+  if (s.onDue) out.push({ kind: 'no_dia', date: due });
+  if (s.daysAfter > 0) out.push({ kind: 'depois', date: addDaysKey(due, s.daysAfter) });
+  return out;
+}
+
+function sendableOn(kind: ReminderKind, date: string, due: string, today: string): boolean {
+  if (!isBusinessDay(today)) return false;
+  if (kind === 'no_dia') return today === due;
+  if (today < date || today > addDaysKey(date, CATCH_UP)) return false;
+  return kind === 'antes' ? today < due : true;
+}
+
+/** Lembretes que saem hoje: parcelas a receber em aberto, ainda não lembradas. */
+export function dueReminders<E extends BillingEntry>(entries: E[], s: BillingSettings, today: string, sent: Set<string>): Array<{ entry: E; kind: ReminderKind }> {
+  if (!s.enabled) return [];
+  const out: Array<{ entry: E; kind: ReminderKind }> = [];
+  for (const e of entries) {
+    if (e.kind !== 'receita' || e.paid_at || !(e.amount > 0)) continue;
+    const ready = reminderDates(e.due_date, s).filter((r) => sendableOn(r.kind, r.date, e.due_date, today) && !sent.has(reminderKey(e.id, r.kind, e.due_date)));
+    if (ready.length) out.push({ entry: e, kind: ready[ready.length - 1].kind });
+  }
+  return out;
+}
+
+export function duePhrase(due: string, today: string): string {
+  if (due === today) return 'vence hoje';
+  if (due === addDaysKey(today, 1)) return `vence amanhã (${short(due)})`;
+  return due > today ? `vence em ${short(due)}` : `venceu em ${short(due)}`;
+}
+
+/** Parâmetros do modelo lembrete_cobranca, na ordem {{1}}…{{6}}. */
+export function billingParams(o: { clientName: string; amount: number; description: string; due: string; today: string; paymentInfo: string; officeName: string }): string[] {
+  return [
+    o.clientName.trim().split(/\s+/)[0] || 'tudo bem',
+    o.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+    o.description.trim() || 'honorários do projeto',
+    duePhrase(o.due, o.today),
+    o.paymentInfo.trim() || 'Se o pagamento já foi feito, por favor desconsidere esta mensagem.',
+    o.officeName.trim() || 'do escritório',
+  ];
+}
+
 // --------------------------------------------------------------------------- WhatsApp (Meta)
 interface WhatsAppConfig {
   token: string;
@@ -359,7 +447,7 @@ function whatsappConfig(): WhatsAppConfig | null {
 const MIGRATION_HINT = 'Execute no SQL Editor a migração 20261005000000_whatsapp_alerts.sql.';
 
 /** Execução agendada: envia o resumo do dia para cada pessoa (uma vez por dia). */
-async function runAll(db: SupabaseClient) {
+async function runDigest(db: SupabaseClient) {
   const now = new Date();
   const { day, hour } = localClock(now, TIMEZONE);
   const { settings, profiles, data } = await loadData(db, day);
@@ -394,6 +482,111 @@ async function runAll(db: SupabaseClient) {
     counts[status] = (counts[status] ?? 0) + 1;
   }
   return { ok: true, day, counts };
+}
+
+const BILLING_HINT = 'Execute no SQL Editor a migração 20261021000000_billing_reminders.sql.';
+
+interface BillingClient {
+  id: string;
+  name: string;
+  phone: string | null;
+  billing_reminders?: boolean | null;
+}
+
+/** Execução agendada: lembretes de cobrança do dia (no horário escolhido, em dias úteis). */
+async function runBilling(db: SupabaseClient) {
+  const now = new Date();
+  const { day, hour } = localClock(now, TIMEZONE);
+  const { data: row, error } = await db.from('app_settings').select('*').eq('id', 'office').maybeSingle();
+  if (error) throw new Error(error.message);
+  const settings = (row ?? {}) as Record<string, unknown>;
+  if (!('billing_enabled' in settings)) return { skipped: `Banco sem os lembretes de cobrança. ${BILLING_HINT}` };
+  const s = billingSettings(settings);
+  if (!s.enabled) return { skipped: 'Lembretes de cobrança desligados.' };
+  const target = Number(settings.billing_hour ?? 9);
+  if (hour < target || hour >= target + 4) return { skipped: `Fora do horário (${String(target).padStart(2, '0')}h).` };
+  if (!isBusinessDay(day)) return { skipped: 'Fim de semana.' };
+  const wa = whatsappConfig();
+  if (!wa) return { error: 'WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID não configurados.' };
+
+  const { data: entries, error: e1 } = await db
+    .from('finance_entries')
+    .select('id, kind, amount, due_date, paid_at, description, client_id, lead_id')
+    .eq('kind', 'receita')
+    .is('paid_at', null)
+    .gte('due_date', addDaysKey(day, -(s.daysAfter + CATCH_UP + 1)))
+    .lte('due_date', addDaysKey(day, s.daysBefore + 1));
+  if (e1) throw new Error(e1.message);
+  const list = (entries ?? []) as BillingEntry[];
+  if (!list.length) return { ok: true, day, counts: {} };
+
+  const ids = list.map((e) => e.id);
+  const { data: logRows, error: e2 } = await db.from('billing_reminder_log').select('entry_id, kind, due_date').in('entry_id', ids);
+  if (e2) throw new Error(`${e2.message}. ${BILLING_HINT}`);
+  const sent = new Set((logRows ?? []).map((r) => reminderKey(r.entry_id, r.kind, r.due_date)));
+  const todo = dueReminders(list, s, day, sent);
+  if (!todo.length) return { ok: true, day, counts: {} };
+
+  const clientIds = [...new Set(todo.map((t) => t.entry.client_id).filter(Boolean))] as string[];
+  const leadIds = [...new Set(todo.map((t) => t.entry.lead_id).filter(Boolean))] as string[];
+  const [clients, leads] = await Promise.all([
+    clientIds.length ? db.from('clients').select('*').in('id', clientIds) : Promise.resolve({ data: [], error: null }),
+    leadIds.length ? db.from('leads').select('id, name, phone').in('id', leadIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  const clientMap = new Map(((clients.data ?? []) as BillingClient[]).map((c) => [c.id, c]));
+  const leadMap = new Map(((leads.data ?? []) as BillingClient[]).map((l) => [l.id, l]));
+  const template = Deno.env.get('WHATSAPP_BILLING_TEMPLATE') || 'lembrete_cobranca';
+  const language = Deno.env.get('WHATSAPP_ALERT_TEMPLATE_LANG') || 'pt_BR';
+  const officeName = String(settings.office_name ?? '');
+
+  const counts: Record<string, number> = {};
+  for (const { entry, kind } of todo) {
+    const client = entry.client_id ? clientMap.get(entry.client_id) : null;
+    const lead = entry.lead_id ? leadMap.get(entry.lead_id) : null;
+    if (client && client.billing_reminders === false) continue;
+    const who = client ?? lead;
+    const to = toWhatsAppNumber(client?.phone || lead?.phone);
+    // Reserva o lembrete; se já existe, outra execução já cuidou dele.
+    const { data: claimed, error: claim } = await db
+      .from('billing_reminder_log')
+      .insert({ entry_id: entry.id, kind, due_date: entry.due_date, phone: to })
+      .select('id')
+      .single();
+    if (claim) {
+      if (claim.code === '23505') continue;
+      throw new Error(`${claim.message}. ${BILLING_HINT}`);
+    }
+    let status = 'enviado';
+    let detail: string | null = null;
+    if (!who || !to) {
+      status = 'erro';
+      detail = 'Cliente sem telefone no cadastro.';
+    } else {
+      try {
+        await sendTemplate(wa, to, template, language, billingParams({ clientName: who.name, amount: Number(entry.amount), description: entry.description, due: entry.due_date, today: day, paymentInfo: s.paymentInfo, officeName }));
+      } catch (e) {
+        status = 'erro';
+        detail = e instanceof Error ? e.message.slice(0, 500) : String(e);
+      }
+    }
+    await db.from('billing_reminder_log').update({ status, detail }).eq('id', claimed.id);
+    counts[status] = (counts[status] ?? 0) + 1;
+  }
+  return { ok: true, day, counts };
+}
+
+/** Execução agendada (de hora em hora): resumo diário da equipe e lembretes de cobrança. */
+async function runAll(db: SupabaseClient) {
+  const out: Record<string, unknown> = {};
+  for (const [name, run] of [['digest', runDigest], ['billing', runBilling]] as const) {
+    try {
+      out[name] = await run(db);
+    } catch (e) {
+      console.error(e);
+      out[name] = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+  return out;
 }
 
 // --------------------------------------------------------------------------- servidor
@@ -434,6 +627,30 @@ async function handle(req: Request): Promise<Response> {
         .limit(100);
       if (error) return json({ error: `${error.message}. ${MIGRATION_HINT}` }, 500);
       return json({ log: data });
+    }
+
+    if (action === 'billing_test') {
+      // Lembrete de exemplo para o próprio telefone: confere se o modelo lembrete_cobranca foi aprovado
+      if (!hasModule(me, 'financeiro')) return json({ error: 'Apenas quem tem o Financeiro.' }, 403);
+      const wa = whatsappConfig();
+      if (!wa) return json({ error: 'Configure WHATSAPP_TOKEN e WHATSAPP_PHONE_NUMBER_ID nos segredos do Supabase.' }, 400);
+      const to = toWhatsAppNumber(me.phone);
+      if (!to) return json({ error: 'Cadastre o seu telefone em Meu perfil.' }, 400);
+      const { day } = localClock(new Date(), TIMEZONE);
+      const { data: row } = await db.from('app_settings').select('*').eq('id', 'office').maybeSingle();
+      const settings = (row ?? {}) as Record<string, unknown>;
+      const params = billingParams({
+        clientName: me.name,
+        amount: 1500,
+        description: 'Honorários (exemplo) · 2ª parcela',
+        due: addDaysKey(day, 3),
+        today: day,
+        paymentInfo: String(settings.billing_payment_info ?? ''),
+        officeName: String(settings.office_name ?? ''),
+      });
+      const template = Deno.env.get('WHATSAPP_BILLING_TEMPLATE') || 'lembrete_cobranca';
+      await sendTemplate(wa, to, template, Deno.env.get('WHATSAPP_ALERT_TEMPLATE_LANG') || 'pt_BR', params);
+      return json({ ok: true, template, params });
     }
 
     if (action === 'preview' || action === 'test') {

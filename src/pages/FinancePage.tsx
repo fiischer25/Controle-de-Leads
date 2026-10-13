@@ -8,6 +8,7 @@ import type { FinanceEntry, FinanceKind } from '../lib/types';
 import { cn, downloadFile, formatCurrency, formatDate, formatMoney, matches, MONTHS_FULL, toCsv, today } from '../lib/utils';
 import { ActionLink, BarRow, Button, FilterPick, IconButton, PageHeader, SearchField, SectionHeader, Tabs, Toolbar } from '../components/ui';
 import { EntryFormModal } from '../components/finance/EntryFormModal';
+import { FinanceBilling } from '../components/finance/FinanceBilling';
 import { EntryList } from '../components/finance/EntryList';
 import { CashFlowChart, CashModeSwitch, MonthCards, ReceivablesByMonth } from '../components/finance/FinanceOverviewParts';
 import { ACCOUNT_KIND_LABEL, useFinance } from '../components/finance/useFinance';
@@ -17,7 +18,7 @@ import { FinanceCategories } from '../components/finance/FinanceCategories';
 import { ImportStatementModal } from '../components/finance/ImportStatementModal';
 import { useFinanceOverview } from '../components/finance/useFinanceOverview';
 
-type Tab = 'geral' | 'lancamentos' | 'contas' | 'rentabilidade' | 'categorias';
+type Tab = 'geral' | 'lancamentos' | 'cobranca' | 'contas' | 'rentabilidade' | 'categorias';
 type Editing = { entry?: FinanceEntry; kind?: FinanceKind } | null;
 
 function monthLabel(key: string) {
@@ -28,7 +29,7 @@ function monthLabel(key: string) {
 /** Financeiro do escritório: caixa, contas a receber e a pagar, contas, rentabilidade e categorias. */
 export default function FinancePage() {
   const [params, setParams] = useSearchParams();
-  const tab = (['geral', 'lancamentos', 'contas', 'rentabilidade', 'categorias'] as Tab[]).includes(params.get('aba') as Tab) ? (params.get('aba') as Tab) : 'geral';
+  const tab = (['geral', 'lancamentos', 'cobranca', 'contas', 'rentabilidade', 'categorias'] as Tab[]).includes(params.get('aba') as Tab) ? (params.get('aba') as Tab) : 'geral';
   const setTab = (t: Tab) => setParams(t === 'geral' ? {} : { aba: t }, { replace: true });
   const fin = useFinance();
   const [editing, setEditing] = useState<Editing>(null);
@@ -81,6 +82,7 @@ export default function FinancePage() {
         tabs={[
           { id: 'geral', label: 'Visão geral' },
           { id: 'lancamentos', label: 'Lançamentos' },
+          { id: 'cobranca', label: 'Cobrança' },
           { id: 'contas', label: 'Contas', count: fin.accounts.filter((a) => a.active).length },
           { id: 'rentabilidade', label: 'Rentabilidade' },
           { id: 'categorias', label: 'Categorias' },
@@ -96,6 +98,7 @@ export default function FinancePage() {
         {tab !== 'categorias' && <FixReceiptDates />}
         {tab === 'geral' && <Overview onOpen={(entry) => setEditing({ entry })} onTab={setTab} />}
         {tab === 'lancamentos' && <Entries onOpen={(entry) => setEditing({ entry })} onImport={() => setImporting({})} />}
+        {tab === 'cobranca' && <FinanceBilling />}
         {tab === 'contas' && <FinanceAccounts onImport={(account) => setImporting({ account })} />}
         {tab === 'rentabilidade' && <FinanceProfitability />}
         {tab === 'categorias' && <FinanceCategories />}
