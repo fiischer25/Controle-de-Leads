@@ -17,6 +17,7 @@ import { FinanceProfitability } from '../components/finance/FinanceProfitability
 import { FinanceCategories } from '../components/finance/FinanceCategories';
 import { ImportStatementModal } from '../components/finance/ImportStatementModal';
 import { useFinanceOverview } from '../components/finance/useFinanceOverview';
+import { useCashMode } from '../components/finance/cashMode';
 
 type Tab = 'geral' | 'lancamentos' | 'cobranca' | 'contas' | 'rentabilidade' | 'categorias';
 type Editing = { entry?: FinanceEntry; kind?: FinanceKind } | null;
@@ -246,13 +247,14 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
   const [project, setProject] = useState('');
   const [query, setQuery] = useState('');
 
+  const [mode] = useCashMode();
   // "Vencidos" mostra todos os atrasados, de qualquer mês
   const allMonths = status === 'vencido';
-  const rows = useMemo(
+  // Filtros (menos o mês): valem também para o mês anterior e o seguinte do caixa
+  const filtered = useMemo(
     () =>
       fin.entries
         .filter((e) => {
-          if (!allMonths && monthKey(entryDate(e)) !== month) return false;
           if (kind !== 'todos' && e.kind !== kind) return false;
           if (status && fin.status(e) !== status) return false;
           if (account && e.account_id !== account && e.to_account_id !== account) return false;
@@ -262,11 +264,26 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
           return matches(query, e.description, e.document, e.notes, p?.name, e.client_id ? maps.clients[e.client_id]?.name : null);
         })
         .sort((a, b) => entryDate(a).localeCompare(entryDate(b)) || a.description.localeCompare(b.description)),
-    [fin, allMonths, month, kind, status, account, category, project, query, maps],
+    [fin, kind, status, account, category, project, query, maps],
   );
+  const inMonth = (key: string) => filtered.filter((e) => monthKey(entryDate(e)) === key);
+  const rows = allMonths ? filtered : inMonth(month);
 
   const income = sum(rows.filter((e) => e.kind === 'receita').map((e) => e.amount));
   const expense = sum(rows.filter((e) => e.kind === 'despesa').map((e) => e.amount));
+  // Caixa do mês seguinte: o que entrou no mês anterior paga as contas deste mês;
+  // o que entra neste mês paga as contas do próximo
+  const nextCycle = mode === 'seguinte' && !allMonths;
+  const prevMonth = monthKey(addMonthsKey(`${month}-01`, -1));
+  const nextMonth = monthKey(addMonthsKey(`${month}-01`, 1));
+  // Só o que de fato entrou no mês anterior paga as contas; o que ficou para receber aparece à parte
+  const prevIncome = inMonth(prevMonth).filter((e) => e.kind === 'receita');
+  const prevIn = sum(prevIncome.filter((e) => e.paid_at).map((e) => e.amount));
+  const prevMissing = sum(prevIncome.filter((e) => !e.paid_at).map((e) => e.amount));
+  const nextBills = sum(inMonth(nextMonth).filter((e) => e.kind === 'despesa').map((e) => e.amount));
+  const leftover = Math.round((prevIn - expense) * 100) / 100;
+  const nextLeftover = Math.round((income - nextBills) * 100) / 100;
+  const name = (key: string) => MONTHS_FULL[Number(key.slice(5, 7)) - 1].toLowerCase();
   const projectsWithEntries = useMemo(() => {
     const ids = new Set(db.finance_entries.map((e) => e.project_id).filter(Boolean) as string[]);
     return db.projects.filter((p) => ids.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
@@ -312,6 +329,7 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
           </button>
         )}
         <div className="flex-1" />
+        <CashModeSwitch />
         <Tabs<KindFilter>
           tabs={[
             { id: 'todos', label: 'Tudo' },
@@ -367,31 +385,87 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
         }
       />
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <TotalCard
-          label="Receitas"
-          value={formatMoney(income)}
-          tone="success"
-          sub={`recebido ${formatMoney(sum(rows.filter((e) => e.kind === 'receita' && e.paid_at).map((e) => e.amount)))}`}
-        />
-        <TotalCard
-          label="Despesas"
-          value={formatMoney(expense)}
-          tone="danger"
-          sub={`pago ${formatMoney(sum(rows.filter((e) => e.kind === 'despesa' && e.paid_at).map((e) => e.amount)))}`}
-        />
-        <TotalCard
-          label="Saldo"
-          value={formatMoney(Math.round((income - expense) * 100) / 100)}
-          tone={income - expense < 0 ? 'danger' : 'neutral'}
-          sub="receitas − despesas"
-        />
-        <TotalCard label="Lançamentos" value={String(rows.length)} sub={allMonths ? 'vencidos de todos os meses' : monthLabel(month)} />
-      </div>
+      {nextCycle ? (
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-cash-cycle>
+          <TotalCard
+            label={`Entrou em ${name(prevMonth)}`}
+            value={formatMoney(prevIn)}
+            tone="success"
+            sub={prevMissing > 0 ? `falta receber ${formatMoney(prevMissing)} de ${name(prevMonth)}` : `paga as contas de ${name(month)}`}
+          />
+          <TotalCard
+            label={`Contas de ${name(month)}`}
+            value={formatMoney(expense)}
+            tone="danger"
+            sub={`pago ${formatMoney(sum(rows.filter((e) => e.kind === 'despesa' && e.paid_at).map((e) => e.amount)))}`}
+          />
+          <TotalCard
+            label={`Sobra de ${name(month)}`}
+            value={formatMoney(leftover)}
+            tone={leftover < 0 ? 'danger' : 'neutral'}
+            sub={`entrou em ${name(prevMonth)} − contas de ${name(month)}`}
+          />
+          <TotalCard
+            label={`Entrando em ${name(month)}`}
+            value={formatMoney(income)}
+            tone={nextLeftover < 0 ? 'danger' : 'neutral'}
+            sub={`para as contas de ${name(nextMonth)} (${formatMoney(nextBills)})${nextLeftover < 0 ? ` · faltam ${formatMoney(-nextLeftover)}` : ''}`}
+          />
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <TotalCard
+            label="Receitas"
+            value={formatMoney(income)}
+            tone="success"
+            sub={`recebido ${formatMoney(sum(rows.filter((e) => e.kind === 'receita' && e.paid_at).map((e) => e.amount)))}`}
+          />
+          <TotalCard
+            label="Despesas"
+            value={formatMoney(expense)}
+            tone="danger"
+            sub={`pago ${formatMoney(sum(rows.filter((e) => e.kind === 'despesa' && e.paid_at).map((e) => e.amount)))}`}
+          />
+          <TotalCard
+            label="Saldo"
+            value={formatMoney(Math.round((income - expense) * 100) / 100)}
+            tone={income - expense < 0 ? 'danger' : 'neutral'}
+            sub="receitas − despesas"
+          />
+          <TotalCard label="Lançamentos" value={String(rows.length)} sub={allMonths ? 'vencidos de todos os meses' : monthLabel(month)} />
+        </div>
+      )}
 
-      <div className="mt-3">
-        <EntryList entries={rows} onOpen={onOpen} empty={allMonths ? 'Nenhum lançamento vencido.' : 'Nenhum lançamento neste mês com esses filtros.'} />
-      </div>
+      {nextCycle ? (
+        <div className="mt-6 space-y-8">
+          {kind !== 'receita' && (
+            <section aria-labelledby="lanc-contas" data-cycle-section="contas">
+              <h3 id="lanc-contas" className="flex flex-wrap items-baseline gap-x-2 text-[14px] font-semibold text-ink">
+                Contas de {name(month)}
+                <span className="text-[12.5px] font-normal text-faint">pagas com o que entrou em {name(prevMonth)}</span>
+              </h3>
+              <div className="mt-2">
+                <EntryList entries={rows.filter((e) => e.kind !== 'receita')} onOpen={onOpen} empty={`Nenhuma conta em ${name(month)} com esses filtros.`} />
+              </div>
+            </section>
+          )}
+          {(kind === 'todos' || kind === 'receita') && (
+            <section aria-labelledby="lanc-entradas" data-cycle-section="entradas">
+              <h3 id="lanc-entradas" className="flex flex-wrap items-baseline gap-x-2 text-[14px] font-semibold text-ink">
+                Entradas de {name(month)}
+                <span className="text-[12.5px] font-normal text-faint">pagam as contas de {name(nextMonth)}</span>
+              </h3>
+              <div className="mt-2">
+                <EntryList entries={rows.filter((e) => e.kind === 'receita')} onOpen={onOpen} empty={`Nenhuma entrada em ${name(month)} com esses filtros.`} />
+              </div>
+            </section>
+          )}
+        </div>
+      ) : (
+        <div className="mt-3">
+          <EntryList entries={rows} onOpen={onOpen} empty={allMonths ? 'Nenhum lançamento vencido.' : 'Nenhum lançamento neste mês com esses filtros.'} />
+        </div>
+      )}
     </div>
   );
 }
