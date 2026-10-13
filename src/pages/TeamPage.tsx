@@ -133,10 +133,15 @@ export default function TeamPage() {
                       </div>
                     )}
                     {can('financeiro') && (
-                      <div className="truncate text-[12px] tabular text-faint" data-member-salary>
-                        {monthlyOf(p.id)
-                          ? `${formatMoney(monthlyOf(p.id)!)}/mês · ${formatMoney(monthlyOf(p.id)! / DEFAULT_WORK_DAYS)}/dia`
-                          : 'Sem salário cadastrado'}
+                      <div className="flex flex-wrap gap-x-1 text-[12px] tabular text-faint" data-member-salary>
+                        {monthlyOf(p.id) ? (
+                          <>
+                            <span className="whitespace-nowrap">{formatMoney(monthlyOf(p.id)!)}/mês ·</span>
+                            <span className="whitespace-nowrap">{formatMoney(monthlyOf(p.id)! / DEFAULT_WORK_DAYS)}/dia</span>
+                          </>
+                        ) : (
+                          'Sem salário cadastrado'
+                        )}
                       </div>
                     )}
                   </div>
