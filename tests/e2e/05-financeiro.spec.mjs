@@ -121,6 +121,42 @@ export default async function ({ browser }) {
   );
 
   await s.step(
+    'lançamentos seguem o caixa do mês seguinte: o que entrou no mês anterior paga as contas do mês',
+    async () => {
+      await page.goto(BASE + '/financeiro?aba=lancamentos');
+      const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      const now = new Date();
+      const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const cur = key(now);
+      const prev = key(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+      const curName = MONTHS[now.getMonth()];
+      const prevName = MONTHS[(now.getMonth() + 11) % 12];
+      const entries = await ls(page, 'finance_entries');
+      const when = (e) => (e.paid_at ?? e.due_date).slice(0, 7);
+      // Entradas: só o recebido no mês; contas: tudo do mês (pago na data do pagamento, em aberto no vencimento)
+      const total = (kind, month) =>
+        Math.round(entries.filter((e) => e.kind === kind && (kind === 'receita' ? e.paid_at?.slice(0, 7) === month : when(e) === month)).reduce((a, e) => a + e.amount, 0) * 100) / 100;
+      const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v).replace(/\s/g, ' ');
+      const card = (label) => page.locator('[data-cash-cycle] .metric-tile').filter({ has: page.getByText(label, { exact: true }) });
+      const text = async (label) => (await card(label).innerText()).replace(/\s/g, ' ');
+      ok((await text(`Entrou em ${prevName}`)).includes(brl(total('receita', prev))), `entrou em ${prevName}: ${brl(total('receita', prev))}`);
+      ok((await text(`Contas de ${curName}`)).includes(brl(total('despesa', cur))), `contas de ${curName}: ${brl(total('despesa', cur))}`);
+      const leftover = Math.round((total('receita', prev) - total('despesa', cur)) * 100) / 100;
+      ok((await text(`Sobra de ${curName}`)).includes(brl(leftover).replace('-', '')), `sobra: ${brl(leftover)}`);
+      await card(`Entrando em ${curName}`).waitFor();
+      await page.locator('[data-cycle-section="contas"]').getByText(`pagas com o que entrou em ${prevName}`).waitFor();
+      await page.locator('[data-cycle-section="entradas"]').getByText(/pagam as contas de /).waitFor();
+      // No "mesmo mês", volta a soma do próprio mês
+      await page.getByRole('button', { name: 'Mesmo mês' }).click();
+      await page.getByText('receitas − despesas').waitFor();
+      ok(!(await page.locator('[data-cash-cycle]').count()), 'cartões do mês seguinte no modo mesmo mês');
+      await page.getByRole('button', { name: 'Entradas pagam o mês seguinte' }).click();
+      await page.locator('[data-cash-cycle]').waitFor();
+    },
+    page,
+  );
+
+  await s.step(
     'pagar direto na linha dos lançamentos',
     async () => {
       await page.getByRole('tab', { name: 'Lançamentos' }).click();
