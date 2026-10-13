@@ -27,18 +27,33 @@ export default async function ({ browser }) {
     'lista de projetos mostra o status de cada projeto',
     async () => {
       await page.goto(BASE + '/projetos');
-      const row = page.locator(`a[href="/projetos/${pid}"]`);
+      // Tabela: uma linha por projeto, informações em colunas (rola para o lado)
+      const row = page.locator(`[data-project-row="${pid}"]`);
       await row.getByText('Em andamento', { exact: true }).waitFor();
       // Detalhes sem abrir o projeto, focados em prazos (sem financeiro)
-      const facts = await row.locator('[data-project-facts]').innerText();
-      for (const t of ['Responsável:', 'tarefas', 'registradas']) ok(facts.includes(t), `faltou "${t}" em: ${facts}`);
-      ok((await page.locator('[data-project-facts]').allInnerTexts()).some((x) => x.includes('Próximo prazo:')), 'próximo prazo na lista');
-      ok(!/Honorários|recebid|R\$/.test(await page.locator('[data-project-facts]').allInnerTexts().then((x) => x.join(' '))), 'financeiro na lista de projetos');
+      await row.locator('[data-manager]').waitFor();
+      ok(/^\d+\/\d+/.test(await row.locator('[data-tasks]').innerText()), 'tarefas concluídas/total');
+      ok(/\d+h/.test(await row.locator('[data-hours]').innerText()), 'horas registradas');
+      ok((await page.locator('[data-next-deadline]').count()) > 0, 'próximo prazo na lista');
+      ok(!/Honorários|recebid|R\$/.test(await page.locator('[data-projects-table]').innerText()), 'financeiro na lista de projetos');
+      for (const h of ['Etapa atual', 'Entrega', 'Alerta', 'Próximo prazo', 'Responsável', 'Equipe', 'Tarefas', 'Horas']) {
+        await page.getByRole('columnheader', { name: h, exact: true }).waitFor();
+      }
       await page.getByRole('combobox', { name: 'Ordenar' }).click();
       await page.getByRole('option', { name: 'Nome', exact: true }).click();
-      const names = await page.locator('ul > li a[href^="/projetos/"] .font-display').allInnerTexts();
+      const names = await page.locator('[data-project-name]').allInnerTexts();
       eq(names, [...names].sort((a, b) => a.localeCompare(b)), 'ordem por nome');
       await page.getByRole('tab', { name: /^Finalizados/ }).waitFor();
+      // Clicar na linha abre o projeto; os cartões continuam disponíveis
+      await row.locator('[data-tasks]').click();
+      await page.waitForURL(new RegExp(`/projetos/${pid}$`));
+      await page.goto(BASE + '/projetos');
+      await page.getByRole('button', { name: 'Ver em cartões' }).click();
+      await page.locator(`a[href="/projetos/${pid}"] [data-project-facts]`).waitFor();
+      await page.reload();
+      await page.locator(`a[href="/projetos/${pid}"] [data-project-facts]`).waitFor();
+      await page.getByRole('button', { name: 'Ver em tabela' }).click();
+      await page.locator('[data-projects-table]').waitFor();
     },
     page,
   );
@@ -50,23 +65,23 @@ export default async function ({ browser }) {
       // Só uma tarefa em andamento, vencendo daqui a 2 dias; as outras abertas sem prazo
       await patchTable(page, 'tasks', `let first = true; rows.forEach((t) => { if (t.project_id !== arg || t.status === 'done') return; if (first) { t.status = 'doing'; t.due_date = '${day(2)}'; t.title = 'Detalhamento de Forro'; first = false; } else { t.status = 'todo'; t.due_date = null; } });`, pid);
       await page.reload();
-      const row = page.locator(`a[href="/projetos/${pid}"]`);
+      const row = page.locator(`[data-project-row="${pid}"]`);
       const alert = row.locator('[data-deadline-alert]');
       await alert.waitFor();
       eq(await alert.getAttribute('data-deadline-alert'), 'perto', 'tipo do alerta');
       ok(/Em andamento e vence em 2 dias .*: Detalhamento de Forro/.test(await alert.innerText()), await alert.innerText());
       // Filtro pelo alerta, a partir do resumo do topo
       await page.getByRole('button', { name: /tarefa em andamento vence em até 3 dias/ }).click();
-      eq(await page.locator('ul > li a[href^="/projetos/"]').count(), 1, 'projetos com alerta');
+      eq(await page.locator('[data-project-row]').count(), 1, 'projetos com alerta');
       // Atrasada vira alerta vermelho
       await patchTable(page, 'tasks', `rows.forEach((t) => { if (t.project_id === arg && t.status === 'doing') t.due_date = '${day(-1)}'; });`, pid);
       await page.reload();
-      await page.locator(`a[href="/projetos/${pid}"] [data-deadline-alert="atrasada"]`).getByText(/Em andamento e atrasada/).waitFor();
+      await page.locator(`[data-project-row="${pid}"] [data-deadline-alert="atrasada"]`).getByText(/Em andamento e atrasada/).waitFor();
       // Entrega do projeto perto: alerta próprio; sem prazo e cidade não aparecem
       const city = (await project()).site_city;
       await patchTable(page, 'projects', `rows.forEach((p) => { if (p.id === arg) p.due_date = '${day(3)}'; });`, pid);
       await page.reload();
-      const card = page.locator(`a[href="/projetos/${pid}"]`);
+      const card = page.locator(`[data-project-row="${pid}"]`);
       await card.locator('[data-project-deadline-alert="perto"]').getByText(/Entrega do projeto em 3 dias/).waitFor();
       await patchTable(page, 'projects', "rows.forEach((p) => { if (p.id === arg) p.due_date = null; });", pid);
       await page.reload();
@@ -103,7 +118,7 @@ export default async function ({ browser }) {
       await page.waitForTimeout(300);
       eq((await project()).status, 'obra', 'as tarefas mudaram o status manual');
       await page.goto(BASE + '/projetos');
-      await page.locator(`a[href="/projetos/${pid}"]`).getByText('Obra', { exact: true }).waitFor();
+      await page.locator(`[data-project-row="${pid}"]`).getByText('Obra', { exact: true }).waitFor();
       await page.goto(`${BASE}/projetos/${pid}`);
       await pickStatus('Automático (pelas tarefas)');
       eq([(await project()).status, (await project()).status_manual], ['nao_iniciado', false], 'de volta ao automático');

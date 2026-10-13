@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Plus } from 'lucide-react';
+import { Download, LayoutList, Plus, Rows3 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { PROJECT_STATUS } from '../lib/constants';
 import { isProjectActive } from '../lib/domain';
@@ -11,11 +11,23 @@ import { useProjectSummaries, type ProjectSummary } from '../components/projects
 import { projectRail, templatePhasesByType } from '../components/projects/rail';
 import { ProjectDeadline, StageRail } from '../components/projects/StageRail';
 import { ProjectFacts } from '../components/projects/ProjectFacts';
+import { ProjectsTable } from '../components/projects/ProjectsTable';
 import { projectDeadlineAlert, projectFacts, TASK_ALERT_DAYS, type ProjectFactsData } from '../components/projects/facts';
 
 type Scope = 'ativos' | 'concluidos' | 'todos';
 type DeadlineFilter = '' | 'overdue' | 'soon' | 'alerta';
 type Sort = '' | 'prazo' | 'nome' | 'progresso' | 'recentes';
+type View = 'tabela' | 'cartoes';
+
+/** Visão da lista (tabela compacta ou cartões), lembrada neste navegador. */
+const VIEW_KEY = 'airos:projetos-visao';
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'cartoes' ? 'cartoes' : 'tabela';
+  } catch {
+    return 'tabela';
+  }
+}
 
 export default function ProjectsPage() {
   const { db, maps, settings } = useData();
@@ -27,6 +39,15 @@ export default function ProjectsPage() {
   const [deadline, setDeadline] = useState<DeadlineFilter>('');
   const [sort, setSort] = useState<Sort>('');
   const [creating, setCreating] = useState(false);
+  const [view, setViewState] = useState<View>(readView);
+  const setView = (v: View) => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* só nesta sessão */
+    }
+  };
   const templates = useMemo(() => templatePhasesByType(db.task_templates), [db.task_templates]);
 
   const counts = useMemo(
@@ -216,18 +237,40 @@ export default function ProjectsPage() {
           </>
         }
         aside={
-          <Tabs<Scope>
-            tabs={[
-              { id: 'ativos', label: 'Ativos', count: counts.ativos },
-              { id: 'concluidos', label: 'Finalizados', count: counts.concluidos },
-              { id: 'todos', label: 'Todos', count: counts.todos },
-            ]}
-            value={scope}
-            onChange={setScope}
-            size="sm"
-            underline={1}
-            bordered={false}
-          />
+          <>
+            <div role="group" aria-label="Visualização" className="inline-flex items-center rounded-md bg-stone-100 p-[3px]">
+              {(
+                [
+                  ['tabela', 'Tabela', <Rows3 key="t" className="h-4 w-4" strokeWidth={1.6} />],
+                  ['cartoes', 'Cartões', <LayoutList key="c" className="h-4 w-4" strokeWidth={1.6} />],
+                ] as const
+              ).map(([id, label, icon]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={view === id}
+                  aria-label={`Ver em ${label.toLowerCase()}`}
+                  title={label}
+                  onClick={() => setView(id)}
+                  className={cn('flex h-7 w-8 items-center justify-center rounded-[5px] transition-colors', view === id ? 'bg-surface text-ink shadow-sm' : 'text-faint hover:text-ink')}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+            <Tabs<Scope>
+              tabs={[
+                { id: 'ativos', label: 'Ativos', count: counts.ativos },
+                { id: 'concluidos', label: 'Finalizados', count: counts.concluidos },
+                { id: 'todos', label: 'Todos', count: counts.todos },
+              ]}
+              value={scope}
+              onChange={setScope}
+              size="sm"
+              underline={1}
+              bordered={false}
+            />
+          </>
         }
       />
 
@@ -239,6 +282,13 @@ export default function ProjectsPage() {
             action={<ActionLink onClick={() => setCreating(true)}>Novo projeto</ActionLink>}
             className="py-16"
           />
+        ) : view === 'tabela' ? (
+          <>
+            <ProjectsTable rows={filtered} facts={facts} templates={templates} soonDays={settings.due_soon_days} />
+            <p className="mt-3 text-[12.5px] text-faint">
+              {filtered.length} {filtered.length === 1 ? 'projeto' : 'projetos'} · role a tabela para o lado para ver todas as informações
+            </p>
+          </>
         ) : (
           <>
             <ul className="space-y-3">
