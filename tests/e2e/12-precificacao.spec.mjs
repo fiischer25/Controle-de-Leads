@@ -21,14 +21,18 @@ export default async function ({ browser }) {
   );
 
   await s.step(
-    'custos fixos vêm do Financeiro: despesas que repetem todo mês, sem salários nem impostos',
+    'custos fixos vêm do Financeiro: despesas mensais, salários fora do custo do dia (sem duplicidade) e sem impostos',
     async () => {
       await page.getByRole('button', { name: 'Nova precificação' }).click();
       const fixed = page.getByRole('region', { name: /Custos fixos/ });
       await fixed.locator('[data-fixed-source]').getByText(/repetem todo mês/).waitFor();
       const labels = await fixed.getByLabel('Nome do custo fixo').evaluateAll((els) => els.map((e) => e.value));
       for (const l of ['Aluguel da sala', 'Softwares (Revit, SketchUp, Adobe)', 'Honorários do contador', 'Energia e internet']) ok(labels.includes(l), `faltou ${l}: ${labels.join(', ')}`);
-      ok(!labels.includes('Folha de pagamento'), 'salários entram pelas etapas, não nos custos fixos');
+      // Salário aparece marcado e fora do custo do dia: já está no custo de quem faz cada etapa
+      ok(labels.includes('Folha de pagamento'), 'folha de pagamento listada');
+      const folha = fixed.locator('li', { has: page.locator('input[value="Folha de pagamento"]') });
+      eq(await folha.locator('[data-labor]').getAttribute('data-labor'), 'fora', 'folha fora do custo do dia');
+      ok((await fixed.locator('[data-fixed-excluded]').innerText()).replace(/\s/g, ' ').includes('R$ 18.500,00'), 'salários fora sem duplicidade');
       ok(!labels.includes('Simples Nacional'), 'impostos entram em % sobre o preço');
       eq(await fixed.getByLabel('Valor por mês de Aluguel da sala').inputValue(), '3.800,00', 'valor do aluguel');
       // 3.800 + 1.290 + 650 + 480 = 6.220 ÷ 21 dias
@@ -56,6 +60,10 @@ export default async function ({ browser }) {
       const days = stages.getByLabel(/^Dias de /);
       const n = await days.count();
       for (let i = 0; i < n; i++) await days.nth(i).fill(['10', '8', '12'][i] ?? '0');
+      // Custo de cada pessoa por dia (custo/hora × 8 h)
+      await stages.getByRole('combobox', { name: /^Quem faz / }).first().click();
+      await page.getByRole('option', { name: /^Ana Ribeiro · R\$\s680,00\/dia$/ }).waitFor();
+      await page.keyboard.press('Escape');
       for (const [i, who] of [[0, /^Ana Ribeiro/], [1, /^Bruno Carvalho/], [2, /^Carla Menezes/]]) {
         await stages.getByRole('combobox', { name: /^Quem faz / }).nth(i).click();
         await page.getByRole('option', { name: who }).click();

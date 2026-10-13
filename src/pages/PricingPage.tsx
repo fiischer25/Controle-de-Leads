@@ -7,7 +7,7 @@ import { MoneyInput } from '../components/finance/MoneyInput';
 import {
   DEFAULT_HOURS_PER_DAY,
   fixedCostsFromFinance,
-  LABOR_COST,
+  isLaborCost,
   newPricingData,
   pricingResult,
   recurringFixedCosts,
@@ -141,15 +141,14 @@ function PricingEditor({ id }: { id: string }) {
   const teamRate = teamAverageRate(db.finance_member_costs.filter((c) => team.some((p) => p.id === c.user_id)));
 
   // Custos fixos do Financeiro: as despesas que repetem todo mês; sem elas, a média de 3 meses.
-  // Com custo/hora da equipe, salários ficam de fora (entram pelas etapas).
+  // Salários e pró-labore vêm marcados: saem do custo do dia quando a equipe está nas etapas.
   const finance = useMemo(() => {
     const name = (cid: string | null) => (cid ? (db.finance_categories.find((c) => c.id === cid)?.name ?? 'Sem categoria') : 'Sem categoria');
-    const skipLabor = teamRate != null;
-    const recurring = recurringFixedCosts(db.finance_entries, name, today(), { skipLabor });
-    if (recurring.length) return { rows: recurring, source: 'mensal' as const, skipLabor };
-    const avg = fixedCostsFromFinance(db.finance_entries, name, today(), 3, { skipLabor });
-    return { rows: avg, source: avg.length ? ('media' as const) : null, skipLabor };
-  }, [db.finance_entries, db.finance_categories, teamRate]);
+    const recurring = recurringFixedCosts(db.finance_entries, name, today());
+    if (recurring.length) return { rows: recurring, source: 'mensal' as const };
+    const avg = fixedCostsFromFinance(db.finance_entries, name, today(), 3);
+    return { rows: avg, source: avg.length ? ('media' as const) : null };
+  }, [db.finance_entries, db.finance_categories]);
 
   const typePhases = (typeId: string) => {
     const seen: string[] = [];
@@ -225,7 +224,7 @@ function PricingEditor({ id }: { id: string }) {
 
   const newStage = (label = ''): PricingStage => ({ id: uid(), label, days: 0, assignee_id: null, rate: teamRate });
   const applyTypeStages = (typeId: string) => setData({ stages: typePhases(typeId).map((label) => newStage(label)) });
-  const pullFinance = () => setData({ fixed: finance.rows.map(([label, value]) => ({ id: uid(), label, value })) });
+  const pullFinance = () => setData({ fixed: finance.rows.map(([label, value, labor]) => ({ id: uid(), label, value, labor })) });
 
   const openLeads = db.leads.filter((l) => db.lead_stages.find((s) => s.id === l.stage_id)?.kind === 'open' || l.id === draft.lead_id);
 
@@ -395,7 +394,7 @@ function PricingEditor({ id }: { id: string }) {
                         const rate = rateOf(p.id);
                         return (
                           <option key={p.id} value={p.id}>
-                            {p.name} · {rate != null ? `${formatMoney(rate)}/h` : 'sem custo/hora'}
+                            {p.name} · {rate != null ? `${formatMoney(rate * r.hoursPerDay)}/dia` : 'sem custo cadastrado'}
                           </option>
                         );
                       })}
@@ -407,7 +406,7 @@ function PricingEditor({ id }: { id: string }) {
                     <span
                       className="text-right text-[13px] tabular text-ink"
                       data-stage-cost
-                      title={s.rate ? `${s.days} dias × ${r.hoursPerDay} h × ${formatMoney(s.rate)}/h` : undefined}
+                      title={s.rate ? `${s.days} dias × ${formatMoney(s.rate * r.hoursPerDay)} por dia (${formatMoney(s.rate)}/h × ${r.hoursPerDay} h)` : undefined}
                     >
                       {formatMoney(r.stageLabor[i] ?? 0)}
                     </span>
@@ -436,6 +435,7 @@ function PricingEditor({ id }: { id: string }) {
                 <b className="font-semibold text-ink" data-labor>
                   {formatMoney(r.labor)}
                 </b>
+                <span className="block text-[12px] text-faint">dias × custo por dia de quem faz (custo/hora × {formatNumber(r.hoursPerDay, 1)} h)</span>
               </div>
             </div>
             {teamRate == null ? (
@@ -480,26 +480,62 @@ function PricingEditor({ id }: { id: string }) {
                 : finance.source === 'media'
                   ? 'Vêm do Financeiro: média das despesas dos últimos 3 meses, por categoria.'
                   : 'Lance as despesas fixas no Financeiro (repetindo todo mês) e elas aparecem aqui sozinhas.'}
-              {finance.skipLabor && ' Salários ficam fora: a equipe entra pelo custo/hora nas etapas.'}
             </p>
             <Rows
               items={draft.data.fixed}
               onChange={(fixed) => setData({ fixed })}
-              make={() => ({ id: uid(), label: '', value: 0 })}
+              make={() => ({ id: uid(), label: '', value: 0, labor: false })}
               addLabel="Custo fixo"
-              head={['Custo', 'Valor por mês']}
-              cols="grid-cols-[minmax(0,1fr)_120px_28px] sm:grid-cols-[minmax(0,1fr)_150px_28px]"
-              render={(f: PricingFixedCost, upd) => (
-                <>
-                  <Input value={f.label} aria-label="Nome do custo fixo" placeholder="Ex.: aluguel" onChange={(e) => upd({ label: e.target.value })} />
-                  <MoneyInput value={f.value} aria-label={`Valor por mês de ${f.label || 'custo'}`} onChange={(v) => upd({ value: v ?? 0 })} />
-                </>
-              )}
+              head={['Custo', '', 'Valor por mês']}
+              cols="grid-cols-[auto_minmax(0,1fr)_28px] sm:grid-cols-[minmax(0,1fr)_auto_150px_28px]"
+              render={(f: PricingFixedCost, upd) => {
+                const labor = isLaborCost(f);
+                const out = labor && r.usesTeam;
+                return (
+                  <>
+                    <Input
+                      value={f.label}
+                      className={cn('col-span-3 sm:col-span-1', out && 'text-muted line-through decoration-stone-300')}
+                      aria-label="Nome do custo fixo"
+                      placeholder="Ex.: aluguel"
+                      onChange={(e) => upd({ label: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      aria-pressed={labor}
+                      aria-label={`${f.label || 'Custo'} é salário ou pró-labore`}
+                      title={
+                        labor
+                          ? r.usesTeam
+                            ? 'Salário / pró-labore: fora do custo do dia, porque já está no custo de quem faz cada etapa. Clique se não for salário.'
+                            : 'Salário / pró-labore: entra no custo do dia enquanto as etapas não usam o custo da equipe.'
+                          : 'Marque se for salário ou pró-labore (sai do custo do dia quando a equipe está nas etapas).'
+                      }
+                      onClick={() => upd({ labor: !labor })}
+                      className={cn(
+                        'h-7 whitespace-nowrap rounded-full border px-2.5 text-[12px] transition-colors',
+                        labor ? 'border-transparent bg-stone-100 text-stone-700' : 'border-dashed border-line text-faint hover:text-ink',
+                      )}
+                      data-labor={labor ? (out ? 'fora' : 'dentro') : undefined}
+                    >
+                      {labor ? (out ? 'Salário · já na equipe' : 'Salário') : 'É salário?'}
+                    </button>
+                    <div className={cn(out && 'opacity-50')}>
+                      <MoneyInput value={f.value} aria-label={`Valor por mês de ${f.label || 'custo'}`} onChange={(v) => upd({ value: v ?? 0 })} />
+                    </div>
+                  </>
+                );
+              }}
             />
-            {r.labor > 0 && draft.data.fixed.some((f) => f.value > 0 && LABOR_COST.test(f.label)) && (
-              <p className="mt-3 flex items-start gap-1.5 text-[12.5px] text-warning-fg">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
-                Salários aparecem aqui e também no custo da equipe nas etapas. Remova a linha para não contar duas vezes.
+            {r.fixedExcluded > 0 && (
+              <p className="mt-3 text-[12.5px] text-muted" data-fixed-excluded>
+                Sem duplicidade: <b className="font-semibold text-ink">{formatMoney(r.fixedExcluded)}</b> de salários e pró-labore ficam fora do custo do
+                dia, porque já estão no custo de quem faz cada etapa.
+              </p>
+            )}
+            {!r.usesTeam && draft.data.fixed.some((f) => isLaborCost(f) && f.value > 0) && (
+              <p className="mt-3 text-[12.5px] text-muted">
+                As etapas ainda não usam o custo da equipe: os salários entram no custo do dia.
               </p>
             )}
             <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 rounded-[12px] bg-canvas px-4 py-3">
@@ -507,7 +543,7 @@ function PricingEditor({ id }: { id: string }) {
                 <NumberInput value={draft.data.work_days} label="Dias úteis por mês" onChange={(work_days) => setData({ work_days })} />
               </Field>
               <div className="pb-2 text-[13px] text-muted">
-                Escritório: {formatMoney(r.fixedMonthly)} por mês ÷ {draft.data.work_days || 0} dias ={' '}
+                Escritório{r.fixedExcluded > 0 ? ' (sem salários)' : ''}: {formatMoney(r.fixedMonthly)} por mês ÷ {draft.data.work_days || 0} dias ={' '}
                 <b className="font-semibold text-ink" data-day-cost>
                   {formatMoney(r.dayCost)} por dia
                 </b>

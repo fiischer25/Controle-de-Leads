@@ -160,6 +160,7 @@ function MemberCosts() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13.5px] text-ink">{p.name}</span>
                 <span className="block truncate text-[12.5px] text-faint">{p.job_title || (p.role === 'admin' ? 'Administrador' : 'Membro')}</span>
+                {value ? <span className="block whitespace-nowrap text-[12px] tabular text-muted">{formatMoney(value * 8)} por dia (8 h)</span> : null}
               </span>
               <div className="w-36">
                 <MoneyInput value={value} onChange={(n) => setDraft((d) => ({ ...d, [p.id]: n }))} aria-label={`Custo por hora de ${p.name}`} />
