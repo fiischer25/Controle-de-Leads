@@ -6,6 +6,7 @@ import { projectFinance, sum } from '../../lib/finance';
 import { PROJECT_STATUS } from '../../lib/constants';
 import { cn, formatMinutes, formatMoney, today } from '../../lib/utils';
 import { Avatar, Button, SectionHeader } from '../ui';
+import { DEFAULT_HOURS_PER_DAY, DEFAULT_WORK_DAYS, hourlyFromMonthly, monthlyFromHourly } from '../../lib/pricing';
 import { MoneyInput } from './MoneyInput';
 import { useFinance } from './useFinance';
 
@@ -122,20 +123,24 @@ function MemberCosts() {
   const fin = useFinance();
   const toast = useToast();
   const members = db.profiles.filter((p) => p.active).sort((a, b) => a.name.localeCompare(b.name));
-  const current = (id: string) => db.finance_member_costs.find((c) => c.user_id === id)?.hourly_cost ?? null;
+  // Guardado por hora; aqui se digita por mês (salário + encargos), como o escritório pensa
+  const currentMonthly = (id: string) => {
+    const h = db.finance_member_costs.find((c) => c.user_id === id)?.hourly_cost;
+    return h ? monthlyFromHourly(h) : null;
+  };
   const [draft, setDraft] = useState<Record<string, number | null>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
   const save = async (id: string) => {
     setSaving(id);
     try {
-      await fin.setMemberCost(id, draft[id] ?? 0);
+      await fin.setMemberCost(id, hourlyFromMonthly(draft[id] ?? 0));
       setDraft((d) => {
         const next = { ...d };
         delete next[id];
         return next;
       });
-      toast.success('Custo/hora salvo.');
+      toast.success('Custo mensal salvo.');
     } catch (e) {
       toast.error(e);
     } finally {
@@ -145,27 +150,33 @@ function MemberCosts() {
 
   return (
     <section aria-labelledby="custo-hora" className="panel max-w-2xl">
-      <SectionHeader id="custo-hora" title="Custo por hora da equipe" />
+      <SectionHeader id="custo-hora" title="Custo da equipe" />
       <p className="mb-3 text-[12.5px] text-muted">
-        Quanto cada hora da pessoa custa ao escritório: salário ou retirada + encargos e benefícios, dividido pelas horas trabalhadas no mês
-        (ex.: R$ 8.000 ÷ 160 h = R$ 50/h). Só quem tem o módulo Financeiro vê estes valores.
+        Quanto cada pessoa custa ao escritório <b className="font-semibold text-ink">por mês</b>: salário, bolsa ou retirada + encargos e benefícios.
+        O sistema divide por {DEFAULT_WORK_DAYS} dias úteis para o custo do dia (ex.: R$ 500 por mês ÷ {DEFAULT_WORK_DAYS} dias = R$ 23,81 por dia) e
+        usa esse valor na Precificação e na rentabilidade dos projetos. Só quem tem o módulo Financeiro vê estes valores.
       </p>
       <ul>
         {members.map((p) => {
-          const value = p.id in draft ? draft[p.id] : current(p.id);
-          const dirty = p.id in draft && draft[p.id] !== current(p.id);
+          const value = p.id in draft ? draft[p.id] : currentMonthly(p.id);
+          const dirty = p.id in draft && draft[p.id] !== currentMonthly(p.id);
+          const day = value ? value / DEFAULT_WORK_DAYS : null;
           return (
-            <li key={p.id} className="flex items-center gap-3 border-t border-hairline py-2.5">
+            <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-hairline py-2.5" data-member-cost={p.id}>
               <Avatar user={p} size="sm" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13.5px] text-ink">{p.name}</span>
                 <span className="block truncate text-[12.5px] text-faint">{p.job_title || (p.role === 'admin' ? 'Administrador' : 'Membro')}</span>
-                {value ? <span className="block whitespace-nowrap text-[12px] tabular text-muted">{formatMoney(value * 8)} por dia (8 h)</span> : null}
+                {day ? (
+                  <span className="block whitespace-nowrap text-[12px] tabular text-muted" data-member-day>
+                    {formatMoney(day)} por dia · {formatMoney(day / DEFAULT_HOURS_PER_DAY)} por hora
+                  </span>
+                ) : null}
               </span>
               <div className="w-36">
-                <MoneyInput value={value} onChange={(n) => setDraft((d) => ({ ...d, [p.id]: n }))} aria-label={`Custo por hora de ${p.name}`} />
+                <MoneyInput value={value} onChange={(n) => setDraft((d) => ({ ...d, [p.id]: n }))} aria-label={`Custo por mês de ${p.name}`} />
               </div>
-              <span className="w-6 text-[12.5px] text-faint">/h</span>
+              <span className="w-9 text-[12.5px] text-faint">/mês</span>
               <Button size="sm" variant={dirty ? 'primary' : 'ghost'} disabled={!dirty} loading={saving === p.id} onClick={() => save(p.id)}>
                 Salvar
               </Button>

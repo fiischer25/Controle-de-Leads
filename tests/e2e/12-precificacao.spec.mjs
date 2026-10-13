@@ -69,9 +69,10 @@ export default async function ({ browser }) {
         await page.getByRole('option', { name: who }).click();
       }
       await stages.getByText('30 dias').waitFor();
-      // Custo por dia da Ana (R$ 85/h × 8 h) e total da etapa: 10 × R$ 680 + 10 × R$ 1.000 do escritório
-      eq(await stages.getByLabel(/^Custo por dia de /).first().inputValue(), '680,00', 'custo por dia da Ana');
+      // Custo da Ana por mês (R$ 85/h × 8 h × 21 dias) e total da etapa: 10 × R$ 680 (pessoa) + 10 × R$ 1.000 (escritório)
+      eq(await stages.getByLabel(/^Custo por mês de quem faz /).first().inputValue(), '14.280,00', 'custo por mês da Ana');
       eq((await stages.locator('[data-stage-cost]').first().innerText()).replace(/\s/g, ' '), 'R$ 16.800,00', 'total da etapa da Ana');
+      eq((await stages.locator('[data-stage-split]').first().innerText()).replace(/\s/g, ' '), 'Pessoa: 10 × R$ 680,00/dia = R$ 6.800,00 · Escritório: 10 × R$ 1.000,00/dia = R$ 10.000,00', 'pessoa e escritório separados');
       // 6.800 + 4.480 + 5.760
       await stages.locator('[data-labor]').getByText('R$ 17.040,00').waitFor();
       // Adicionais: 4 visitas de R$ 150 e terceirização de R$ 5.000
@@ -137,7 +138,7 @@ export default async function ({ browser }) {
   );
 
   await s.step(
-    'sem custo cadastrado: digitar o custo por dia na etapa, e ele vai para o cadastro da pessoa',
+    'sem custo cadastrado: digitar o custo por mês na etapa (R$ 500 ÷ 21 dias = R$ 23,81 por dia) e ele vai para o cadastro da pessoa',
     async () => {
       await patchTable(page, 'finance_member_costs', 'return [];');
       await patchTable(page, 'finance_entries', 'return [];');
@@ -146,19 +147,27 @@ export default async function ({ browser }) {
       await page.goto(BASE + '/precificacao/nova');
       await page.getByRole('textbox', { name: /^Nome/ }).first().fill('casa custo');
       const stages = page.getByRole('region', { name: /Etapas e dias/ });
-      await stages.getByLabel(/^Dias de /).first().fill('4');
+      await stages.getByLabel(/^Dias de /).first().fill('1');
       // Sem custo nenhum: aviso na etapa e no resumo, em vez de valores em branco
       await stages.locator('[data-stage-cost-missing]').waitFor();
       await page.locator('[data-price-zero]').getByText(/Falta custo/).waitFor();
       await stages.getByRole('combobox', { name: /^Quem faz / }).first().click();
       await page.getByRole('option', { name: /^Bruno Carvalho · sem custo cadastrado$/ }).click();
-      await stages.getByLabel(/^Custo por dia de /).first().fill('50000');
-      eq((await stages.locator('[data-stage-cost]').first().innerText()).replace(/\s/g, ' '), 'R$ 2.000,00', '4 dias × R$ 500');
+      // Estagiário que custa R$ 500 por mês, 1 dia na etapa: R$ 500 ÷ 21 dias = R$ 23,81
+      await stages.getByLabel(/^Custo por mês de quem faz /).first().fill('50000');
+      eq((await stages.locator('[data-stage-cost]').first().innerText()).replace(/\s/g, ' '), 'R$ 23,81', '1 dia de quem ganha R$ 500 por mês');
+      eq((await stages.locator('[data-stage-split]').first().innerText()).replace(/\s/g, ' '), 'Pessoa: 1 × R$ 23,81/dia = R$ 23,81 · Escritório: 1 × R$ 0,00/dia = R$ 0,00', 'só a pessoa');
       ok(!(await page.locator('[data-price-zero]').count()), 'preço continua zerado');
       await page.getByRole('button', { name: 'Salvar precificação' }).click();
       await page.waitForURL(/\/precificacao$/);
       const bruno = (await ls(page, 'profiles')).find((p) => p.name === 'Bruno Carvalho');
-      eq((await ls(page, 'finance_member_costs')).find((c) => c.user_id === bruno.id)?.hourly_cost, 62.5, 'custo do Bruno salvo (R$ 500 ÷ 8 h)');
+      const hourly = (await ls(page, 'finance_member_costs')).find((c) => c.user_id === bruno.id)?.hourly_cost;
+      eq(Math.round(hourly * 21 * 8 * 100) / 100, 500, 'custo do Bruno salvo: R$ 500 por mês');
+      // Rentabilidade mostra o custo por mês e o do dia
+      await page.goto(BASE + '/financeiro?aba=rentabilidade');
+      const row = page.locator(`[data-member-cost="${bruno.id}"]`);
+      eq(await row.getByLabel('Custo por mês de Bruno Carvalho').inputValue(), '500,00', 'custo por mês na Rentabilidade');
+      ok((await row.locator('[data-member-day]').innerText()).replace(/\s/g, ' ').startsWith('R$ 23,81 por dia'), 'custo do dia na Rentabilidade');
     },
     page,
   );

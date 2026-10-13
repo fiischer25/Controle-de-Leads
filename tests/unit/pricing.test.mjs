@@ -11,7 +11,7 @@ import { join } from 'node:path';
 const dir = mkdtempSync(join(tmpdir(), 'airos-pricing-'));
 const out = join(dir, 'pricing.mjs');
 await build({ entryPoints: [new URL('../../src/lib/pricing.ts', import.meta.url).pathname], bundle: true, format: 'esm', outfile: out, logLevel: 'silent' });
-const { pricingResult, newPricingData, fixedCostsFromFinance, recurringFixedCosts, teamAverageRate, roundPrice } = await import(out);
+const { pricingResult, newPricingData, fixedCostsFromFinance, recurringFixedCosts, teamAverageRate, roundPrice, hourlyFromMonthly, monthlyFromHourly } = await import(out);
 rmSync(dir, { recursive: true, force: true });
 
 function casa(over = {}) {
@@ -168,4 +168,13 @@ test('precificação nova: linha padrão de salários já vem marcada', () => {
   assert.deepEqual(d.fixed.filter((f) => f.labor).map((f) => f.label), ['Salários e pró-labore']);
   const fromFinance = newPricingData({ fixed: [['Folha de pagamento', 18500, true], ['Aluguel', 3800, false]] });
   assert.deepEqual(fromFinance.fixed.map((f) => [f.label, f.labor]), [['Folha de pagamento', true], ['Aluguel', false]]);
+});
+
+test('custo da pessoa por mês: R$ 500 ÷ 21 dias = R$ 23,81 por dia', () => {
+  const hourly = hourlyFromMonthly(500);
+  assert.equal(Math.round(hourly * 8 * 100) / 100, 23.81);
+  assert.equal(monthlyFromHourly(hourly), 500);
+  // 1 dia do estagiário na etapa custa um dia do mês dele, não o mês inteiro
+  const r = pricingResult(casa({ fixed: [], stages: [{ id: '1', label: 'Levantamento', days: 1, assignee_id: 'g', rate: hourly }] }));
+  assert.equal(r.labor, 23.81);
 });

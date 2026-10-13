@@ -6,6 +6,9 @@ import { useToast } from '../context/ToastContext';
 import { MoneyInput } from '../components/finance/MoneyInput';
 import {
   DEFAULT_HOURS_PER_DAY,
+  DEFAULT_WORK_DAYS,
+  hourlyFromMonthly,
+  monthlyFromHourly,
   fixedCostsFromFinance,
   isLaborCost,
   newPricingData,
@@ -247,7 +250,7 @@ function PricingEditor({ id }: { id: string }) {
       // Custo por dia digitado para quem ainda não tinha custo cadastrado: vai para Financeiro → Rentabilidade
       const fresh = new Map<string, number>();
       for (const st of draft.data.stages) {
-        if (st.assignee_id && st.rate && st.rate > 0 && rateOf(st.assignee_id) == null && !fresh.has(st.assignee_id)) fresh.set(st.assignee_id, Math.round(st.rate * 100) / 100);
+        if (st.assignee_id && st.rate && st.rate > 0 && rateOf(st.assignee_id) == null && !fresh.has(st.assignee_id)) fresh.set(st.assignee_id, st.rate);
       }
       for (const [userId, hourly] of fresh) {
         try {
@@ -380,13 +383,17 @@ function PricingEditor({ id }: { id: string }) {
               onChange={(stages) => setData({ stages })}
               make={() => newStage()}
               addLabel="Etapa"
-              head={['Etapa', 'Quem faz', 'Dias', 'Custo por dia', 'Total']}
-              cols="grid-cols-[52px_minmax(0,1fr)_auto_28px] sm:grid-cols-[minmax(0,1fr)_170px_60px_116px_96px_28px]"
+              head={['Etapa', 'Quem faz', 'Dias', 'Custo por mês', 'Total']}
+              cols="grid-cols-[52px_minmax(0,1fr)_auto_28px] sm:grid-cols-[minmax(0,1fr)_150px_56px_120px_104px_28px]"
               render={(s: PricingStage, upd) => {
                 const i = draft.data.stages.findIndex((x) => x.id === s.id);
                 const noRate = !(s.rate && s.rate > 0);
-                // Total da etapa: quem faz (dias × custo por dia) + o escritório (dias × custo do dia)
-                const total = Math.round(((r.stageLabor[i] ?? 0) + (s.days || 0) * r.dayCost) * 100) / 100;
+                // Total da etapa: quem faz (dias × custo por dia da pessoa) + o escritório (dias × custo do dia)
+                const person = r.stageLabor[i] ?? 0;
+                const office = Math.round((s.days || 0) * r.dayCost * 100) / 100;
+                const total = Math.round((person + office) * 100) / 100;
+                const workDays = draft.data.work_days > 0 ? draft.data.work_days : DEFAULT_WORK_DAYS;
+                const personDay = s.rate && s.rate > 0 ? s.rate * r.hoursPerDay : 0;
                 return (
                   <>
                     <Input
@@ -419,21 +426,24 @@ function PricingEditor({ id }: { id: string }) {
                       )}
                     </Select>
                     <NumberInput value={s.days} label={`Dias de ${s.label || 'etapa'}`} onChange={(days) => upd({ days })} />
-                    {/* Custo por dia de quem faz: vem do cadastro (custo/hora × horas por dia) ou é digitado aqui */}
-                    <div className={cn('rounded-sm', noRate && (s.days || 0) > 0 && 'ring-1 ring-warning-solid')} data-stage-day-cost>
+                    {/* Custo de quem faz por mês (salário + encargos): vem do cadastro ou é digitado aqui; o dia é o mês ÷ dias úteis */}
+                    <div className={cn('rounded-sm', noRate && (s.days || 0) > 0 && 'ring-1 ring-warning-solid')} data-stage-month-cost>
                       <MoneyInput
-                        value={s.rate && s.rate > 0 ? Math.round(s.rate * r.hoursPerDay * 100) / 100 : null}
-                        aria-label={`Custo por dia de ${s.label || 'etapa'}`}
-                        onChange={(v) => upd({ rate: v && v > 0 ? v / r.hoursPerDay : null })}
+                        value={s.rate && s.rate > 0 ? monthlyFromHourly(s.rate, workDays, r.hoursPerDay) : null}
+                        aria-label={`Custo por mês de quem faz ${s.label || 'a etapa'}`}
+                        onChange={(v) => upd({ rate: v && v > 0 ? hourlyFromMonthly(v, workDays, r.hoursPerDay) : null })}
                       />
                     </div>
-                    <span
-                      className="text-right text-[13px] font-medium tabular text-ink"
-                      data-stage-cost
-                      title={`${s.days || 0} dias × ${formatMoney(s.rate ? s.rate * r.hoursPerDay : 0)} (quem faz) + ${s.days || 0} dias × ${formatMoney(r.dayCost)} (escritório)`}
-                    >
+                    <span className="text-right text-[13px] font-medium tabular text-ink" data-stage-cost>
                       {formatMoney(total)}
                     </span>
+                    {/* De onde sai o total: a pessoa (dias × custo do dia dela) e o escritório (dias × custo do dia) */}
+                    {(s.days || 0) > 0 && (
+                      <p className="order-last col-span-full -mt-1 text-right text-[11.5px] tabular text-faint" data-stage-split>
+                        Pessoa: {formatNumber(s.days, 1)} × {formatMoney(personDay)}/dia = {formatMoney(person)} · Escritório: {formatNumber(s.days, 1)} ×{' '}
+                        {formatMoney(r.dayCost)}/dia = {formatMoney(office)}
+                      </p>
+                    )}
                   </>
                 );
               }}
@@ -459,14 +469,17 @@ function PricingEditor({ id }: { id: string }) {
                 <b className="font-semibold text-ink" data-labor>
                   {formatMoney(r.labor)}
                 </b>
-                <span className="block text-[12px] text-faint">dias × custo por dia de quem faz (custo/hora × {formatNumber(r.hoursPerDay, 1)} h)</span>
+                <span className="block text-[12px] text-faint">
+                  dias × custo por dia de quem faz (custo do mês ÷ {draft.data.work_days || DEFAULT_WORK_DAYS} dias úteis)
+                </span>
               </div>
             </div>
             {draft.data.stages.some((x) => (x.days || 0) > 0 && !(x.rate && x.rate > 0)) && (
               <p className="mt-3 flex items-start gap-1.5 text-[12.5px] text-warning-fg" data-stage-cost-missing>
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
                 <span>
-                  Digite o <b className="font-semibold">custo por dia</b> de quem faz as etapas marcadas. Ao salvar, o custo de cada pessoa sem cadastro
+                  Digite o <b className="font-semibold">custo por mês</b> (salário + encargos) de quem faz as etapas marcadas; o sistema divide pelos
+                  dias úteis. Ao salvar, o custo de cada pessoa sem cadastro
                   vai para{' '}
                   <ActionLink to="/financeiro?aba=rentabilidade" className="text-[length:inherit]">
                     Financeiro → Rentabilidade
@@ -737,8 +750,8 @@ function Summary({
         {r.suggested === 0 && (
           <p className="mt-1 text-[12.5px] text-warning-fg" data-price-zero>
             {r.days > 0
-              ? 'Falta custo: digite o custo por dia de quem faz cada etapa ou os custos fixos do escritório.'
-              : 'Coloque os dias de cada etapa e o custo por dia de quem faz.'}
+              ? 'Falta custo: digite o custo por mês de quem faz cada etapa ou os custos fixos do escritório.'
+              : 'Coloque os dias de cada etapa e o custo por mês de quem faz.'}
           </p>
         )}
         <div className="mt-3 grid grid-cols-2 gap-3 border-t border-hairline-surface pt-3 text-[12.5px]">
