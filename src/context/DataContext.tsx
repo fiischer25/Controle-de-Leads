@@ -159,7 +159,8 @@ interface DataApi {
   markNotificationsRead(ids: string[]): Promise<void>;
 
   // Equipe
-  createUser(input: NewUserInput): Promise<void>;
+  /** Cadastra o membro e devolve o perfil criado. */
+  createUser(input: NewUserInput): Promise<Profile>;
   /** O usuário atual pode ver/usar este módulo? (administradores: sempre) */
   can(module: ModuleKey): boolean;
   updateUser(id: string, patch: Partial<Profile>, auth?: { email?: string; password?: string }): Promise<void>;
@@ -972,6 +973,7 @@ export function DataProvider({ userId, children }: { userId: string; children: R
       if (input.role !== 'admin' && input.permissions) await backend.update('profiles', profile.id, { permissions: input.permissions });
       await loadTable('profiles');
       await log('user', null, 'created', `cadastrou o membro ${input.name}`);
+      return profile;
     },
     [loadTable, log],
   );

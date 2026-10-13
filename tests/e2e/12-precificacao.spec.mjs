@@ -172,6 +172,32 @@ export default async function ({ browser }) {
     page,
   );
 
+  await s.step(
+    'salário no cadastro do membro (Equipe) vira o custo do dia na Precificação',
+    async () => {
+      await page.goto(BASE + '/equipe');
+      await page.getByRole('button', { name: 'Editar Carla Menezes', exact: true }).click();
+      const d = page.getByRole('dialog', { name: 'Editar membro' });
+      await d.getByLabel('Salário / custo por mês').fill('300000');
+      await d.getByText(/R\$\s142,86 por dia/).waitFor();
+      await d.getByRole('button', { name: 'Salvar', exact: true }).click();
+      await d.waitFor({ state: 'detached' });
+      const carla = (await ls(page, 'profiles')).find((p) => p.name === 'Carla Menezes');
+      const hourly = (await ls(page, 'finance_member_costs')).find((c) => c.user_id === carla.id)?.hourly_cost;
+      eq(Math.round(hourly * 21 * 8 * 100) / 100, 3000, 'salário salvo no cadastro');
+      ok((await page.locator('[data-member-salary]').allInnerTexts()).some((t) => t.replace(/\s/g, ' ').includes('R$ 3.000,00/mês · R$ 142,86/dia')), 'salário na lista da equipe');
+      // Na Precificação, escolher a Carla já traz o salário dela
+      await page.goto(BASE + '/precificacao/nova');
+      const stages = page.getByRole('region', { name: /Etapas e dias/ });
+      await stages.getByLabel(/^Dias de /).first().fill('2');
+      await stages.getByRole('combobox', { name: /^Quem faz / }).first().click();
+      await page.getByRole('option', { name: /^Carla Menezes · R\$\s142,86\/dia$/ }).click();
+      eq(await stages.getByLabel(/^Custo por mês de quem faz /).first().inputValue(), '3.000,00', 'salário da Carla na etapa');
+      ok((await stages.locator('[data-stage-split]').first().innerText()).replace(/\s/g, ' ').startsWith('Pessoa: 2 × R$ 142,86/dia = R$ 285,71'), 'custo dos 2 dias da Carla');
+    },
+    page,
+  );
+
   await ctx.close();
   return s;
 }

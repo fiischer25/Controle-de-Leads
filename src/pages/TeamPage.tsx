@@ -7,13 +7,20 @@ import { SWATCHES } from '../lib/constants';
 import { isProjectActive, totalMinutes } from '../lib/domain';
 import type { ModuleKey, Profile, Role } from '../lib/types';
 import { DEFAULT_PERMISSIONS, MODULES, modulesOf } from '../lib/permissions';
-import { cn, formatMinutes, isValidEmail, maskPhone, startOfWeek, today, toDateKey } from '../lib/utils';
+import { cn, formatMinutes, formatMoney, isValidEmail, maskPhone, startOfWeek, today, toDateKey } from '../lib/utils';
+import { DEFAULT_WORK_DAYS, hourlyFromMonthly, monthlyFromHourly } from '../lib/pricing';
+import { MoneyInput } from '../components/finance/MoneyInput';
+import { useFinance } from '../components/finance/useFinance';
 import { ActionLink, Avatar, Button, Checkbox, ConfirmDialog, Field, IconButton, Input, Modal, PageHeader, SectionHeader, Select } from '../components/ui';
 import { TaskRow } from '../components/tasks/TaskRow';
 import { useOpenTask } from '../components/tasks/useOpenTask';
 
 export default function TeamPage() {
-  const { db, isAdmin, me } = useData();
+  const { db, isAdmin, me, can } = useData();
+  const monthlyOf = (id: string) => {
+    const h = db.finance_member_costs.find((c) => c.user_id === id)?.hourly_cost;
+    return h ? monthlyFromHourly(h) : null;
+  };
   const [params, setParams] = useSearchParams();
   const openTask = useOpenTask();
   const [creating, setCreating] = useState(false);
@@ -125,6 +132,18 @@ export default function TeamPage() {
                             : 'Só Painel e próprias tarefas'}
                       </div>
                     )}
+                    {can('financeiro') && (
+                      <div className="flex flex-wrap gap-x-1 text-[12px] tabular text-faint" data-member-salary>
+                        {monthlyOf(p.id) ? (
+                          <>
+                            <span className="whitespace-nowrap">{formatMoney(monthlyOf(p.id)!)}/mês ·</span>
+                            <span className="whitespace-nowrap">{formatMoney(monthlyOf(p.id)! / DEFAULT_WORK_DAYS)}/dia</span>
+                          </>
+                        ) : (
+                          'Sem salário cadastrado'
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="hidden min-w-0 md:block">
@@ -229,8 +248,16 @@ export default function TeamPage() {
 }
 
 function MemberModal({ member, onClose }: { member?: Profile; onClose: () => void }) {
-  const { createUser, updateUser, me, db } = useData();
+  const { createUser, updateUser, me, db, can } = useData();
+  const fin = useFinance();
   const toast = useToast();
+  // Salário (custo por mês): só quem tem o Financeiro vê; a Precificação usa para o custo do dia
+  const showSalary = can('financeiro');
+  const savedMonthly = (() => {
+    const h = member ? db.finance_member_costs.find((c) => c.user_id === member.id)?.hourly_cost : null;
+    return h ? monthlyFromHourly(h) : null;
+  })();
+  const [salary, setSalary] = useState<number | null>(savedMonthly);
   const used = new Set(db.profiles.map((p) => p.color));
   const [v, setV] = useState({
     name: member?.name ?? '',
@@ -258,6 +285,7 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
     if (Object.keys(e).length) return;
     setBusy(true);
     try {
+      let userId = member?.id ?? null;
       if (member) {
         await updateUser(
           member.id,
@@ -273,7 +301,7 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
         );
         toast.success('Membro atualizado.');
       } else {
-        await createUser({
+        const created = await createUser({
           name: v.name.trim(),
           email: v.email.trim(),
           password: v.password,
@@ -283,7 +311,15 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
           color: v.color,
           permissions: v.permissions,
         });
+        userId = created.id;
         toast.success(`${v.name.split(' ')[0]} foi cadastrado(a). Envie o e-mail e a senha para o primeiro acesso.`);
+      }
+      if (showSalary && userId && (salary ?? 0) !== (savedMonthly ?? 0)) {
+        try {
+          await fin.setMemberCost(userId, hourlyFromMonthly(salary ?? 0));
+        } catch (err) {
+          toast.error(`O membro foi salvo, mas o salário não: ${err instanceof Error ? err.message : err}`);
+        }
       }
       onClose();
     } catch (err) {
@@ -311,6 +347,19 @@ function MemberModal({ member, onClose }: { member?: Profile; onClose: () => voi
         </Field>
         <Field label="Cargo / função"><Input value={v.job_title} onChange={(e) => setV({ ...v, job_title: e.target.value })} placeholder="Ex.: Arquiteta, Estagiário, Comercial" /></Field>
         <Field label="Telefone / WhatsApp" hint="Usado para falar com o assistente pelo WhatsApp."><Input value={v.phone} onChange={(e) => setV({ ...v, phone: maskPhone(e.target.value) })} /></Field>
+        {showSalary && (
+          <Field
+            label="Salário / custo por mês"
+            className="sm:col-span-2"
+            hint={
+              salary
+                ? `${formatMoney(salary / DEFAULT_WORK_DAYS)} por dia (÷ ${DEFAULT_WORK_DAYS} dias úteis) · usado na Precificação e na rentabilidade dos projetos. Só quem tem o Financeiro vê.`
+                : 'Salário, bolsa ou retirada + encargos. A Precificação divide por 21 dias úteis para o custo do dia. Só quem tem o Financeiro vê.'
+            }
+          >
+            <MoneyInput value={salary} onChange={setSalary} aria-label="Salário / custo por mês" />
+          </Field>
+        )}
         <Field label="Nível de acesso" hint={member?.id === me.id ? 'Você não pode alterar o próprio nível.' : 'Administradores gerenciam equipe e configurações.'}>
           <Select value={v.role} onChange={(e) => setV({ ...v, role: e.target.value as Role })} disabled={member?.id === me.id}>
             <option value="member">Membro</option>

@@ -479,12 +479,11 @@ function PricingEditor({ id }: { id: string }) {
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
                 <span>
                   Digite o <b className="font-semibold">custo por mês</b> (salário + encargos) de quem faz as etapas marcadas; o sistema divide pelos
-                  dias úteis. Ao salvar, o custo de cada pessoa sem cadastro
-                  vai para{' '}
-                  <ActionLink to="/financeiro?aba=rentabilidade" className="text-[length:inherit]">
-                    Financeiro → Rentabilidade
-                  </ActionLink>{' '}
-                  e já aparece nas próximas precificações.
+                  dias úteis. O salário de cada pessoa fica no cadastro dela, em{' '}
+                  <ActionLink to="/equipe" className="text-[length:inherit]">
+                    Equipe
+                  </ActionLink>
+                  : ao salvar, quem ainda não tinha salário cadastrado recebe o valor digitado aqui.
                 </span>
               </p>
             )}
