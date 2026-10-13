@@ -11,7 +11,7 @@ import { join } from 'node:path';
 const dir = mkdtempSync(join(tmpdir(), 'airos-pricing-'));
 const out = join(dir, 'pricing.mjs');
 await build({ entryPoints: [new URL('../../src/lib/pricing.ts', import.meta.url).pathname], bundle: true, format: 'esm', outfile: out, logLevel: 'silent' });
-const { pricingResult, newPricingData, fixedCostsFromFinance, recurringFixedCosts, teamAverageRate, roundPrice, hourlyFromMonthly, monthlyFromHourly } = await import(out);
+const { pricingResult, newPricingData, fixedCostsFromFinance, recurringFixedCosts, teamAverageRate, roundPrice, hourlyFromMonthly, monthlyFromHourly, scopeOf, hasInteriores, packageData, packagesResult, chosenPrice } = await import(out);
 rmSync(dir, { recursive: true, force: true });
 
 function casa(over = {}) {
@@ -177,4 +177,39 @@ test('custo da pessoa por mês: R$ 500 ÷ 21 dias = R$ 23,81 por dia', () => {
   // 1 dia do estagiário na etapa custa um dia do mês dele, não o mês inteiro
   const r = pricingResult(casa({ fixed: [], stages: [{ id: '1', label: 'Levantamento', days: 1, assignee_id: 'g', rate: hourly }] }));
   assert.equal(r.labor, 23.81);
+});
+
+test('pacotes: Basic é só arquitetura, Premium soma interiores', () => {
+  assert.equal(scopeOf({ label: 'PI - Projeto de Interiores' }), 'interiores');
+  assert.equal(scopeOf({ label: 'PEI - Projeto Executivo de Interiores' }), 'interiores');
+  assert.equal(scopeOf({ label: 'VL - Visita em Lojas' }), 'interiores');
+  assert.equal(scopeOf({ label: 'EP - Estudo Preliminar' }), 'arquitetura');
+  assert.equal(scopeOf({ label: 'Pré-projeto', scope: 'interiores' }), 'interiores');
+  const p = casa({
+    fixed: [{ id: 'a', label: 'Aluguel', value: 2100, labor: false }],
+    stages: [
+      { id: '1', label: 'Estudo preliminar', days: 10 },
+      { id: '2', label: 'PI - Projeto de Interiores', days: 5 },
+    ],
+    extras: [
+      { id: 'v', label: 'Visitas', qty: 2, unit: 100 },
+      { id: 'l', label: 'Visita em lojas (combustível)', qty: 1, unit: 300, scope: 'interiores' },
+    ],
+    indirect: [], margin: 20, final_price: null,
+  });
+  assert.equal(hasInteriores(p.data), true);
+  // Escritório: 2.100 ÷ 21 = 100/dia. Basic: 10 dias + R$ 200 de visitas = 1.200 ÷ 0,8 = 1.500
+  const { basic, premium, interiores } = packagesResult(p);
+  assert.deepEqual([basic.days, basic.cost, basic.suggested], [10, 1200, 1500]);
+  // Premium: 15 dias + R$ 500 de adicionais = 2.000 ÷ 0,8 = 2.500; interiores somam 1.000
+  assert.deepEqual([premium.days, premium.cost, premium.suggested], [15, 2000, 2500]);
+  assert.deepEqual([interiores.suggested, interiores.days], [1000, 5]);
+  // Valor da proposta de cada pacote; o escolhido vai para a oportunidade
+  const withFinal = { ...p, data: { ...p.data, final_price: 2600, final_price_basic: 1600 } };
+  assert.equal(packageData(withFinal.data, 'basic').final_price, 1600);
+  assert.equal(chosenPrice(withFinal), 2600);
+  assert.equal(chosenPrice({ ...withFinal, data: { ...withFinal.data, package: 'basic' } }), 1600);
+  // Sem interiores: um preço só (o Premium é o próprio projeto)
+  assert.equal(hasInteriores(casa().data), false);
+  assert.equal(chosenPrice({ ...casa(), data: { ...casa().data, package: 'basic' } }), pricingResult(casa()).price);
 });

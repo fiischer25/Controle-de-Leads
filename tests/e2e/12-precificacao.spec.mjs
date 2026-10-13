@@ -68,7 +68,7 @@ export default async function ({ browser }) {
         await stages.getByRole('combobox', { name: /^Quem faz / }).nth(i).click();
         await page.getByRole('option', { name: who }).click();
       }
-      await stages.getByText('30 dias').waitFor();
+      await stages.getByText('30 dias').first().waitFor();
       // Custo da Ana por mês (R$ 85/h × 8 h × 21 dias) e total da etapa: 10 × R$ 680 (pessoa) + 10 × R$ 1.000 (escritório)
       eq(await stages.getByLabel(/^Custo por mês de quem faz /).first().inputValue(), '14.280,00', 'custo por mês da Ana');
       eq((await stages.locator('[data-stage-cost]').first().innerText()).replace(/\s/g, ' '), 'R$ 16.800,00', 'total da etapa da Ana');
@@ -194,6 +194,54 @@ export default async function ({ browser }) {
       await page.getByRole('option', { name: /^Carla Menezes · R\$\s142,86\/dia$/ }).click();
       eq(await stages.getByLabel(/^Custo por mês de quem faz /).first().inputValue(), '3.000,00', 'salário da Carla na etapa');
       ok((await stages.locator('[data-stage-split]').first().innerText()).replace(/\s/g, ' ').startsWith('Pessoa: 2 × R$ 142,86/dia = R$ 285,71'), 'custo dos 2 dias da Carla');
+    },
+    page,
+  );
+
+  await s.step(
+    'pacotes: Basic só com arquitetura, Premium com interiores, e o escolhido vai para a oportunidade',
+    async () => {
+      await page.goto(BASE + '/precificacao/nova');
+      await page.getByRole('textbox', { name: /^Nome/ }).first().fill('casa pacotes');
+      await page.getByLabel('Área da casa (m²)').fill('200');
+      await page.getByRole('combobox', { name: 'Tipo de projeto' }).click();
+      await page.getByRole('option', { name: 'Arquitetura e Interiores', exact: true }).click();
+      // Etapas separadas: interiores (PI, PEI, Visita em lojas) só no Premium
+      const arq = page.locator('[data-stage-group="arquitetura"]');
+      const int = page.locator('[data-stage-group="interiores"]');
+      const names = async (g) => g.getByLabel('Nome da etapa').evaluateAll((els) => els.map((e) => e.value));
+      ok((await names(int)).some((n) => /Projeto de Interiores/.test(n)) && (await names(int)).some((n) => /Visita em Lojas/.test(n)), `interiores: ${(await names(int)).join(', ')}`);
+      ok((await names(arq)).some((n) => /Estudo Preliminar/.test(n)) && !(await names(arq)).some((n) => /Interiores/.test(n)), `arquitetura: ${(await names(arq)).join(', ')}`);
+      // Mover uma etapa de grupo
+      const c3d = (await names(arq)).find((n) => /Concep/.test(n));
+      await arq.getByRole('button', { name: `Mover ${c3d} para interiores` }).click();
+      ok((await names(int)).includes(c3d), 'etapa movida para interiores');
+      // 5 dias de arquitetura e 3 de interiores, cada pessoa a R$ 2.100 por mês (R$ 100 por dia)
+      await arq.getByLabel(/^Dias de /).first().fill('5');
+      await arq.getByLabel(/^Custo por mês de quem faz /).first().fill('210000');
+      await int.getByLabel(/^Dias de /).first().fill('3');
+      await int.getByLabel(/^Custo por mês de quem faz /).first().fill('210000');
+      // Basic: 500 ÷ (1 − 11% − 20%) = 724,64 · Premium: 800 ÷ 0,69 = 1.159,42 · interiores somam 434,78
+      const box = page.locator('[data-packages]');
+      eq((await box.locator('[data-package="basic"] [data-package-price]').innerText()).replace(/\s/g, ' '), 'R$ 724,64', 'Basic');
+      eq((await box.locator('[data-package="premium"] [data-package-price]').innerText()).replace(/\s/g, ' '), 'R$ 1.159,42', 'Premium');
+      ok((await box.locator('[data-interiores-diff]').innerText()).replace(/\s/g, ' ').includes('R$ 434,78'), 'quanto os interiores somam');
+      // Adicional só do Premium
+      await page.getByRole('combobox', { name: 'Pacote de Visitas técnicas' }).click();
+      await page.getByRole('option', { name: 'Só Premium' }).click();
+      // O Basic vai para a oportunidade
+      const lead = (await ls(page, 'leads')).find((l) => l.name === 'Mariana Duarte');
+      await page.getByRole('combobox', { name: 'Oportunidade' }).click();
+      await page.getByRole('option', { name: lead.name, exact: true }).click();
+      await page.getByRole('radio', { name: 'Basic' }).click();
+      await page.locator('[data-lead-sync]').getByText(/\(Basic\)/).waitFor();
+      await page.getByRole('button', { name: 'Salvar precificação' }).click();
+      await page.waitForURL(/\/precificacao$/);
+      eq((await ls(page, 'leads')).find((l) => l.id === lead.id).proposal_value, 724.64, 'proposta do Basic na oportunidade');
+      const saved = (await ls(page, 'pricings')).find((p) => p.name === 'CASA PACOTES');
+      eq([saved.total, saved.data.package], [724.64, 'basic'], 'pacote salvo');
+      const row = page.locator('[data-pricing-row]', { hasText: 'CASA PACOTES' });
+      ok((await row.locator('[data-pricing-price]').innerText()).replace(/\s/g, ' ').includes('Basic R$ 725 · Premium R$ 1.159'), 'lista com os dois pacotes');
     },
     page,
   );

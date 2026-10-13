@@ -1,10 +1,15 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Calculator, Plus, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ArrowUpDown, Calculator, Plus, Trash2, X } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { MoneyInput } from '../components/finance/MoneyInput';
 import {
+  chosenPrice,
+  hasPackages,
+  packagesResult,
+  scopeForType,
+  scopeOf,
   DEFAULT_HOURS_PER_DAY,
   DEFAULT_WORK_DAYS,
   hourlyFromMonthly,
@@ -18,7 +23,7 @@ import {
   teamAverageRate,
   type PricingResult,
 } from '../lib/pricing';
-import type { Pricing, PricingData, PricingExtra, PricingFixedCost, PricingIndirect, PricingStage } from '../lib/types';
+import type { Pricing, PricingData, PricingExtra, PricingFixedCost, PricingIndirect, PricingPackage, PricingScope, PricingStage } from '../lib/types';
 import { phaseKey, stageHistory, type StageHistory } from '../lib/plannedActual';
 import { byPosition, cn, formatCurrency, formatDate, formatMoney, formatNumber, nowIso, suggestProjectName, today, uid } from '../lib/utils';
 import { ActionLink, BackLink, Button, ConfirmDialog, EmptyState, Field, IconButton, Input, PageHeader, SectionHeader, Select, Textarea } from '../components/ui';
@@ -73,7 +78,9 @@ function PricingList() {
             {list.map((p) => {
               const r = pricingResult(p);
               const lead = p.lead_id ? maps.leads[p.lead_id] : null;
-              const synced = lead && r.price != null && lead.proposal_value === r.price;
+              const both = hasPackages(p.data) ? packagesResult(p) : null;
+              const price = chosenPrice(p);
+              const synced = lead && price != null && lead.proposal_value === price;
               return (
                 <li key={p.id}>
                   <Link
@@ -105,7 +112,14 @@ function PricingList() {
                       </span>
                       <span className="md:text-right">{r.perM2 != null ? `${formatMoney(r.perM2)}/m²` : '—'}</span>
                     </div>
-                    <div className="font-display text-[16px] font-semibold tabular text-ink md:text-right">{r.price != null ? formatCurrency(r.price) : '—'}</div>
+                    <div className="md:text-right" data-pricing-price>
+                      <div className="font-display text-[16px] font-semibold tabular text-ink">{price != null ? formatCurrency(price) : '—'}</div>
+                      {both && (
+                        <div className="whitespace-nowrap text-[11.5px] tabular text-faint">
+                          Basic {both.basic.price != null ? formatCurrency(both.basic.price) : '—'} · Premium {both.premium.price != null ? formatCurrency(both.premium.price) : '—'}
+                        </div>
+                      )}
+                    </div>
                     <div className="text-[12px] text-faint md:text-right">{formatDate(p.updated_at.slice(0, 10))}</div>
                   </Link>
                 </li>
@@ -225,21 +239,36 @@ function PricingEditor({ id }: { id: string }) {
     setDirty(true);
   };
 
-  const newStage = (label = ''): PricingStage => ({ id: uid(), label, days: 0, assignee_id: null, rate: teamRate });
-  const applyTypeStages = (typeId: string) => setData({ stages: typePhases(typeId).map((label) => newStage(label)) });
+  const typeName = (typeId: string | null) => (typeId ? maps.types[typeId]?.name : null);
+  const newStage = (label = '', scope?: PricingScope): PricingStage => ({
+    id: uid(),
+    label,
+    days: 0,
+    assignee_id: null,
+    rate: teamRate,
+    scope: scope ?? scopeForType(label, typeName(draft.project_type_id)),
+  });
+  // Etapas do tipo: Interiores-só vira interiores; Arquitetura-só, arquitetura; os dois, pelo nome da etapa
+  const applyTypeStages = (typeId: string) =>
+    setData({ stages: typePhases(typeId).map((label) => newStage(label, scopeForType(label, typeName(typeId)))) });
+  const pk = packagesResult(draft);
+  const showPk = hasPackages(draft.data);
+  const pkg = draft.data.package ?? 'premium';
+  // Valor que vai para a proposta e para a lista: o do pacote escolhido (Basic ou Premium)
+  const chosen = chosenPrice(draft);
   const pullFinance = () => setData({ fixed: finance.rows.map(([label, value, labor]) => ({ id: uid(), label, value, labor })) });
 
   const openLeads = db.leads.filter((l) => db.lead_stages.find((s) => s.id === l.stage_id)?.kind === 'open' || l.id === draft.lead_id);
 
   const lead = draft.lead_id ? maps.leads[draft.lead_id] : null;
   // O valor da proposta vai para a oportunidade vinculada ao salvar
-  const syncLead = can('comercial') && !!lead && r.price != null && r.price > 0;
+  const syncLead = can('comercial') && !!lead && chosen != null && chosen > 0;
 
   const save = async () => {
     if (!draft.name.trim()) return toast.error('Dê um nome para a precificação (ex.: CASA B.F.).');
     setBusy(true);
     try {
-      const row: Pricing = { ...draft, name: draft.name.trim(), total: r.price ?? 0, updated_at: nowIso() };
+      const row: Pricing = { ...draft, name: draft.name.trim(), total: chosen ?? 0, updated_at: nowIso() };
       if (saved) await patch('pricings', draft.id, row);
       else await insertRows('pricings', [row]);
       try {
@@ -262,10 +291,10 @@ function PricingEditor({ id }: { id: string }) {
         }
       }
       let leadNote = '';
-      if (syncLead && lead && lead.proposal_value !== r.price) {
+      if (syncLead && lead && lead.proposal_value !== chosen) {
         try {
-          await updateLead(lead.id, { proposal_value: r.price });
-          leadNote = ` Proposta de ${lead.name}: ${formatMoney(r.price!)}.`;
+          await updateLead(lead.id, { proposal_value: chosen });
+          leadNote = ` Proposta de ${lead.name}: ${formatMoney(chosen!)}${showPk ? ` (${pkg === 'basic' ? 'Basic' : 'Premium'})` : ''}.`;
         } catch (e) {
           toast.error(`A precificação foi salva, mas o valor não foi para a oportunidade: ${e instanceof Error ? e.message : e}`);
         }
@@ -378,11 +407,26 @@ function PricingEditor({ id }: { id: string }) {
               </span>
             }
           >
+            {(['arquitetura', 'interiores'] as const).map((scope) => {
+              const items = draft.data.stages.filter((x) => scopeOf(x) === scope);
+              const others = draft.data.stages.filter((x) => scopeOf(x) !== scope);
+              const groupDays = items.reduce((a, x) => a + (x.days || 0), 0);
+              return (
+                <div key={scope} className={cn(scope === 'interiores' && 'mt-6 border-t border-hairline-surface pt-5')} data-stage-group={scope}>
+                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <h3 className="text-[14px] font-semibold text-ink">
+                      {scope === 'arquitetura' ? 'Arquitetura' : 'Interiores'}{' '}
+                      <span className="text-[12.5px] font-normal text-faint">{scope === 'arquitetura' ? 'pacote Basic (e Premium)' : 'só no pacote Premium'}</span>
+                    </h3>
+                    <span className="text-[12.5px] tabular text-muted">
+                      {groupDays} {groupDays === 1 ? 'dia' : 'dias'}
+                    </span>
+                  </div>
             <Rows
-              items={draft.data.stages}
-              onChange={(stages) => setData({ stages })}
-              make={() => newStage()}
-              addLabel="Etapa"
+              items={items}
+              onChange={(next) => setData({ stages: scope === 'arquitetura' ? [...next, ...others] : [...others, ...next] })}
+              make={() => newStage('', scope)}
+              addLabel={scope === 'arquitetura' ? 'Etapa de arquitetura' : 'Etapa de interiores'}
               head={['Etapa', 'Quem faz', 'Dias', 'Custo por mês', 'Total']}
               cols="grid-cols-[52px_minmax(0,1fr)_auto_28px] sm:grid-cols-[minmax(0,1fr)_150px_56px_120px_104px_28px]"
               render={(s: PricingStage, upd) => {
@@ -396,13 +440,22 @@ function PricingEditor({ id }: { id: string }) {
                 const personDay = s.rate && s.rate > 0 ? s.rate * r.hoursPerDay : 0;
                 return (
                   <>
-                    <Input
-                      value={s.label}
-                      className="col-span-4 sm:col-span-1"
-                      aria-label="Nome da etapa"
-                      placeholder="Nome da etapa"
-                      onChange={(e) => upd({ label: e.target.value })}
-                    />
+                    <div className="col-span-4 flex min-w-0 items-center gap-1 sm:col-span-1">
+                      <Input
+                        value={s.label}
+                        className="min-w-0 flex-1"
+                        aria-label="Nome da etapa"
+                        placeholder="Nome da etapa"
+                        onChange={(e) => upd({ label: e.target.value })}
+                      />
+                      <IconButton
+                        size="xs"
+                        label={scope === 'arquitetura' ? `Mover ${s.label || 'a etapa'} para interiores` : `Mover ${s.label || 'a etapa'} para arquitetura`}
+                        onClick={() => upd({ scope: scope === 'arquitetura' ? 'interiores' : 'arquitetura' })}
+                      >
+                        <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.8} />
+                      </IconButton>
+                    </div>
                     <Select
                       value={s.assignee_id ?? ''}
                       aria-label={`Quem faz ${s.label || 'a etapa'}`}
@@ -448,6 +501,9 @@ function PricingEditor({ id }: { id: string }) {
                 );
               }}
             />
+                </div>
+              );
+            })}
             <StageHistoryHint
               stages={draft.data.stages}
               history={history}
@@ -617,13 +673,28 @@ function PricingEditor({ id }: { id: string }) {
             <Rows
               items={draft.data.extras}
               onChange={(extras) => setData({ extras })}
-              make={() => ({ id: uid(), label: '', qty: 1, unit: 0 })}
+              make={(): PricingExtra => ({ id: uid(), label: '', qty: 1, unit: 0, scope: 'arquitetura' })}
               addLabel="Adicional"
-              head={['Item', 'Qtd.', 'Valor unitário', 'Subtotal']}
-              cols="grid-cols-[64px_minmax(0,1fr)_auto_28px] sm:grid-cols-[minmax(0,1fr)_72px_140px_100px_28px]"
+              head={showPk ? ['Item', 'Pacote', 'Qtd.', 'Valor unitário', 'Subtotal'] : ['Item', 'Qtd.', 'Valor unitário', 'Subtotal']}
+              cols={
+                showPk
+                  ? 'grid-cols-[64px_minmax(0,1fr)_auto_28px] sm:grid-cols-[minmax(0,1fr)_150px_64px_130px_96px_28px]'
+                  : 'grid-cols-[64px_minmax(0,1fr)_auto_28px] sm:grid-cols-[minmax(0,1fr)_72px_140px_100px_28px]'
+              }
               render={(x: PricingExtra, upd) => (
                 <>
                   <Input value={x.label} className="col-span-4 sm:col-span-1" aria-label="Nome do adicional" placeholder="Ex.: visitas técnicas" onChange={(e) => upd({ label: e.target.value })} />
+                  {showPk && (
+                    <Select
+                      value={x.scope ?? 'arquitetura'}
+                      className="col-span-4 sm:col-span-1"
+                      aria-label={`Pacote de ${x.label || 'adicional'}`}
+                      onChange={(e) => upd({ scope: e.target.value as PricingScope })}
+                    >
+                      <option value="arquitetura">Basic e Premium</option>
+                      <option value="interiores">Só Premium</option>
+                    </Select>
+                  )}
                   <NumberInput value={x.qty} label={`Quantidade de ${x.label || 'adicional'}`} onChange={(qty) => upd({ qty })} />
                   <MoneyInput value={x.unit} aria-label={`Valor unitário de ${x.label || 'adicional'}`} onChange={(v) => upd({ unit: v ?? 0 })} />
                   <span className="text-right text-[13px] tabular text-ink">{formatMoney(x.qty * x.unit)}</span>
@@ -648,7 +719,16 @@ function PricingEditor({ id }: { id: string }) {
           </Section>
         </div>
 
-        <Summary pricing={draft} r={r} onFinal={(final_price) => setData({ final_price })} leadName={syncLead ? lead?.name : undefined} />
+        <Summary
+          pricing={draft}
+          r={r}
+          pk={showPk ? pk : null}
+          chosen={chosen}
+          onFinal={(final_price) => setData({ final_price })}
+          onFinalBasic={(final_price_basic) => setData({ final_price_basic })}
+          onPackage={(p) => setData({ package: p })}
+          leadName={syncLead ? lead?.name : undefined}
+        />
       </div>
 
       {deleting && saved && (
@@ -720,15 +800,26 @@ function StageHistoryHint({
 function Summary({
   pricing,
   r,
+  pk,
+  chosen,
   onFinal,
+  onFinalBasic,
+  onPackage,
   leadName,
 }: {
   pricing: Pricing;
   r: PricingResult;
+  /** Pacotes Basic (só arquitetura) e Premium (tudo), quando há as duas partes. */
+  pk: ReturnType<typeof packagesResult> | null;
+  /** Valor do pacote que vai para a oportunidade. */
+  chosen: number | null;
   onFinal: (v: number | null) => void;
+  onFinalBasic: (v: number | null) => void;
+  onPackage: (p: PricingPackage) => void;
   /** Oportunidade que recebe o valor ao salvar. */
   leadName?: string;
 }) {
+  const pkg = pricing.data.package ?? 'premium';
   const price = r.price ?? 0;
   const parts = [
     { label: 'Equipe', value: r.labor, color: 'bg-stone-800' },
@@ -740,8 +831,39 @@ function Summary({
   const finalSet = pricing.data.final_price != null && pricing.data.final_price > 0;
   return (
     <aside className="space-y-4 lg:sticky lg:top-6" aria-label="Resumo da precificação">
+      {pk && (
+        <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card" data-packages>
+          <div className="text-[13.5px] font-semibold text-ink">Pacotes</div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {(
+              [
+                ['basic', 'Basic', 'só arquitetura', pk.basic],
+                ['premium', 'Premium', 'arquitetura + interiores', pk.premium],
+              ] as const
+            ).map(([id, label, sub, res]) => (
+              <div key={id} className={cn('rounded-[12px] border px-3 py-2.5', pkg === id ? 'border-ink' : 'border-line')} data-package={id}>
+                <div className="text-[12.5px] font-semibold text-ink">{label}</div>
+                <div className="text-[11.5px] text-faint">{sub}</div>
+                <div className="mt-1.5 font-display text-[18px] font-semibold leading-6 tabular text-ink" data-package-price>
+                  {res.price != null ? formatMoney(res.price) : '—'}
+                </div>
+                <div className="text-[11.5px] tabular text-muted">
+                  {res.days} {res.days === 1 ? 'dia' : 'dias'}
+                  {res.perM2 != null && ` · ${formatMoney(res.perM2)}/m²`}
+                </div>
+              </div>
+            ))}
+          </div>
+          {pk.interiores.price != null && (
+            <p className="mt-3 text-[12.5px] text-muted" data-interiores-diff>
+              Interiores somam <b className="font-semibold text-ink">{formatMoney(pk.interiores.price)}</b> ao Basic ({pk.interiores.days}{' '}
+              {pk.interiores.days === 1 ? 'dia' : 'dias'}).
+            </p>
+          )}
+        </div>
+      )}
       <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card">
-        <div className="text-[12.5px] font-medium text-muted">Preço sugerido pelos dias</div>
+        <div className="text-[12.5px] font-medium text-muted">{pk ? 'Premium pelos dias (arquitetura + interiores)' : 'Preço sugerido pelos dias'}</div>
         <div className="mt-1 font-display text-[30px] font-semibold leading-9 tabular text-ink" data-suggested>
           {r.suggested != null ? formatMoney(r.suggested) : '—'}
         </div>
@@ -819,7 +941,29 @@ function Summary({
       </div>
 
       <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card">
-        <Field label="Valor da proposta" hint={finalSet ? 'O lucro e o m² acima já consideram este valor.' : 'Vazio: usa o preço sugerido.'}>
+        {pk && (
+          <div className="mb-4 border-b border-hairline-surface pb-4">
+            <Field label="Proposta do Basic (só arquitetura)" hint={pricing.data.final_price_basic ? undefined : 'Vazio: usa o preço sugerido do Basic.'}>
+              <MoneyInput value={pricing.data.final_price_basic ?? null} aria-label="Proposta do Basic" onChange={(v) => onFinalBasic(v && v > 0 ? v : null)} />
+            </Field>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {pk.basic.suggested != null && (
+                <ActionLink onClick={() => onFinalBasic(roundPrice(pk.basic.suggested!))} muted>
+                  Basic: arredondar ({formatMoney(roundPrice(pk.basic.suggested))})
+                </ActionLink>
+              )}
+              {!!pricing.data.final_price_basic && (
+                <ActionLink onClick={() => onFinalBasic(null)} muted>
+                  Basic: usar o sugerido
+                </ActionLink>
+              )}
+            </div>
+          </div>
+        )}
+        <Field
+          label={pk ? 'Valor da proposta do Premium' : 'Valor da proposta'}
+          hint={finalSet ? 'O lucro e o m² acima já consideram este valor.' : 'Vazio: usa o preço sugerido.'}
+        >
           <MoneyInput value={pricing.data.final_price} aria-label="Valor da proposta" onChange={(v) => onFinal(v && v > 0 ? v : null)} />
         </Field>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
@@ -834,10 +978,34 @@ function Summary({
             </ActionLink>
           )}
         </div>
-        {leadName && r.price != null && (
+        {pk && (
+          <div className="mt-4">
+            <div className="label">Pacote da proposta</div>
+            <div role="radiogroup" aria-label="Pacote da proposta" className="mt-1 inline-flex gap-0.5 rounded-md bg-stone-100 p-[3px]">
+              {(
+                [
+                  ['basic', 'Basic'],
+                  ['premium', 'Premium'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={pkg === id}
+                  onClick={() => onPackage(id)}
+                  className={cn('rounded-[5px] px-3 py-1 text-[13px] transition-colors', pkg === id ? 'bg-surface font-medium text-ink shadow-sm' : 'text-muted hover:text-ink')}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {leadName && chosen != null && (
           <p className="mt-4 rounded-[10px] bg-canvas px-3 py-2 text-[12.5px] text-muted" data-lead-sync>
-            Ao salvar, <b className="font-semibold text-ink">{formatMoney(r.price)}</b> vai como valor da proposta de{' '}
-            <b className="font-semibold text-ink">{leadName}</b>.
+            Ao salvar, <b className="font-semibold text-ink">{formatMoney(chosen)}</b>
+            {pk ? ` (${pkg === 'basic' ? 'Basic' : 'Premium'})` : ''} vai como valor da proposta de <b className="font-semibold text-ink">{leadName}</b>.
           </p>
         )}
       </div>

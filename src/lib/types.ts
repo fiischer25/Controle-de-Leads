@@ -396,7 +396,12 @@ export interface PricingStage {
   assignee_id?: string | null;
   /** Custo/hora usado na etapa (da pessoa, ou a média da equipe), guardado ao escolher. */
   rate?: number | null;
+  /** Arquitetura (entra no Basic e no Premium) ou Interiores (só no Premium). Sem valor: pelo nome. */
+  scope?: PricingScope;
 }
+/** Parte do projeto: o pacote Basic é só arquitetura; o Premium soma arquitetura e interiores. */
+export type PricingScope = 'arquitetura' | 'interiores';
+export type PricingPackage = 'basic' | 'premium';
 /** Custo fixo mensal do escritório (aluguel, salários, softwares…). */
 export interface PricingFixedCost {
   id: string;
@@ -418,6 +423,8 @@ export interface PricingExtra {
   label: string;
   qty: number;
   unit: number;
+  /** Arquitetura: entra nos dois pacotes; Interiores: só no Premium. */
+  scope?: PricingScope;
 }
 export interface PricingData {
   stages: PricingStage[];
@@ -437,6 +444,10 @@ export interface PricingData {
   notes: string;
   /** Projeto que segue esta precificação (previsto × realizado). Sem ele, vale a da oportunidade. */
   project_id?: string | null;
+  /** Valor da proposta do pacote Basic (só arquitetura); `final_price` é o do Premium (tudo). */
+  final_price_basic?: number | null;
+  /** Pacote que vai para a oportunidade (padrão: Premium). */
+  package?: PricingPackage;
 }
 /** Precificação de um projeto: pelos dias de trabalho, comparada com o m². */
 export interface Pricing {

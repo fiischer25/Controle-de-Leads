@@ -11,7 +11,7 @@
 // e o lucro é a % do preço que sobra depois de tudo.
 // Funções puras (sem React nem banco).
 
-import type { Pricing, PricingData, PricingExtra, PricingFixedCost, PricingIndirect, PricingStage } from './types';
+import type { Pricing, PricingData, PricingExtra, PricingFixedCost, PricingIndirect, PricingPackage, PricingScope, PricingStage } from './types';
 import { uid } from './utils';
 
 const cents = (v: number) => Math.round(v * 100) / 100;
@@ -121,6 +121,60 @@ export const hourlyFromMonthly = (monthly: number, workDays = DEFAULT_WORK_DAYS,
   workDays > 0 && hoursPerDay > 0 ? monthly / (workDays * hoursPerDay) : 0;
 export const monthlyFromHourly = (hourly: number, workDays = DEFAULT_WORK_DAYS, hoursPerDay = DEFAULT_HOURS_PER_DAY) =>
   Math.round(hourly * workDays * hoursPerDay * 100) / 100;
+
+// ---------------------------------------------------------------- pacotes Basic e Premium
+/** Etapa de interiores pelo nome (PI, PEI, Visita em lojas, "interiores"…). */
+const INTERIORES = /interior|visita em lojas|marcenaria|mobili[aá]rio|decora[cç]|^\s*(pi|pei|vl)\s*[-–—:]/i;
+
+/** Arquitetura (Basic e Premium) ou Interiores (só Premium): marcado na linha ou, sem marca, pelo nome. */
+export function scopeOf(item: { label: string; scope?: PricingScope }): PricingScope {
+  return item.scope ?? (INTERIORES.test(item.label) ? 'interiores' : 'arquitetura');
+}
+
+/** A precificação tem parte de interiores? */
+export const hasInteriores = (d: Pick<PricingData, 'stages' | 'extras'>) =>
+  d.stages.some((s) => scopeOf(s) === 'interiores') || d.extras.some((x) => (x.scope ?? 'arquitetura') === 'interiores');
+
+/** Tem arquitetura e interiores: mostra os dois pacotes (Basic e Premium). */
+export const hasPackages = (d: Pick<PricingData, 'stages' | 'extras'>) => d.stages.some((s) => scopeOf(s) === 'arquitetura') && hasInteriores(d);
+
+/** Parte de uma etapa nova pelo tipo de projeto: só Interiores, só Arquitetura ou, nos dois, pelo nome. */
+export function scopeForType(label: string, typeName: string | null | undefined): PricingScope {
+  const t = (typeName ?? '').toLowerCase();
+  const arq = /arquitet/.test(t);
+  const int = /interior/.test(t);
+  if (int && !arq) return 'interiores';
+  if (arq && !int) return 'arquitetura';
+  return scopeOf({ label });
+}
+
+/**
+ * Dados de um pacote: Basic = só arquitetura (etapas e adicionais de arquitetura, com o valor de
+ * proposta do Basic); Premium = tudo (arquitetura + interiores).
+ */
+export function packageData(d: PricingData, pkg: PricingPackage): PricingData {
+  if (pkg === 'premium') return d;
+  return {
+    ...d,
+    stages: d.stages.filter((s) => scopeOf(s) === 'arquitetura'),
+    extras: d.extras.filter((x) => (x.scope ?? 'arquitetura') === 'arquitetura'),
+    final_price: d.final_price_basic ?? null,
+  };
+}
+
+/** Resultado de cada pacote; `interiores` = quanto o Premium soma ao Basic. */
+export function packagesResult(p: Pick<Pricing, 'area_m2' | 'data'>) {
+  const basic = pricingResult({ area_m2: p.area_m2, data: packageData(p.data, 'basic') });
+  const premium = pricingResult(p);
+  const diff = (a: number | null, b: number | null) => (a != null && b != null ? cents(a - b) : null);
+  return { basic, premium, interiores: { suggested: diff(premium.suggested, basic.suggested), price: diff(premium.price, basic.price), days: premium.days - basic.days } };
+}
+
+/** Valor do pacote escolhido para a proposta (o que vai para a oportunidade e para a lista). */
+export function chosenPrice(p: Pick<Pricing, 'area_m2' | 'data'>): number | null {
+  if (!hasPackages(p.data) || (p.data.package ?? 'premium') === 'premium') return pricingResult(p).price;
+  return pricingResult({ area_m2: p.area_m2, data: packageData(p.data, 'basic') }).price;
+}
 
 /** Arredonda para a centena de reais mais próxima (valor de proposta). */
 export const roundPrice = (v: number) => Math.round(v / 100) * 100;
