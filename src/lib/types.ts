@@ -191,7 +191,8 @@ export interface Project {
   updated_at: string;
 }
 
-export type TaskStatus = 'todo' | 'doing' | 'review' | 'paused' | 'done';
+/** meeting = reunião agendada com o cliente (migração 20261023000000). */
+export type TaskStatus = 'todo' | 'doing' | 'meeting' | 'review' | 'paused' | 'done';
 export type TaskPriority = 'baixa' | 'media' | 'alta' | 'urgente';
 
 export interface ChecklistItem {

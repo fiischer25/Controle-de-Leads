@@ -31,7 +31,7 @@ export function projectFacts(s: ProjectSummary, profiles: Record<string, Profile
   const person = (id: string | null) => (id ? (profiles[id] ?? null) : null);
   const alerts = active
     ? dated
-        .filter((t) => (t.status === 'doing' || t.status === 'review') && diffDays(today, t.due_date!) <= TASK_ALERT_DAYS)
+        .filter((t) => (t.status === 'doing' || t.status === 'meeting' || t.status === 'review') && diffDays(today, t.due_date!) <= TASK_ALERT_DAYS)
         .map((t) => ({ task: t, assignee: person(t.assignee_id), days: diffDays(today, t.due_date!) }))
     : [];
   return {

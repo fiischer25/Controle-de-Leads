@@ -13,7 +13,7 @@ export const PROJECT_STATUS: Record<ProjectStatus, { label: string; dot: string;
 export const PROJECT_STATUS_ORDER: ProjectStatus[] = ['nao_iniciado', 'em_andamento', 'obra', 'pausado', 'concluido', 'cancelado'];
 
 export const TASK_STATUS: Record<TaskStatus, { label: string; dot: string; badge: string }> = TASK_STATUS_STYLE;
-export const TASK_STATUS_ORDER: TaskStatus[] = ['todo', 'doing', 'review', 'paused', 'done'];
+export const TASK_STATUS_ORDER: TaskStatus[] = ['todo', 'doing', 'meeting', 'review', 'paused', 'done'];
 
 export const TASK_PRIORITY: Record<TaskPriority, { label: string; className: string; weight: number }> = {
   baixa: { label: 'Baixa', className: PRIORITY_STYLE.baixa.text, weight: 0 },

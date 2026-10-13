@@ -57,7 +57,7 @@ interface Task {
   phase: string | null;
   title: string;
   assignee_id: string | null;
-  status: 'todo' | 'doing' | 'review' | 'paused' | 'done';
+  status: 'todo' | 'doing' | 'meeting' | 'review' | 'paused' | 'done';
   priority: 'baixa' | 'media' | 'alta' | 'urgente';
   start_date: string | null;
   due_date: string | null;
@@ -119,12 +119,13 @@ class ToolError extends Error {}
 const STATUS_LABEL: Record<Task['status'], string> = {
   todo: 'a fazer',
   doing: 'em andamento',
+  meeting: 'reunião agendada',
   review: 'em revisão',
   paused: 'pausada',
   done: 'concluída',
 };
 const PRIORITIES = ['baixa', 'media', 'alta', 'urgente'] as const;
-const STATUSES = ['todo', 'doing', 'review', 'paused', 'done'] as const;
+const STATUSES = ['todo', 'doing', 'meeting', 'review', 'paused', 'done'] as const;
 
 const uuid = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
@@ -237,7 +238,7 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
       type: 'object',
       properties: {
         task_id: { type: 'string' },
-        status: { type: 'string', enum: [...STATUSES], description: 'todo, doing, review, paused ou done (concluída).' },
+        status: { type: 'string', enum: [...STATUSES], description: 'todo, doing, meeting (reunião agendada), review, paused ou done (concluída).' },
         assignee_id: { type: 'string', description: 'Novo responsável.' },
         due_date: { type: 'string', description: 'Novo prazo AAAA-MM-DD.' },
         start_date: { type: 'string' },

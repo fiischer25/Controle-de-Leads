@@ -79,6 +79,7 @@ export interface StatusStyle {
 export const TASK_STATUS_STYLE: Record<TaskStatus, StatusStyle> = {
   todo: { label: 'A fazer', tone: 'neutral', badge: TONE_BADGE.neutral, dot: 'border border-stone-500 bg-transparent', color: CSS_COLOR.stone(400) },
   doing: { label: 'Em andamento', tone: 'info', badge: TONE_BADGE.info, dot: TONE_DOT.info, color: CSS_COLOR.info },
+  meeting: { label: 'Reunião agendada', tone: 'warning', badge: TONE_BADGE.warning, dot: TONE_DOT.warning, color: CSS_COLOR.warning },
   review: { label: 'Em revisão', tone: 'brand', badge: TONE_BADGE.brand, dot: TONE_DOT.brand, color: CSS_COLOR.brand(500) },
   paused: { label: 'Pausada', tone: 'neutral', badge: TONE_BADGE.neutral, dot: 'bg-stone-400', icon: 'pause', color: CSS_COLOR.stone(500) },
   done: { label: 'Concluída', tone: 'success', badge: TONE_BADGE.success, dot: TONE_DOT.success, icon: 'check', color: CSS_COLOR.success },

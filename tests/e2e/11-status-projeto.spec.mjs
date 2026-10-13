@@ -109,6 +109,20 @@ export default async function ({ browser }) {
   );
 
   await s.step(
+    'status de tarefa "Reunião agendada"',
+    async () => {
+      const first = page.getByRole('button', { name: /^Status de / }).first();
+      const title = (await ls(page, 'tasks')).find((t) => t.project_id === pid && t.status === 'doing').title;
+      await first.click();
+      await page.getByRole('button', { name: 'Reunião agendada', exact: true }).click();
+      await page.getByRole('button', { name: `Status de ${title}: Reunião agendada` }).waitFor();
+      eq((await ls(page, 'tasks')).find((t) => t.project_id === pid && t.title === title).status, 'meeting', 'status salvo');
+      eq((await project()).status, 'em_andamento', 'reunião agendada conta como em andamento');
+    },
+    page,
+  );
+
+  await s.step(
     'Obra definida à mão fica, mesmo com as tarefas mudando; "Automático" volta a seguir as tarefas',
     async () => {
       await pickStatus('Obra');
@@ -136,7 +150,7 @@ export default async function ({ browser }) {
       await last.scrollIntoViewIfNeeded();
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       await last.click();
-      const options = ['A fazer', 'Em andamento', 'Em revisão', 'Pausada', 'Concluída'];
+      const options = ['A fazer', 'Em andamento', 'Reunião agendada', 'Em revisão', 'Pausada', 'Concluída'];
       for (const o of options) {
         const b = await page.getByRole('button', { name: o, exact: true }).last().boundingBox();
         ok(b && b.y >= 0 && b.y + b.height <= 700, `opção "${o}" fora da tela (${b && Math.round(b.y)})`);
