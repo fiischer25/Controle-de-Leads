@@ -1,7 +1,7 @@
 // Gestão → Precificação: custos fixos puxados do Financeiro (despesas mensais), preço pelos dias
 // (custo do dia do escritório + custo/hora de quem faz cada etapa), adicionais, indiretos em % e
 // lucro; R$/m² e comparação com o m²; valor arredondado; salvar na lista e na oportunidade.
-import { BASE, eq, ls, ok, openApp, setupAdmin, spec } from './lib.mjs';
+import { BASE, eq, ls, ok, openApp, patchTable, setupAdmin, spec } from './lib.mjs';
 
 export default async function ({ browser }) {
   const s = spec('precificacao');
@@ -69,7 +69,9 @@ export default async function ({ browser }) {
         await page.getByRole('option', { name: who }).click();
       }
       await stages.getByText('30 dias').waitFor();
-      eq((await stages.locator('[data-stage-cost]').first().innerText()).replace(/\s/g, ' '), 'R$ 6.800,00', 'Ana: 10 × 8 h × R$ 85');
+      // Custo por dia da Ana (R$ 85/h × 8 h) e total da etapa: 10 × R$ 680 + 10 × R$ 1.000 do escritório
+      eq(await stages.getByLabel(/^Custo por dia de /).first().inputValue(), '680,00', 'custo por dia da Ana');
+      eq((await stages.locator('[data-stage-cost]').first().innerText()).replace(/\s/g, ' '), 'R$ 16.800,00', 'total da etapa da Ana');
       // 6.800 + 4.480 + 5.760
       await stages.locator('[data-labor]').getByText('R$ 17.040,00').waitFor();
       // Adicionais: 4 visitas de R$ 150 e terceirização de R$ 5.000
@@ -130,6 +132,33 @@ export default async function ({ browser }) {
       eq(await page.getByLabel('Área da casa (m²)').inputValue(), '250', 'área da oportunidade');
       eq(await page.getByRole('textbox', { name: /^Cliente/ }).inputValue(), 'Rodrigo Tavares', 'cliente da oportunidade');
       ok((await page.getByRole('combobox', { name: 'Oportunidade' }).innerText()).includes('Rodrigo Tavares'), 'oportunidade vinculada');
+    },
+    page,
+  );
+
+  await s.step(
+    'sem custo cadastrado: digitar o custo por dia na etapa, e ele vai para o cadastro da pessoa',
+    async () => {
+      await patchTable(page, 'finance_member_costs', 'return [];');
+      await patchTable(page, 'finance_entries', 'return [];');
+      // Primeira precificação do escritório: nada para copiar de uma anterior
+      await patchTable(page, 'pricings', 'return [];');
+      await page.goto(BASE + '/precificacao/nova');
+      await page.getByRole('textbox', { name: /^Nome/ }).first().fill('casa custo');
+      const stages = page.getByRole('region', { name: /Etapas e dias/ });
+      await stages.getByLabel(/^Dias de /).first().fill('4');
+      // Sem custo nenhum: aviso na etapa e no resumo, em vez de valores em branco
+      await stages.locator('[data-stage-cost-missing]').waitFor();
+      await page.locator('[data-price-zero]').getByText(/Falta custo/).waitFor();
+      await stages.getByRole('combobox', { name: /^Quem faz / }).first().click();
+      await page.getByRole('option', { name: /^Bruno Carvalho · sem custo cadastrado$/ }).click();
+      await stages.getByLabel(/^Custo por dia de /).first().fill('50000');
+      eq((await stages.locator('[data-stage-cost]').first().innerText()).replace(/\s/g, ' '), 'R$ 2.000,00', '4 dias × R$ 500');
+      ok(!(await page.locator('[data-price-zero]').count()), 'preço continua zerado');
+      await page.getByRole('button', { name: 'Salvar precificação' }).click();
+      await page.waitForURL(/\/precificacao$/);
+      const bruno = (await ls(page, 'profiles')).find((p) => p.name === 'Bruno Carvalho');
+      eq((await ls(page, 'finance_member_costs')).find((c) => c.user_id === bruno.id)?.hourly_cost, 62.5, 'custo do Bruno salvo (R$ 500 ÷ 8 h)');
     },
     page,
   );
