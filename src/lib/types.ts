@@ -402,6 +402,8 @@ export interface PricingFixedCost {
   id: string;
   label: string;
   value: number;
+  /** Salário / pró-labore: sai do custo do dia quando a equipe entra pelo custo de cada pessoa nas etapas. */
+  labor?: boolean;
 }
 /** Custo indireto: % sobre o preço (impostos, taxas) ou valor fixo no projeto. */
 export interface PricingIndirect {

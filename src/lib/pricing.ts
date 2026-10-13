@@ -1,7 +1,10 @@
 // Precificação de projeto pelos dias de trabalho, comparada com o preço por m².
 //
 // Custo do dia do escritório = custos fixos mensais ÷ dias úteis do mês.
-// Custo da equipe = Σ etapas (dias × horas por dia × custo/hora de quem faz a etapa).
+// Custo da equipe = Σ etapas (dias × custo por dia de quem faz a etapa; custo por dia = custo/hora
+//                   × horas por dia).
+// Sem duplicidade: quando a equipe entra pelo custo de cada pessoa, salários e pró-labore saem dos
+// custos fixos (o custo do dia fica só com aluguel, softwares, contador…).
 // Custo do projeto = dias × custo do dia + custo da equipe + adicionais (visitas, presentes,
 //                  terceirização…) + custos indiretos em R$.
 // Preço = custo ÷ (1 − (indiretos em % + lucro %)): impostos e taxas incidem sobre o preço,
@@ -16,7 +19,12 @@ const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0
 
 export interface PricingResult {
   days: number;
+  /** Custos fixos que entram no custo do dia (sem os salários, quando a equipe está nas etapas). */
   fixedMonthly: number;
+  /** Salários e pró-labore tirados dos custos fixos (já estão no custo da equipe). */
+  fixedExcluded: number;
+  /** Alguma etapa usa o custo de quem faz (custo/hora). */
+  usesTeam: boolean;
   /** Custo de um dia de trabalho do escritório. */
   dayCost: number;
   /** Dias × custo do dia do escritório. */
@@ -54,7 +62,9 @@ export interface PricingResult {
 export function pricingResult(p: Pick<Pricing, 'area_m2' | 'data'>): PricingResult {
   const d = p.data;
   const days = d.stages.reduce((a, s) => a + num(s.days), 0);
-  const fixedMonthly = cents(d.fixed.reduce((a, f) => a + num(f.value), 0));
+  const usesTeam = d.stages.some((s) => num(s.rate) > 0);
+  const fixedExcluded = usesTeam ? cents(d.fixed.filter(isLaborCost).reduce((a, f) => a + num(f.value), 0)) : 0;
+  const fixedMonthly = cents(d.fixed.reduce((a, f) => a + num(f.value), 0) - fixedExcluded);
   const dayCost = num(d.work_days) > 0 ? cents(fixedMonthly / d.work_days) : 0;
   const daysCost = cents(dayCost * days);
   const hoursPerDay = d.hours_per_day != null && d.hours_per_day > 0 ? d.hours_per_day : DEFAULT_HOURS_PER_DAY;
@@ -75,6 +85,8 @@ export function pricingResult(p: Pick<Pricing, 'area_m2' | 'data'>): PricingResu
   return {
     days,
     fixedMonthly,
+    fixedExcluded,
+    usesTeam,
     dayCost,
     daysCost,
     hoursPerDay,
@@ -108,7 +120,7 @@ const row = <T,>(r: Omit<T, 'id'>) => ({ id: uid(), ...r }) as T;
 
 /** Precificação nova com os padrões do escritório (custos fixos e referência podem vir prontos). */
 export function newPricingData(
-  opts: { stages?: string[]; fixed?: Array<[string, number]>; refM2?: number | null; teamRate?: number | null } = {},
+  opts: { stages?: string[]; fixed?: FixedRow[]; refM2?: number | null; teamRate?: number | null } = {},
 ): PricingData {
   return {
     stages: (opts.stages?.length ? opts.stages : DEFAULT_STAGES).map((label) =>
@@ -118,14 +130,14 @@ export function newPricingData(
       opts.fixed?.length
         ? opts.fixed
         : ([
-            ['Salários e pró-labore', 0],
-            ['Aluguel e condomínio', 0],
-            ['Softwares e assinaturas', 0],
-            ['Contabilidade', 0],
-            ['Energia, internet e telefone', 0],
-            ['Outros custos fixos', 0],
-          ] as Array<[string, number]>)
-    ).map(([label, value]) => row<PricingFixedCost>({ label, value })),
+            ['Salários e pró-labore', 0, true],
+            ['Aluguel e condomínio', 0, false],
+            ['Softwares e assinaturas', 0, false],
+            ['Contabilidade', 0, false],
+            ['Energia, internet e telefone', 0, false],
+            ['Outros custos fixos', 0, false],
+          ] as FixedRow[])
+    ).map(([label, value, labor]) => row<PricingFixedCost>({ label, value, labor: !!labor })),
     work_days: 21,
     hours_per_day: DEFAULT_HOURS_PER_DAY,
     indirect: [
@@ -149,7 +161,13 @@ export function newPricingData(
 /** Categorias de despesa que não são custo fixo de operação (fora da média mensal). */
 const NOT_FIXED = /distribui|reserva|investiment|emprést|emprest|financiament|imposto/i;
 /** Salários e pró-labore: entram pelo custo/hora de quem faz cada etapa, quando a equipe tem custo. */
-export const LABOR_COST = /salári|salari|pró-labore|pro-labore|pro labore|folha/i;
+export const LABOR_COST = /salári|salari|pró-labore|pro-labore|pro labore|folha|encargos|inss|fgts|13º|décimo terceiro|férias/i;
+
+/** Custo fixo é salário / pró-labore? Marcado na linha ou, em precificações antigas, pelo nome. */
+export const isLaborCost = (f: Pick<PricingFixedCost, 'label' | 'labor'>) => (f.labor != null ? f.labor : LABOR_COST.test(f.label));
+
+/** Linha de custo fixo vinda do Financeiro: nome, valor por mês e se é salário / pró-labore. */
+export type FixedRow = [label: string, value: number, labor: boolean];
 
 /** Custo/hora médio da equipe (pessoas com custo cadastrado). */
 export function teamAverageRate(costs: Array<{ hourly_cost: number }>): number | null {
@@ -180,32 +198,28 @@ const normDesc = (s: string) =>
  * Custos fixos cadastrados no Financeiro: as despesas que repetem todo mês (lançadas com
  * "Todo mês", ou a mesma despesa em pelo menos 2 dos últimos 3 meses), com o valor do mês atual
  * (ou o último lançado). Despesas de projeto, impostos (entram em % sobre o preço) e retiradas
- * ficam de fora; salários também, com `skipLabor` (o custo da equipe entra pelas etapas).
+ * ficam de fora. Salários e pró-labore vêm marcados (`labor`): saem do custo do dia quando a
+ * equipe entra pelo custo de cada pessoa nas etapas.
  */
-export function recurringFixedCosts(
-  entries: FinanceRow[],
-  categoryName: (id: string | null) => string,
-  today: string,
-  opts: { skipLabor?: boolean } = {},
-): Array<[string, number]> {
+export function recurringFixedCosts(entries: FinanceRow[], categoryName: (id: string | null) => string, today: string): FixedRow[] {
   const month = today.slice(0, 7);
   const [y, m] = today.split('-').map(Number);
   const back = (i: number) => new Date(Date.UTC(y, m - 1 - i, 1)).toISOString().slice(0, 7);
   const window = [back(0), back(1), back(2), back(3)];
-  const groups = new Map<string, { label: string; byMonth: Map<string, number>; series: boolean }>();
+  const groups = new Map<string, { label: string; byMonth: Map<string, number>; series: boolean; labor: boolean }>();
   for (const e of entries) {
     if (e.kind !== 'despesa' || e.project_id || !(e.amount > 0)) continue;
     const ym = e.due_date.slice(0, 7);
     if (!window.includes(ym)) continue;
     const cat = categoryName(e.category_id);
     if (NOT_FIXED.test(cat) || NOT_FIXED.test(e.description)) continue;
-    if (opts.skipLabor && (LABOR_COST.test(cat) || LABOR_COST.test(e.description))) continue;
+    const labor = LABOR_COST.test(cat) || LABOR_COST.test(e.description);
     const key = e.series_id ? `s:${e.series_id}` : `d:${normDesc(e.description)}|${e.category_id ?? ''}`;
-    const g = groups.get(key) ?? { label: e.description.trim(), byMonth: new Map<string, number>(), series: !!e.series_id };
+    const g = groups.get(key) ?? { label: e.description.trim(), byMonth: new Map<string, number>(), series: !!e.series_id, labor };
     g.byMonth.set(ym, (g.byMonth.get(ym) ?? 0) + e.amount);
     groups.set(key, g);
   }
-  const out = new Map<string, number>();
+  const out = new Map<string, { value: number; labor: boolean }>();
   for (const g of groups.values()) {
     // Repete todo mês: série mensal ainda ativa, ou presente em 2 dos últimos 3 meses fechados
     const closed = window.slice(1).filter((k) => g.byMonth.has(k)).length;
@@ -214,9 +228,10 @@ export function recurringFixedCosts(
     const latest = window.find((k) => g.byMonth.has(k))!;
     const value = g.byMonth.get(month) ?? g.byMonth.get(latest)!;
     const label = g.label.replace(/\s*\(?\d+\s*\/\s*\d+\)?\s*$/, '');
-    out.set(label, cents((out.get(label) ?? 0) + value));
+    const prev = out.get(label);
+    out.set(label, { value: cents((prev?.value ?? 0) + value), labor: (prev?.labor ?? false) || g.labor });
   }
-  return [...out.entries()].sort((a, b) => b[1] - a[1]);
+  return [...out.entries()].map(([label, o]): FixedRow => [label, o.value, o.labor]).sort((a, b) => b[1] - a[1]);
 }
 
 /**
@@ -228,8 +243,7 @@ export function fixedCostsFromFinance(
   categoryName: (id: string | null) => string,
   today: string,
   months = 3,
-  opts: { skipLabor?: boolean } = {},
-): Array<[string, number]> {
+): FixedRow[] {
   const [y, m] = today.split('-').map(Number);
   const keys = Array.from({ length: months }, (_, i) => {
     const d = new Date(Date.UTC(y, m - 2 - i, 1));
@@ -239,11 +253,11 @@ export function fixedCostsFromFinance(
   for (const e of entries) {
     if (e.kind !== 'despesa' || e.project_id || !keys.includes(e.due_date.slice(0, 7))) continue;
     const name = categoryName(e.category_id);
-    if (NOT_FIXED.test(name) || (opts.skipLabor && LABOR_COST.test(name))) continue;
+    if (NOT_FIXED.test(name)) continue;
     sums.set(name, (sums.get(name) ?? 0) + e.amount);
   }
   return [...sums.entries()]
-    .map(([name, total]) => [name, cents(total / months)] as [string, number])
+    .map(([name, total]): FixedRow => [name, cents(total / months), LABOR_COST.test(name)])
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1]);
 }

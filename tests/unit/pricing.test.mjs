@@ -90,7 +90,8 @@ test('custos fixos pela média do Financeiro (sem impostos nem distribuição de
     (id) => cat[id] ?? 'Sem categoria',
     '2026-10-12',
   );
-  assert.deepEqual(rows, [['Salários e pró-labore', 4000], ['Aluguel e condomínio', 3000]]);
+  // Salários vêm marcados: saem do custo do dia quando a equipe está nas etapas
+  assert.deepEqual(rows, [['Salários e pró-labore', 4000, true], ['Aluguel e condomínio', 3000, false]]);
 });
 
 test('custo de quem faz cada etapa: dias × horas por dia × custo/hora', () => {
@@ -136,13 +137,35 @@ test('custos fixos do Financeiro: despesas que repetem todo mês', () => {
   ];
   const name = (id) => cat[id] ?? 'Sem categoria';
   assert.deepEqual(recurringFixedCosts(entries, name, '2026-10-12'), [
-    ['Folha de pagamento', 18500],
-    ['Aluguel da sala', 3800],
-    ['Energia e internet', 495],
+    ['Folha de pagamento', 18500, true],
+    ['Aluguel da sala', 3800, false],
+    ['Energia e internet', 495, false],
   ]);
-  // Equipe com custo/hora: salários ficam de fora (entram pelas etapas)
-  assert.deepEqual(recurringFixedCosts(entries, name, '2026-10-12', { skipLabor: true }), [
-    ['Aluguel da sala', 3800],
-    ['Energia e internet', 495],
-  ]);
+});
+
+test('sem duplicidade: com a equipe nas etapas, salários saem do custo do dia', () => {
+  const fixed = [
+    { id: 'a', label: 'Folha de pagamento', value: 18500, labor: true },
+    { id: 'b', label: 'Pró-labore Matheus', value: 6000 }, // precificação antiga: reconhecido pelo nome
+    { id: 'c', label: 'Ana (arquiteta)', value: 5000, labor: true }, // marcado à mão
+    { id: 'd', label: 'Aluguel', value: 4200, labor: false },
+  ];
+  const withTeam = pricingResult(casa({ fixed, stages: [{ id: '1', label: 'Estudo', days: 10, assignee_id: 'ana', rate: 85 }] }));
+  // Só o aluguel no custo do dia: 4.200 ÷ 21 = 200; a Ana entra pelo custo dela: 10 × 8 h × 85
+  assert.deepEqual([withTeam.usesTeam, withTeam.fixedExcluded, withTeam.fixedMonthly, withTeam.dayCost], [true, 29500, 4200, 200]);
+  assert.equal(withTeam.labor, 6800);
+  assert.equal(withTeam.cost, 10 * 200 + 6800 + 5600);
+  // Sem custo da equipe nas etapas, os salários continuam no custo do dia
+  const noTeam = pricingResult(casa({ fixed, stages: [{ id: '1', label: 'Estudo', days: 10 }] }));
+  assert.deepEqual([noTeam.usesTeam, noTeam.fixedExcluded, noTeam.fixedMonthly], [false, 0, 33700]);
+  // Linha marcada como "não é salário" fica, mesmo com nome parecido
+  const unmarked = pricingResult(casa({ fixed: [{ id: 'x', label: 'Folha de pagamento', value: 1000, labor: false }], stages: [{ id: '1', label: 'E', days: 1, rate: 50 }] }));
+  assert.equal(unmarked.fixedMonthly, 1000);
+});
+
+test('precificação nova: linha padrão de salários já vem marcada', () => {
+  const d = newPricingData();
+  assert.deepEqual(d.fixed.filter((f) => f.labor).map((f) => f.label), ['Salários e pró-labore']);
+  const fromFinance = newPricingData({ fixed: [['Folha de pagamento', 18500, true], ['Aluguel', 3800, false]] });
+  assert.deepEqual(fromFinance.fixed.map((f) => [f.label, f.labor]), [['Folha de pagamento', true], ['Aluguel', false]]);
 });
