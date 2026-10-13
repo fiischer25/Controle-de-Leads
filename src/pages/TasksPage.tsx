@@ -117,12 +117,12 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
     for (const x of allOpen) {
       const b = dueBucket(x, t);
       if (b !== 'later') c[b]++;
-      if (x.status === 'doing' || x.status === 'review') c.doing++;
+      if (x.status === 'doing' || x.status === 'meeting' || x.status === 'review') c.doing++;
     }
     return c;
   }, [allOpen, t]);
   const visibleOpen = useMemo(
-    () => (!focus ? allOpen : allOpen.filter((x) => (focus === 'doing' ? x.status === 'doing' || x.status === 'review' : dueBucket(x, t) === focus))),
+    () => (!focus ? allOpen : allOpen.filter((x) => (focus === 'doing' ? x.status === 'doing' || x.status === 'meeting' || x.status === 'review' : dueBucket(x, t) === focus))),
     [allOpen, focus, t],
   );
   const groups = useMemo(() => {

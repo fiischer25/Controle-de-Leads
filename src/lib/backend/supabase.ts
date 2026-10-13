@@ -36,6 +36,9 @@ function translateError(message: string): string {
   if (/projects_status_check/i.test(message) || (/status_manual/i.test(message) && /column|schema cache/i.test(message))) {
     return 'O banco ainda não tem o status “Obra”. Abra Configurações → Banco de dados e aplique “Status do projeto: Obra” (migração 20261018000000_project_status_obra.sql).';
   }
+  if (/tasks_status_check/i.test(message)) {
+    return 'O banco ainda não aceita o status "Reunião agendada". Abra Configurações → Banco de dados e aplique “Status de tarefa Reunião agendada” (migração 20261023000000_task_status_meeting.sql).';
+  }
   if (/billing_reminder|billing_(enabled|days|on_due|hour|payment)/i.test(message) && /schema cache|does not exist|relation|column/i.test(message)) {
     return 'O banco ainda não tem os Lembretes de cobrança. Abra Configurações → Banco de dados e aplique “Lembretes de cobrança” (migração 20261021000000_billing_reminders.sql).';
   }

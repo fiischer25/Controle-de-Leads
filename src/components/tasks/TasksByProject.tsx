@@ -87,7 +87,7 @@ export function TasksByProject({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: 
           overdue: count('overdue'),
           today: count('today'),
           week: count('week'),
-          doing: items.filter((x) => x.status === 'doing' || x.status === 'review').length,
+          doing: items.filter((x) => x.status === 'doing' || x.status === 'meeting' || x.status === 'review').length,
           next: sorted.find((x) => x.due_date && x.due_date >= t)?.due_date ?? null,
         };
       })
