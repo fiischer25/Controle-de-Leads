@@ -4,7 +4,7 @@
 // a Precificação usa para sugerir os dias dos próximos projetos. Funções puras.
 
 import { entryMinutes, orderedPhases } from './domain';
-import { pricingResult } from './pricing';
+import { hasPackages, packageData, pricingResult } from './pricing';
 import type { FinanceEntry, FinanceMemberCost, Pricing, Project, Task, TimeEntry } from './types';
 
 const cents = (v: number) => Math.round(v * 100) / 100;
@@ -81,7 +81,9 @@ export function plannedVsActual(opts: {
   entries: FinanceEntry[];
 }): PlannedActual {
   const { pricing } = opts;
-  const r = pricingResult(pricing);
+  // Compara com o pacote vendido: Basic (só arquitetura) ou Premium (tudo)
+  const view = { area_m2: pricing.area_m2, data: hasPackages(pricing.data) ? packageData(pricing.data, pricing.data.package ?? 'premium') : pricing.data };
+  const r = pricingResult(view);
   const hpd = r.hoursPerDay;
   const tasks = opts.tasks.filter((t) => t.project_id === opts.project.id);
   const taskById = new Map(tasks.map((t) => [t.id, t]));
@@ -109,7 +111,7 @@ export function plannedVsActual(opts: {
   };
 
   const used = new Set<string>();
-  const stages: StageCompare[] = pricing.data.stages.map((s, i) => {
+  const stages: StageCompare[] = view.data.stages.map((s, i) => {
     const key = phaseKey(s.label);
     used.add(key);
     const g = byPhase.get(key);
