@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, CalendarDays, Wallet, CornerDownLeft, FileText, FolderKanban, HardHat, HeartPulse, LayoutGrid, ListChecks, Search, UsersRound } from 'lucide-react';
+import { Briefcase, CalendarDays, Wallet, CornerDownLeft, FolderKanban, HeartPulse, LayoutGrid, ListChecks, Search, UsersRound } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { cn, matches } from '../../lib/utils';
 
@@ -33,8 +33,6 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         { id: 'go-tasks', group: 'Ir para', icon: <ListChecks className="h-4 w-4" />, title: 'Minhas tarefas', to: '/tarefas' },
         { id: 'go-agenda', group: 'Ir para', icon: <CalendarDays className="h-4 w-4" />, title: 'Agenda', to: '/?aba=agenda' },
         can('comercial') && { id: 'go-leads', group: 'Ir para', icon: <FolderKanban className="h-4 w-4" />, title: 'Oportunidades', to: '/oportunidades' },
-        can('obras') && { id: 'go-obras', group: 'Ir para', icon: <HardHat className="h-4 w-4" />, title: 'Obras', to: '/obras' },
-        can('obras') && { id: 'go-budgets', group: 'Ir para', icon: <FileText className="h-4 w-4" />, title: 'Orçamentos de obra', to: '/orcamentos' },
         can('financeiro') && { id: 'go-finance', group: 'Ir para', icon: <Wallet className="h-4 w-4" />, title: 'Financeiro', to: '/financeiro' },
         can('comercial') && { id: 'go-clients', group: 'Ir para', icon: <UsersRound className="h-4 w-4" />, title: 'Clientes', to: '/clientes' },
         can('relatorios') && { id: 'go-health', group: 'Ir para', icon: <HeartPulse className="h-4 w-4" />, title: 'Saúde do escritório', to: '/relatorios?aba=saude' },
@@ -49,18 +47,6 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       .slice(0, 6)
       .forEach((p) =>
         out.push({ id: p.id, group: 'Projetos', icon: <Briefcase className="h-4 w-4" />, title: p.name, subtitle: `${p.code} · ${maps.clients[p.client_id]?.name ?? ''}`, to: `/projetos/${p.id}` }),
-      );
-    db.obras
-      .filter((o) => matches(q, o.name, o.code, o.client_name, o.city, o.address))
-      .slice(0, 6)
-      .forEach((o) =>
-        out.push({ id: o.id, group: 'Obras', icon: <HardHat className="h-4 w-4" />, title: o.name, subtitle: [o.code, o.client_name].filter(Boolean).join(' · '), to: `/obras/${o.id}` }),
-      );
-    db.budgets
-      .filter((b) => matches(q, b.name, b.code, b.client_name, b.city))
-      .slice(0, 6)
-      .forEach((b) =>
-        out.push({ id: b.id, group: 'Orçamentos', icon: <FileText className="h-4 w-4" />, title: b.name, subtitle: [b.code, b.client_name].filter(Boolean).join(' · '), to: `/orcamentos/${b.id}` }),
       );
     (canCommercial ? db.leads : [])
       .filter((l) => matches(q, l.name, l.city, l.phone, l.email))

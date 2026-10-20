@@ -1,8 +1,8 @@
 # AIROS · Gestão de Leads e Projetos
 
 Sistema interno da **AIROS Arquitetura** para controlar tudo o que entra e sai do escritório:
-oportunidades (leads), clientes, projetos, prazos, tarefas da equipe, horas trabalhadas, financeiro e
-**orçamentos e gerenciamento de obras**, com uma **visão 360°** no painel inicial.
+oportunidades (leads), clientes, projetos, prazos, tarefas da equipe e horas trabalhadas, com
+uma **visão 360°** no painel inicial. Não possui módulo financeiro.
 
 ## Funcionalidades
 
@@ -11,7 +11,7 @@ oportunidades (leads), clientes, projetos, prazos, tarefas da equipe, horas trab
 - O administrador cadastra os membros (nome, cargo, cor, nível de acesso), redefine senhas e
   desativa quem sai do escritório. Cada membro pode editar o próprio perfil e trocar a senha.
 - **Acessos por módulo:** no cadastro do membro, o administrador marca o que ele pode ver e usar:
-  *Projetos e tarefas* (lista e detalhe dos projetos, tarefas da equipe), *Oportunidades e clientes*, *Orçamentos e obras*,
+  *Projetos e tarefas* (lista e detalhe dos projetos, tarefas da equipe), *Oportunidades e clientes*,
   *Relatórios*, *Equipe*, *Configurações* e *Financeiro* (este desmarcado por padrão). O **Meu painel** (com a agenda) e as tarefas da
   própria pessoa ficam sempre disponíveis. Administradores têm acesso a tudo; exclusões críticas e
   o backup continuam exclusivos deles. O banco aplica as mesmas regras (RLS), e o assistente também.
@@ -65,42 +65,6 @@ oportunidades (leads), clientes, projetos, prazos, tarefas da equipe, horas trab
 - **Usar como modelo:** as tarefas de um projeto (etapas, ordem, checklist, observações, prioridade,
   horas; sem datas) viram as tarefas-modelo de um tipo existente ou
   de um tipo novo; depois é só ajustar em Configurações. Projetos já criados não mudam.
-
-**Orçamentos e Obras** (módulo *Orçamentos e obras*)
-- **Orçamento prévio por partes:** escolha as partes da obra (Serviços preliminares, Demolição, Elétrica,
-  Hidráulica, Gesso, Pisos e revestimentos, **Pintura**, Marcenaria, Marmoraria, Iluminação…; ou crie
-  outras). Cada parte já vem com itens comuns; em cada item: unidade, quantidade, **material** e **mão de
-  obra** por unidade. Prazo em dias úteis por parte.
-- **BDI** (administração, lucro e impostos, % sobre o custo), **desconto**, validade, forma de pagamento,
-  escopo e "não incluso". Resumo ao lado: material, mão de obra, custo, BDI, total, R$/m², prazo e o
-  peso de cada parte.
-- **Banco de preços:** ao digitar um item já orçado antes, o sistema sugere a unidade e os preços usados
-  no último orçamento. Duplicar orçamento para versões ou obras parecidas.
-- **Proposta em PDF** (com ou sem os itens, separando material e mão de obra se quiser) e **Enviar ao
-  cliente:** gera um **link de aprovação** (WhatsApp, copiar ou abrir) — o cliente vê as partes, os itens,
-  as condições e o total e responde **Aprovo / Não aprovo** **sem login**. A resposta (nome, data, hora e
-  comentário) muda o orçamento sozinha e notifica quem enviou. Resposta por outro meio: *Registrar resposta*.
-- **Transformar em obra:** o orçamento aprovado vira obra — cada parte vira uma **etapa** do cronograma
-  com o valor previsto (com BDI e a parte do desconto), os itens e as datas pelos prazos. Vincula o projeto
-  de arquitetura (e marca o projeto como *Obra*). No projeto, botões **Orçar obra** / **Obra**.
-- **Obra — visão geral:** avanço físico × previsto pelas datas, entrega, pago × contratado (com
-  aditivos), a pagar e vencido, etapas, próximos pagamentos, o que aguarda o cliente, pendências e
-  últimas visitas com fotos.
-- **Cronograma físico-financeiro:** etapas com início, fim, avanço (0–100%), valor previsto e pago,
-  situação (a iniciar, em andamento, **atrasada**, concluída) e **gráfico de Gantt** com a linha de hoje.
-- **Visitas (diário de obra) com fotos:** data, tipo (visita, vistoria, reunião, medição, entrega), clima,
-  quem estava trabalhando, o que foi feito, próximos passos, **avanço das etapas** e **várias fotos**
-  (tiradas pelo celular, reduzidas antes do envio, com legenda e etapa). Galeria por data e etapa.
-- **Pagamentos:** fornecedor, etapa, tipo (material, mão de obra, serviço…), valor, vencimento, forma, nota
-  e anexos (NF, boleto, comprovante), quem paga (cliente direto ao fornecedor ou escritório) e **aprovação
-  do cliente antes de pagar** (mesmo link). Marcar como pago, filtros e exportação CSV.
-- **Aprovações do cliente:** orçamento, pagamentos, **aditivos** (aprovados, somam ao contratado), escolha
-  de material, detalhe de projeto e medição — com histórico de quem aprovou e quando.
-- **Pendências** (punch list) com responsável, prazo, prioridade e fotos; **documentos** da obra (contrato,
-  ART/RRT, alvará…); **fornecedores** (especialidade, contato, Pix) com o total pago a cada um.
-- **Relatório da obra para o cliente** (PDF): avanço das etapas, visitas do período com fotos,
-  aprovações, pagamentos e pendências.
-- Busca global (Ctrl + K) encontra obras e orçamentos.
 
 **Tarefas**
 - Cada tarefa tem responsável, data de início e fim, status, prioridade, estimativa, checklist e
@@ -242,15 +206,13 @@ e `E2E_SHOTS=pasta` salva um print de cada passo que falhar.
    `supabase/migrations/20261010000000_arq_int_templates.sql`,
    `supabase/migrations/20261011000000_crm_defaults.sql`,
    `supabase/migrations/20261012000000_won_lost_stages.sql`,
-   `supabase/migrations/20261013000000_payment_plan_values.sql`,
-   `supabase/migrations/20261014000000_finance_access_repair.sql` e os seguintes, em ordem de data,
-   até `supabase/migrations/20261024000000_obras.sql` (Orçamentos e obras)
+   `supabase/migrations/20261013000000_payment_plan_values.sql` e
+   `supabase/migrations/20261014000000_finance_access_repair.sql`
    (ou use `supabase db push` com a CLI). Quem já usa o sistema executa só os arquivos novos
    (podem rodar mais de uma vez sem problema).
    Em **Configurações → Banco de dados** (administrador) o sistema confere quais atualizações já
    foram aplicadas e copia o SQL das que faltam; um aviso aparece no topo quando falta alguma.
-3. **Função de administração da equipe** (permite ao admin cadastrar membros; publique de novo depois
-   de aplicar `20261024000000_obras.sql`, para ela conhecer o módulo *Orçamentos e obras*):
+3. **Função de administração da equipe** (permite ao admin cadastrar membros):
    ```bash
    npx supabase login
    npx supabase link --project-ref SEU_PROJECT_REF
@@ -324,9 +286,6 @@ agenda em **Meu perfil**.
   clientes, edição de projetos, configurações e todo o Financeiro seguem os módulos de cada pessoa; somente
   administradores excluem leads/clientes/projetos e gerenciam a equipe e os acessos.
 - A chave de serviço do Supabase fica apenas na Edge Function, nunca no navegador.
-- O link de aprovação do cliente usa uma chave aleatória de 32 caracteres e duas funções do banco
-  (`obra_approval_public` e `obra_approval_answer`): sem login, só dá para ver e responder aquele pedido;
-  as demais tabelas da obra seguem fechadas pelo RLS. Fotos e documentos ficam no armazenamento privado.
 
 ## Design system
 Tokens de cor (claro e escuro), tipografia, raios e sombras ficam em `src/styles/tokens.css`,

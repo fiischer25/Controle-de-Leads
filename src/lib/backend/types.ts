@@ -1,4 +1,4 @@
-import type { ApprovalKind, ApprovalSnapshot, ApprovalStatus, ModuleKey, Profile, Role, TableName, Tables } from '../types';
+import type { ModuleKey, Profile, Role, TableName, Tables } from '../types';
 
 export interface NewUserInput {
   name: string;
@@ -21,27 +21,6 @@ export interface UpdateUserAuthInput {
 
 export interface Branding {
   office_name: string;
-  logo_url: string | null;
-}
-
-/** O que o cliente vê no link de aprovação (sem login). */
-export interface PublicApproval {
-  id: string;
-  kind: ApprovalKind;
-  title: string;
-  description: string | null;
-  amount: number | null;
-  snapshot: ApprovalSnapshot | null;
-  status: ApprovalStatus;
-  due_date: string | null;
-  client_name: string | null;
-  requested_at: string;
-  requested_by_name: string | null;
-  answered_at: string | null;
-  answered_name: string | null;
-  answer_comment: string | null;
-  obra_name: string | null;
-  office_name: string | null;
   logo_url: string | null;
 }
 
@@ -89,11 +68,6 @@ export interface Backend {
 
   /** Função do banco (somente Supabase). */
   rpc(name: string, args: Record<string, unknown>): Promise<unknown>;
-
-  /** Pedido de aprovação pelo link público (sem login). null = não encontrado. */
-  getPublicApproval(token: string): Promise<PublicApproval | null>;
-  /** Resposta do cliente pelo link público. */
-  answerPublicApproval(token: string, status: 'aprovado' | 'recusado', name: string, comment: string | null): Promise<void>;
 
   /** Notifica quando outra sessão/usuário altera uma tabela. */
   subscribe(cb: (table: TableName) => void): () => void;

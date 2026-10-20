@@ -19,8 +19,8 @@ export default async function ({ browser }) {
       await d.getByLabel('Nome completo').fill(PAULA.name);
       await d.getByLabel('E-mail de acesso').fill(PAULA.email);
       await d.getByLabel('Senha inicial').fill(PAULA.password);
-      // Padrão: Projetos, Comercial, Obras, Relatórios e Equipe; desmarca os que não terá
-      for (const m of ['Projetos e tarefas', 'Oportunidades e clientes', 'Orçamentos e obras', 'Equipe']) await d.getByText(m, { exact: true }).click();
+      // Padrão: Projetos, Comercial, Relatórios e Equipe; desmarca os que não terá
+      for (const m of ['Projetos e tarefas', 'Oportunidades e clientes', 'Equipe']) await d.getByText(m, { exact: true }).click();
       await d.getByRole('button', { name: 'Cadastrar membro' }).click();
       await d.waitFor({ state: 'detached' });
       const p = (await page.evaluate(() => JSON.parse(localStorage.getItem('airos:v1:profiles')))).find((x) => x.email === PAULA.email);
@@ -35,7 +35,7 @@ export default async function ({ browser }) {
       await signOut(page);
       await signIn(page, PAULA);
       const nav = await navLabels(page);
-      for (const hidden of ['Escritório', 'Projetos', 'Oportunidades', 'Clientes', 'Orçamentos', 'Obras', 'Financeiro', 'Equipe', 'Configurações']) ok(!nav.includes(hidden), `menu mostra ${hidden}: ${nav.join(', ')}`);
+      for (const hidden of ['Escritório', 'Projetos', 'Oportunidades', 'Clientes', 'Financeiro', 'Equipe', 'Configurações']) ok(!nav.includes(hidden), `menu mostra ${hidden}: ${nav.join(', ')}`);
       ok(nav.includes('Relatórios') && nav.includes('Meu painel'), 'menu sem Relatórios/Meu painel: ' + nav.join(', '));
     },
     page,

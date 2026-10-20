@@ -136,10 +136,6 @@ export default function ProjectDetailPage() {
     }
   };
 
-  // Obra (ou orçamento de obra) que veio deste projeto
-  const obra = db.obras.find((o) => o.project_id === project.id);
-  const budget = db.budgets.find((b) => b.project_id === project.id);
-
   const activity = db.activity_log
     .filter((a) => a.entity_id === project.id || (a.entity === 'task' && tasks.some((t) => t.id === a.entity_id)))
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -191,15 +187,6 @@ export default function ProjectDetailPage() {
                 <Trash2 className="h-4 w-4" strokeWidth={1.6} />
               </IconButton>
             )}
-            {can('obras') && (obra ? (
-              <Button icon={<HardHat className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate(`/obras/${obra.id}`)}>
-                Obra
-              </Button>
-            ) : (project.status === 'obra' || project.status === 'concluido') && (
-              <Button icon={<HardHat className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate(budget ? `/orcamentos/${budget.id}` : `/orcamentos/novo?projeto=${project.id}`)}>
-                {budget ? 'Orçamento da obra' : 'Orçar obra'}
-              </Button>
-            ))}
             <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setNewTask({ phase: null })}>
               Tarefa
             </Button>
