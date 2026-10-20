@@ -12,6 +12,7 @@ export interface ModuleInfo {
 export const MODULES: ModuleInfo[] = [
   { key: 'projetos', short: 'Projetos', label: 'Projetos e tarefas', description: 'Lista e detalhe dos projetos, tarefas de toda a equipe e quadro de tarefas.' },
   { key: 'comercial', short: 'Comercial', label: 'Oportunidades e clientes', description: 'Funil de oportunidades, cadastro de clientes e conversão em projeto.' },
+  { key: 'obras', short: 'Obras', label: 'Orçamentos e obras', description: 'Orçamentos de obra por partes, obras com cronograma, visitas com fotos, pagamentos, pendências e aprovações do cliente.' },
   { key: 'relatorios', short: 'Relatórios', label: 'Relatórios', description: 'Indicadores comerciais e de produção, horas e exportações.' },
   { key: 'equipe', short: 'Equipe', label: 'Equipe', description: 'Lista da equipe com a carga de trabalho de cada pessoa.' },
   { key: 'configuracoes', short: 'Configurações', label: 'Configurações', description: 'Escritório, tipos de projeto e tarefas-modelo, funil, origens e agenda.' },
@@ -19,7 +20,7 @@ export const MODULES: ModuleInfo[] = [
 ];
 
 /** Acessos de quem ainda não teve os módulos definidos (igual ao comportamento anterior). */
-export const DEFAULT_PERMISSIONS: ModuleKey[] = ['projetos', 'comercial', 'relatorios', 'equipe'];
+export const DEFAULT_PERMISSIONS: ModuleKey[] = ['projetos', 'comercial', 'obras', 'relatorios', 'equipe'];
 
 export function modulesOf(profile: Pick<Profile, 'role' | 'permissions'> | null | undefined): ModuleKey[] {
   if (!profile) return [];

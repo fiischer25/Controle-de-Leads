@@ -8,7 +8,7 @@ export type Role = 'admin' | 'member';
  * Módulos que o administrador libera para cada pessoa. O Meu painel (com a
  * agenda) e as próprias tarefas são de todos; administradores têm acesso a tudo.
  */
-export type ModuleKey = 'projetos' | 'comercial' | 'relatorios' | 'equipe' | 'configuracoes' | 'financeiro';
+export type ModuleKey = 'projetos' | 'comercial' | 'obras' | 'relatorios' | 'equipe' | 'configuracoes' | 'financeiro';
 
 export interface Profile {
   id: string;
@@ -273,7 +273,7 @@ export interface Notification {
 export interface ActivityLog {
   id: string;
   user_id: string | null;
-  entity: 'lead' | 'client' | 'project' | 'task' | 'event' | 'user' | 'settings';
+  entity: 'lead' | 'client' | 'project' | 'task' | 'event' | 'user' | 'settings' | 'budget' | 'obra';
   entity_id: string | null;
   action: string;
   description: string;
@@ -479,6 +479,260 @@ export interface BillingReminderLog {
   created_at: string;
 }
 
+
+// ---------------------------------------------------------------- Obras
+/** Item do orçamento: quantidade × (material + mão de obra) por unidade. */
+export interface BudgetItem {
+  id: string;
+  description: string;
+  /** un, m², m, m³, vb (verba), kg, h, dia, pç, cj… */
+  unit: string;
+  qty: number;
+  /** Custo unitário de material. */
+  material: number;
+  /** Custo unitário de mão de obra. */
+  labor: number;
+  notes?: string | null;
+}
+
+/** Parte da obra (Pintura, Elétrica, Hidráulica…), que vira etapa ao converter em obra. */
+export interface BudgetSection {
+  id: string;
+  name: string;
+  items: BudgetItem[];
+  /** Prazo estimado da parte, em dias úteis (monta o cronograma da obra). */
+  days?: number | null;
+}
+
+export interface BudgetData {
+  sections: BudgetSection[];
+  /** BDI: administração, lucro e impostos, em % sobre o custo. */
+  bdi: number;
+  /** Desconto em R$ sobre o total. */
+  discount: number;
+  /** Validade da proposta, em dias. */
+  validity_days: number;
+  payment_terms: string;
+  /** Escopo e observações que vão na proposta. */
+  notes: string;
+  /** O que não está incluso. */
+  exclusions: string;
+}
+
+export type BudgetStatus = 'rascunho' | 'enviado' | 'aprovado' | 'recusado';
+
+/** Orçamento prévio da obra, por partes. Aprovado, vira obra. */
+export interface Budget {
+  id: string;
+  code: string;
+  name: string;
+  client_id: string | null;
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  lead_id: string | null;
+  project_id: string | null;
+  address: string | null;
+  city: string | null;
+  area_m2: number | null;
+  status: BudgetStatus;
+  data: BudgetData;
+  /** Valor final (com BDI e desconto), para listar e ordenar. */
+  total: number;
+  /** Obra criada a partir deste orçamento. */
+  obra_id: string | null;
+  sent_at: string | null;
+  answered_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ObraStatus = 'planejamento' | 'em_andamento' | 'pausada' | 'concluida' | 'cancelada';
+
+export interface Obra {
+  id: string;
+  code: string;
+  name: string;
+  client_id: string | null;
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  budget_id: string | null;
+  /** Projeto de arquitetura/interiores que deu origem à obra. */
+  project_id: string | null;
+  manager_id: string | null;
+  member_ids: string[];
+  status: ObraStatus;
+  address: string | null;
+  city: string | null;
+  area_m2: number | null;
+  start_date: string | null;
+  due_date: string | null;
+  /** Valor orçado/contratado (sem os aditivos aprovados, que somam à parte). */
+  contract_value: number | null;
+  notes: string | null;
+  /** Documentos da obra (contrato, ART/RRT, alvará, projetos…). */
+  attachments: FileAttachment[];
+  completed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Etapa do cronograma físico-financeiro da obra. */
+export interface ObraStage {
+  id: string;
+  obra_id: string;
+  name: string;
+  position: number;
+  start_date: string | null;
+  due_date: string | null;
+  /** Avanço físico, 0 a 100. */
+  progress: number;
+  /** Valor previsto da etapa (do orçamento). */
+  budget: number;
+  /** Itens orçados (cópia do orçamento). */
+  items: BudgetItem[];
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Foto da obra: arquivo no Storage com legenda e etapa. */
+export interface ObraPhoto extends FileAttachment {
+  caption?: string | null;
+  stage_id?: string | null;
+}
+
+export type ObraVisitKind = 'visita' | 'vistoria' | 'reuniao' | 'medicao' | 'entrega';
+
+/** Visita à obra (diário de obra): resumo, clima, equipe no local, fotos e avanço das etapas. */
+export interface ObraVisit {
+  id: string;
+  obra_id: string;
+  date: string;
+  kind: ObraVisitKind;
+  author_id: string | null;
+  summary: string;
+  weather: string | null;
+  /** Quem estava trabalhando (ex.: "Eletricista + 2 ajudantes"). */
+  workers: string | null;
+  notes: string | null;
+  photos: ObraPhoto[];
+  /** Avanço informado na visita: etapa, de quanto para quanto (%). */
+  progress: Array<{ stage_id: string; from: number; to: number }>;
+  /** Aparece no relatório do cliente. */
+  shared: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ObraPaymentCategory = 'material' | 'mao_de_obra' | 'servico' | 'equipamento' | 'taxa' | 'outro';
+export type ObraPaymentMethod = 'pix' | 'boleto' | 'transferencia' | 'cartao' | 'dinheiro' | 'outro';
+export type ApprovalState = 'nao_requer' | 'pendente' | 'aprovado' | 'recusado';
+
+/** Pagamento da obra (fornecedor, mão de obra, material), com aprovação do cliente. */
+export interface ObraPayment {
+  id: string;
+  obra_id: string;
+  stage_id: string | null;
+  supplier_id: string | null;
+  supplier_name: string | null;
+  description: string;
+  category: ObraPaymentCategory;
+  amount: number;
+  due_date: string;
+  /** Data do pagamento; null = em aberto. */
+  paid_at: string | null;
+  method: ObraPaymentMethod | null;
+  /** Quem paga: o cliente direto ao fornecedor (gerenciamento) ou o escritório. */
+  payer: 'cliente' | 'escritorio';
+  approval: ApprovalState;
+  approval_id: string | null;
+  /** Nº da nota fiscal, boleto ou recibo. */
+  document: string | null;
+  attachments: FileAttachment[];
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ApprovalKind = 'orcamento' | 'pagamento' | 'aditivo' | 'material' | 'projeto' | 'medicao' | 'outro';
+export type ApprovalStatus = 'pendente' | 'aprovado' | 'recusado' | 'cancelado';
+
+/** Resumo do que o cliente aprova, gravado no pedido (a página pública não lê as outras tabelas). */
+export interface ApprovalSnapshot {
+  lines?: Array<{ label: string; detail?: string | null; value?: number | null; items?: Array<{ description: string; unit: string; qty: number; total: number }> }>;
+  facts?: Array<{ label: string; value: string }>;
+  total?: number | null;
+  notes?: string | null;
+}
+
+/** Pedido de aprovação do cliente (orçamento, pagamento, aditivo, material…), respondido pelo link. */
+export interface ObraApproval {
+  id: string;
+  obra_id: string | null;
+  budget_id: string | null;
+  payment_id: string | null;
+  kind: ApprovalKind;
+  title: string;
+  description: string | null;
+  amount: number | null;
+  snapshot: ApprovalSnapshot | null;
+  /** Chave do link público (/aprovacao/<token>). */
+  token: string;
+  status: ApprovalStatus;
+  due_date: string | null;
+  client_name: string | null;
+  client_phone: string | null;
+  requested_by: string | null;
+  requested_at: string;
+  answered_at: string | null;
+  answered_name: string | null;
+  answer_comment: string | null;
+  /** link: o próprio cliente respondeu; manual: a equipe registrou (WhatsApp, reunião…). */
+  answered_via: 'link' | 'manual' | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Pendência da obra (punch list): o que falta corrigir ou terminar. */
+export interface ObraIssue {
+  id: string;
+  obra_id: string;
+  stage_id: string | null;
+  title: string;
+  description: string | null;
+  /** Quem resolve (fornecedor, empreiteiro, equipe). */
+  responsible: string | null;
+  due_date: string | null;
+  priority: TaskPriority;
+  status: 'aberta' | 'resolvida';
+  photos: ObraPhoto[];
+  resolved_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Fornecedor ou prestador (empreiteiro, eletricista, loja de material…). */
+export interface ObraSupplier {
+  id: string;
+  name: string;
+  /** Especialidade: Elétrica, Pintura, Marcenaria… */
+  trade: string | null;
+  contact: string | null;
+  phone: string | null;
+  email: string | null;
+  document: string | null;
+  pix: string | null;
+  notes: string | null;
+  active: boolean;
+  created_at: string;
+}
+
 /** Mapa tabela → tipo de linha. Usado pela camada de dados genérica. */
 export interface Tables {
   profiles: Profile;
@@ -503,12 +757,23 @@ export interface Tables {
   finance_member_costs: FinanceMemberCost;
   pricings: Pricing;
   billing_reminder_log: BillingReminderLog;
+  budgets: Budget;
+  obras: Obra;
+  obra_stages: ObraStage;
+  obra_visits: ObraVisit;
+  obra_payments: ObraPayment;
+  obra_approvals: ObraApproval;
+  obra_issues: ObraIssue;
+  obra_suppliers: ObraSupplier;
 }
 
 export type TableName = keyof Tables;
 
+/** Tabelas do módulo Obras (migração 20261024000000_obras.sql). */
+export const OBRA_TABLES: TableName[] = ['budgets', 'obras', 'obra_stages', 'obra_visits', 'obra_payments', 'obra_approvals', 'obra_issues', 'obra_suppliers'];
+
 /** Tabelas que podem ainda não existir no banco (migração não executada): carregam vazias. */
-export const OPTIONAL_TABLES: TableName[] = ['finance_accounts', 'finance_categories', 'finance_entries', 'finance_member_costs', 'pricings', 'billing_reminder_log'];
+export const OPTIONAL_TABLES: TableName[] = ['finance_accounts', 'finance_categories', 'finance_entries', 'finance_member_costs', 'pricings', 'billing_reminder_log', ...OBRA_TABLES];
 
 export const TABLES: TableName[] = [
   'profiles',
@@ -533,4 +798,5 @@ export const TABLES: TableName[] = [
   'finance_member_costs',
   'pricings',
   'billing_reminder_log',
+  ...OBRA_TABLES,
 ];

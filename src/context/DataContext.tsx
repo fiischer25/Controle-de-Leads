@@ -14,6 +14,7 @@ import { defaultFinanceAccount, defaultFinanceCategories, defaultProjectTypes, d
 import { autoProjectStatus, buildProjectTasks, followsTasks, nextProjectCode, tasksToTemplates } from '../lib/domain';
 import { SWATCHES } from '../lib/constants';
 import {
+  OBRA_TABLES,
   TABLES,
   type ActivityLog,
   type AppSettings,
@@ -40,7 +41,10 @@ import { useToast } from './ToastContext';
 export type Db = { [K in TableName]: Tables[K][] };
 
 /** Tabelas com coluna updated_at. */
-const STAMPED = new Set<TableName>(['leads', 'clients', 'projects', 'tasks', 'events', 'app_settings']);
+const STAMPED = new Set<TableName>([
+  'leads', 'clients', 'projects', 'tasks', 'events', 'app_settings',
+  'budgets', 'obras', 'obra_stages', 'obra_visits', 'obra_payments', 'obra_approvals', 'obra_issues',
+]);
 
 const emptyDb = (): Db => Object.fromEntries(TABLES.map((t) => [t, []])) as unknown as Db;
 
@@ -272,9 +276,10 @@ export function DataProvider({ userId, children }: { userId: string; children: R
   const canCommercial = can('comercial');
   const canClients = canCommercial || can('projetos');
   const canFinance = can('financeiro');
+  const canObras = can('obras');
   const visibleDb = useMemo<Db>(
     () =>
-      canCommercial && canClients && canFinance
+      canCommercial && canClients && canFinance && canObras
         ? db
         : {
             ...db,
@@ -287,8 +292,9 @@ export function DataProvider({ userId, children }: { userId: string; children: R
             finance_member_costs: canFinance ? db.finance_member_costs : [],
             pricings: canFinance ? db.pricings : [],
             billing_reminder_log: canFinance ? db.billing_reminder_log : [],
+            ...(canObras ? {} : Object.fromEntries(OBRA_TABLES.map((t) => [t, []]))),
           },
-    [db, canCommercial, canClients, canFinance],
+    [db, canCommercial, canClients, canFinance, canObras],
   );
 
   const maps = useMemo(

@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { OPTIONAL_TABLES, type Profile, type TableName, type Tables } from '../types';
-import type { Backend, Branding, NewUserInput, UpdateUserAuthInput } from './types';
+import type { Backend, Branding, NewUserInput, PublicApproval, UpdateUserAuthInput } from './types';
 
 const PAGE = 1000;
 /** Tabelas que crescem sem limite: carregamos só os registros mais recentes. */
@@ -41,6 +41,12 @@ function translateError(message: string): string {
   }
   if (/billing_reminder|billing_(enabled|days|on_due|hour|payment)/i.test(message) && /schema cache|does not exist|relation|column/i.test(message)) {
     return 'O banco ainda não tem os Lembretes de cobrança. Abra Configurações → Banco de dados e aplique “Lembretes de cobrança” (migração 20261021000000_billing_reminders.sql).';
+  }
+  if (/budgets|obras|obra_(stages|visits|payments|approvals|issues|suppliers)/i.test(message) && /schema cache|does not exist|relation/i.test(message)) {
+    return 'O banco ainda não tem Orçamentos e Obras. Abra Configurações → Banco de dados e aplique “Orçamentos e obras” (migração 20261024000000_obras.sql).';
+  }
+  if (/profiles_permissions_check/i.test(message)) {
+    return 'O banco ainda não conhece o módulo Orçamentos e obras. Abra Configurações → Banco de dados e aplique “Orçamentos e obras” (migração 20261024000000_obras.sql).';
   }
   if (/pricings/i.test(message) && /schema cache|does not exist|relation/i.test(message)) {
     return 'O banco ainda não tem a Precificação. Abra Configurações → Banco de dados e aplique “Precificação de projetos” (migração 20261020000000_pricings.sql).';
@@ -287,6 +293,22 @@ export class SupabaseBackend implements Backend {
   async removeFiles(bucket: string, paths: string[]) {
     if (paths.length === 0) return;
     const { error } = await this.client.storage.from(bucket).remove(paths);
+    fail(error);
+  }
+
+  async getPublicApproval(token: string): Promise<PublicApproval | null> {
+    const { data, error } = await this.client.rpc('obra_approval_public', { p_token: token });
+    if (error) {
+      if (/could not find the function|PGRST202/i.test(`${error.message} ${error.code ?? ''}`)) {
+        throw new Error('O escritório ainda não ativou as aprovações online. Fale com ele para confirmar o pedido.');
+      }
+      fail(error);
+    }
+    return (data as PublicApproval | null) ?? null;
+  }
+
+  async answerPublicApproval(token: string, status: 'aprovado' | 'recusado', name: string, comment: string | null) {
+    const { error } = await this.client.rpc('obra_approval_answer', { p_token: token, p_status: status, p_name: name, p_comment: comment });
     fail(error);
   }
 

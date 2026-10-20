@@ -1,7 +1,7 @@
 import type { Profile, TableName, Tables } from '../types';
 import { TABLES } from '../types';
 import { nowIso, uid } from '../utils';
-import type { Backend, Branding, NewUserInput, UpdateUserAuthInput } from './types';
+import type { Backend, Branding, NewUserInput, PublicApproval, UpdateUserAuthInput } from './types';
 import { DEFAULT_PERMISSIONS } from '../permissions';
 
 /**
@@ -266,6 +266,47 @@ export class LocalBackend implements Backend {
 
   async removeFiles(bucket: string, paths: string[]) {
     for (const p of paths) localStorage.removeItem(`${PREFIX}file:${bucket}/${p}`);
+  }
+
+  // Aprovação pelo link: no modo demonstração só funciona neste navegador (mesmos dados).
+  async getPublicApproval(token: string): Promise<PublicApproval | null> {
+    const a = this.rows('obra_approvals').find((x) => x.token === token);
+    if (!a) return null;
+    const obra = a.obra_id ? this.rows('obras').find((o) => o.id === a.obra_id) : null;
+    const budget = a.budget_id ? this.rows('budgets').find((b) => b.id === a.budget_id) : null;
+    const s = this.rows('app_settings')[0];
+    return {
+      id: a.id, kind: a.kind, title: a.title, description: a.description, amount: a.amount, snapshot: a.snapshot, status: a.status,
+      due_date: a.due_date, client_name: a.client_name, requested_at: a.requested_at,
+      requested_by_name: this.rows('profiles').find((p) => p.id === a.requested_by)?.name ?? null,
+      answered_at: a.answered_at, answered_name: a.answered_name, answer_comment: a.answer_comment,
+      obra_name: obra?.name ?? budget?.name ?? null, office_name: s?.office_name ?? null, logo_url: s?.logo_url ?? null,
+    };
+  }
+
+  async answerPublicApproval(token: string, status: 'aprovado' | 'recusado', name: string, comment: string | null) {
+    const a = this.rows('obra_approvals').find((x) => x.token === token);
+    if (!a) throw new Error('Pedido de aprovação não encontrado.');
+    if (a.status !== 'pendente') throw new Error('Este pedido já foi respondido.');
+    if (!name.trim()) throw new Error('Informe seu nome.');
+    const now = nowIso();
+    await this.update('obra_approvals', a.id, {
+      status, answered_at: now, answered_name: name.trim().slice(0, 120), answer_comment: comment?.trim() || null, answered_via: 'link', updated_at: now,
+    });
+    if (a.kind === 'orcamento' && a.budget_id && this.rows('budgets').some((b) => b.id === a.budget_id)) {
+      await this.update('budgets', a.budget_id, { status, answered_at: now, updated_at: now });
+    }
+    if (a.payment_id && this.rows('obra_payments').some((p) => p.id === a.payment_id)) {
+      await this.update('obra_payments', a.payment_id, { approval: status, updated_at: now });
+    }
+    if (a.requested_by) {
+      await this.insert('notifications', [{
+        id: uid(), user_id: a.requested_by, read: false, created_at: now,
+        title: `${status === 'aprovado' ? 'Cliente aprovou' : 'Cliente recusou'}: ${a.title}`,
+        body: [name.trim(), comment?.trim()].filter(Boolean).join(' — '),
+        link: a.obra_id ? `/obras/${a.obra_id}?aba=aprovacoes` : `/orcamentos/${a.budget_id}`,
+      }]);
+    }
   }
 
   subscribe(cb: (table: TableName) => void) {

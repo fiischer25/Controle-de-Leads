@@ -41,6 +41,7 @@ const REQUIRED: Array<{ file: string; label: string; probe: (b: SupabaseBackend)
   { file: '20261021000000_billing_reminders.sql', label: 'Lembretes de cobrança', probe: (b) => b.probe('billing_reminder_log', 'id,entry_id,kind') },
   { file: '20261022000000_member_cost_precision.sql', label: 'Custo da equipe por mês (sem arredondar)', probe: (b) => b.probeRpc('airos_member_cost_precision', {}) },
   { file: '20261023000000_task_status_meeting.sql', label: 'Status de tarefa "Reunião agendada"', probe: (b) => b.probeRpc('airos_task_status_meeting', {}) },
+  { file: '20261024000000_obras.sql', label: 'Orçamentos e obras (visitas, fotos, pagamentos e aprovação do cliente)', probe: (b) => b.probe('obra_approvals', 'id,token,snapshot') },
   { file: '20261018000000_project_status_obra.sql', label: 'Status do projeto: Obra e status definido à mão', probe: (b) => b.probe('projects', 'status_manual') },
   {
     file: '20261014000000_finance_access_repair.sql',

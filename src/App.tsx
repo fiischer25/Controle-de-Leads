@@ -25,6 +25,12 @@ const FinanceReportPage = lazy(() => import('./pages/FinanceReportPage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const BudgetsPage = lazy(() => import('./pages/BudgetsPage'));
+const BudgetPrintPage = lazy(() => import('./pages/BudgetPrintPage'));
+const ObrasPage = lazy(() => import('./pages/ObrasPage'));
+const ObraDetailPage = lazy(() => import('./pages/ObraDetailPage'));
+const ObraReportPage = lazy(() => import('./pages/ObraReportPage'));
+const PublicApprovalPage = lazy(() => import('./pages/PublicApprovalPage'));
 
 function FullScreenLoader() {
   return (
@@ -63,6 +69,8 @@ function AuthenticatedApp() {
       <Routes>
         {/* Relatório para impressão: fora do layout (sem menu) */}
         <Route path="financeiro/relatorio" element={<RequireModule module="financeiro"><FinanceReportPage /></RequireModule>} />
+        <Route path="orcamentos/:id/proposta" element={<RequireModule module="obras"><BudgetPrintPage /></RequireModule>} />
+        <Route path="obras/:id/relatorio" element={<RequireModule module="obras"><ObraReportPage /></RequireModule>} />
         <Route element={<AppLayout />}>
           <Route index element={<Home />} />
           <Route path="meu-painel" element={<HomePage />} />
@@ -73,6 +81,10 @@ function AuthenticatedApp() {
           <Route path="oportunidades" element={<RequireModule module="comercial"><LeadsPage /></RequireModule>} />
           <Route path="clientes" element={<RequireModule module="comercial"><ClientsPage /></RequireModule>} />
           <Route path="clientes/:id" element={<RequireModule module="comercial"><ClientDetailPage /></RequireModule>} />
+          <Route path="orcamentos" element={<RequireModule module="obras"><BudgetsPage /></RequireModule>} />
+          <Route path="orcamentos/:id" element={<RequireModule module="obras"><BudgetsPage /></RequireModule>} />
+          <Route path="obras" element={<RequireModule module="obras"><ObrasPage /></RequireModule>} />
+          <Route path="obras/:id" element={<RequireModule module="obras"><ObraDetailPage /></RequireModule>} />
           <Route path="financeiro" element={<RequireModule module="financeiro"><FinancePage /></RequireModule>} />
           <Route path="precificacao" element={<RequireModule module="financeiro"><PricingPage /></RequireModule>} />
           <Route path="precificacao/:id" element={<RequireModule module="financeiro"><PricingPage /></RequireModule>} />
@@ -104,9 +116,25 @@ export default function App() {
     <BrowserRouter>
       <ToastProvider>
         <BrandingProvider>
-          <AuthProvider>
-            <Gate />
-          </AuthProvider>
+          <Routes>
+            {/* Aprovação do cliente pelo link: sem login */}
+            <Route
+              path="/aprovacao/:token"
+              element={
+                <Suspense fallback={<FullScreenLoader />}>
+                  <PublicApprovalPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <AuthProvider>
+                  <Gate />
+                </AuthProvider>
+              }
+            />
+          </Routes>
         </BrandingProvider>
       </ToastProvider>
     </BrowserRouter>

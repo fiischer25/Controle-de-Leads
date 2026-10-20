@@ -18,6 +18,7 @@ import type { NewUserInput } from './backend/types';
 import { defaultFinanceAccount, defaultFinanceCategories, defaultProjectTypes, defaultSettings, defaultSources, defaultStages } from './defaults';
 import { addMonthsKey, buildSeries, feePlan, splitByPercent, type EntryDraft } from './finance';
 import { buildProjectTasks } from './domain';
+import { buildDemoObras } from './demoObras';
 import { addBusinessDays, addDays, nowIso, today, uid } from './utils';
 
 type DemoData = { [K in TableName]?: Tables[K][] };
@@ -287,6 +288,7 @@ export async function buildDemoData(
   }));
 
   return {
+    ...buildDemoObras({ admin, ana, bruno, clients, projects, t, now }),
     finance_accounts: [bank, cash, card],
     finance_categories: finCategories,
     finance_entries: finEntries,

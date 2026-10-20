@@ -9,7 +9,9 @@ import {
   CheckCheck,
   Clock,
   Contact,
+  FileText,
   FolderKanban,
+  HardHat,
   LayoutDashboard,
   LayoutGrid,
   ListChecks,
@@ -70,6 +72,8 @@ const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/clientes/, 'Clientes'],
   [/^\/projetos/, 'Projetos'],
   [/^\/tarefas/, 'Minhas tarefas'],
+  [/^\/orcamentos/, 'Orçamentos'],
+  [/^\/obras/, 'Obras'],
   [/^\/financeiro/, 'Financeiro'],
   [/^\/precificacao/, 'Precificação'],
   [/^\/relatorios/, 'Relatórios'],
@@ -137,7 +141,10 @@ export function AppLayout() {
     return db.leads.filter((l) => openStages.has(l.stage_id) && l.next_contact_date && l.next_contact_date <= t).length;
   }, [db.leads, db.lead_stages, can]);
 
-  // Grupos com rótulo (Trabalho, Comercial, Gestão). Trabalho: o que é da pessoa (painel,
+  // Orçamentos esperando a resposta do cliente
+  const pendingBudgets = useMemo(() => db.budgets.filter((b) => b.status === 'enviado').length, [db.budgets]);
+
+  // Grupos com rótulo (Trabalho, Comercial, Obras, Gestão). Trabalho: o que é da pessoa (painel,
   // projetos e tarefas). O dashboard do escritório é só do administrador e fica em Gestão,
   // separado do Meu painel; o administrador continua abrindo o sistema nele.
   const groups: NavItem[][] = [
@@ -149,6 +156,10 @@ export function AppLayout() {
     [
       { to: '/oportunidades', label: 'Oportunidades', icon: FolderKanban, dot: pendingFollowUps > 0, module: 'comercial' },
       { to: '/clientes', label: 'Clientes', icon: Contact, module: 'comercial' },
+    ],
+    [
+      { to: '/orcamentos', label: 'Orçamentos', icon: FileText, module: 'obras', count: pendingBudgets },
+      { to: '/obras', label: 'Obras', icon: HardHat, module: 'obras' },
     ],
     [
       ...(isAdmin ? [{ to: '/', label: 'Escritório', icon: LayoutDashboard, end: true }] : []),
@@ -233,6 +244,7 @@ export function AppLayout() {
 function groupLabel(g: NavItem[]): string {
   const has = (paths: string[]) => g.some((n) => paths.includes(n.to));
   if (has(['/oportunidades', '/clientes'])) return 'Comercial';
+  if (has(['/orcamentos', '/obras'])) return 'Obras';
   if (has(['/financeiro', '/precificacao', '/relatorios', '/equipe', '/configuracoes']) || g[0]?.label === 'Escritório') return 'Gestão';
   return 'Trabalho';
 }
@@ -441,7 +453,7 @@ function BottomNav({ onCreate, onMore }: { onCreate: () => void; onMore: () => v
       ? { to: '/oportunidades', label: 'Oportunidades', icon: FolderKanban }
       : null;
   const moreActive =
-    /^\/(clientes|projetos|oportunidades|financeiro|precificacao|relatorios|equipe|configuracoes|perfil)/.test(location.pathname) &&
+    /^\/(clientes|projetos|oportunidades|orcamentos|obras|financeiro|precificacao|relatorios|equipe|configuracoes|perfil)/.test(location.pathname) &&
     !(second && location.pathname.startsWith(second.to));
   const item = (active: boolean) =>
     cn('flex h-[52px] flex-col items-center justify-center gap-1 text-[10.5px] leading-none', active ? 'font-medium text-ink' : 'text-faint');
@@ -515,6 +527,8 @@ function MoreSheet({ onClose, onAssistant }: { onClose: () => void; onAssistant:
       <SheetItem to="/?aba=agenda" icon={<CalendarDays strokeWidth={1.6} />} label="Agenda" />
       {can('comercial') && !comercialInBar && <SheetItem to="/oportunidades" icon={<FolderKanban strokeWidth={1.6} />} label="Oportunidades" />}
       {can('comercial') && <SheetItem to="/clientes" icon={<Contact strokeWidth={1.6} />} label="Clientes" />}
+      {can('obras') && <SheetItem to="/orcamentos" icon={<FileText strokeWidth={1.6} />} label="Orçamentos" />}
+      {can('obras') && <SheetItem to="/obras" icon={<HardHat strokeWidth={1.6} />} label="Obras" />}
       {can('financeiro') && <SheetItem to="/financeiro" icon={<Wallet strokeWidth={1.6} />} label="Financeiro" />}
       {can('financeiro') && <SheetItem to="/precificacao" icon={<Calculator strokeWidth={1.6} />} label="Precificação" />}
       {can('relatorios') && <SheetItem to="/relatorios" icon={<BarChart3 strokeWidth={1.6} />} label="Relatórios" />}
