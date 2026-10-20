@@ -26,12 +26,14 @@ import { LeadDrawer, LostReasonModal } from '../components/leads/LeadDrawer';
 import { LeadFormModal } from '../components/leads/LeadFormModal';
 import { ConvertLeadModal } from '../components/leads/ConvertLeadModal';
 import { WonDealModal } from '../components/leads/WonDealModal';
+import { LeadsDashboard } from '../components/leads/LeadsDashboard';
 
-type View = 'kanban' | 'list';
+type View = 'kanban' | 'list' | 'painel';
 
 function readView(): View {
   try {
-    return localStorage.getItem('airos:leadsView') === 'list' ? 'list' : 'kanban';
+    const v = localStorage.getItem('airos:leadsView');
+    return v === 'list' || v === 'painel' ? v : 'kanban';
   } catch {
     return 'kanban';
   }
@@ -261,20 +263,22 @@ export default function LeadsPage() {
         <Tabs<View>
           tabs={[
             { id: 'kanban', label: 'Quadro' },
-            { id: 'list', label: 'Lista' },
+            ...(desktop ? [{ id: 'list' as View, label: 'Lista' }] : []),
+            { id: 'painel', label: 'Painel' },
           ]}
-          value={view}
+          value={!desktop && view === 'list' ? 'kanban' : view}
           onChange={changeView}
           size="sm"
           underline={1}
           bordered={false}
-          className="max-md:hidden"
         />
       </div>
 
       {/* Conteúdo */}
       <div className="mt-6 md:mt-8">
-        {!desktop ? null : view === 'kanban' ? (
+        {view === 'painel' ? (
+          <LeadsDashboard leads={filtered} onSource={setSource} />
+        ) : !desktop ? null : view === 'kanban' ? (
           /* Desktop: quadro arrastável */
           <div className="scrollbar-thin -mx-5 overflow-x-auto px-5 pb-6 md:-mx-8 md:px-8 xl:-mx-12 xl:px-12">
             <div className="flex gap-4">
@@ -398,7 +402,7 @@ export default function LeadsPage() {
         )}
 
         {/* Celular: uma etapa por vez (com a busca e os filtros acima) */}
-        {!desktop && (
+        {!desktop && view !== 'painel' && (
           <div>
             <Tabs
               tabs={stages.map((s) => ({ id: s.id, label: s.name, count: (byStage[s.id] ?? []).length }))}
