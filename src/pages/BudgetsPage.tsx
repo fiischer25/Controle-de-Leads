@@ -680,7 +680,7 @@ function SectionCard({
           value={section.name}
           onChange={(e) => onChange({ name: e.target.value })}
           aria-label={`Nome da parte ${index + 1}`}
-          className="h-8 min-w-0 flex-1 border-transparent px-1.5 font-display text-[15px] font-semibold hover:border-line-strong sm:max-w-[320px]"
+          className="h-8 min-w-0 flex-1 basis-[calc(100%-2rem)] border-transparent px-1.5 font-display text-[15px] font-semibold hover:border-line-strong sm:basis-auto sm:max-w-[320px]"
         />
         <label className="flex items-center gap-1.5 text-[12.5px] text-muted">
           Prazo
@@ -738,16 +738,24 @@ function SectionCard({
                 onChange={(e) => pick(i.id, e.target.value)}
                 className="col-span-2 h-8 px-2 md:col-span-1"
               />
-              <select value={i.unit} onChange={(e) => onItem(i.id, { unit: e.target.value })} aria-label={`Unidade de ${i.description || 'item'}`} className="input h-8 px-1.5">
-                {[...new Set([...UNITS, i.unit])].map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
-              <DecimalInput value={i.qty} digits={3} onChange={(v) => onItem(i.id, { qty: v })} aria-label={`Quantidade de ${i.description || 'item'}`} />
-              <DecimalInput value={i.material} onChange={(v) => onItem(i.id, { material: v })} aria-label={`Material por unidade de ${i.description || 'item'}`} />
-              <DecimalInput value={i.labor} onChange={(v) => onItem(i.id, { labor: v })} aria-label={`Mão de obra por unidade de ${i.description || 'item'}`} />
+              <MobileLabel text="Unidade">
+                <select value={i.unit} onChange={(e) => onItem(i.id, { unit: e.target.value })} aria-label={`Unidade de ${i.description || 'item'}`} className="input h-8 px-1.5">
+                  {[...new Set([...UNITS, i.unit])].map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              </MobileLabel>
+              <MobileLabel text="Qtd.">
+                <DecimalInput value={i.qty} digits={3} onChange={(v) => onItem(i.id, { qty: v })} aria-label={`Quantidade de ${i.description || 'item'}`} />
+              </MobileLabel>
+              <MobileLabel text="Material/un">
+                <DecimalInput value={i.material} onChange={(v) => onItem(i.id, { material: v })} aria-label={`Material por unidade de ${i.description || 'item'}`} />
+              </MobileLabel>
+              <MobileLabel text="M. obra/un">
+                <DecimalInput value={i.labor} onChange={(v) => onItem(i.id, { labor: v })} aria-label={`Mão de obra por unidade de ${i.description || 'item'}`} />
+              </MobileLabel>
               <span className="self-center text-right text-[13px] tabular text-ink" title={bdi ? `Para o cliente: ${formatMoney(itemCost(i) * (1 + bdi / 100))}` : undefined}>
                 {formatMoney(itemCost(i))}
               </span>
@@ -766,6 +774,18 @@ function SectionCard({
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Rótulo visível só no celular (na tela larga, o cabeçalho da tabela já diz). */
+function MobileLabel({ text, children }: { text: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <span className="mb-0.5 block text-[11px] text-faint md:hidden" aria-hidden>
+        {text}
+      </span>
+      {children}
     </div>
   );
 }
