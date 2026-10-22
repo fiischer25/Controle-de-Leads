@@ -8,7 +8,7 @@ import { byPosition, cn, downloadFile, formatDate, formatNumber, matches, toCsv,
 import { ActionLink, Avatar, AvatarStack, Button, EmptyState, FilterPick, PageHeader, SearchField, Tabs, Toolbar } from '../components/ui';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { useProjectSummaries, type ProjectSummary } from '../components/projects/useProjectSummaries';
-import { macroStage, projectRail, templatePhasesByType } from '../components/projects/rail';
+import { isObraStage, macroStage, projectRail, templatePhasesByType } from '../components/projects/rail';
 import { ProjectStageTag } from '../components/projects/ProjectStage';
 import { ProjectDeadline, StageRail } from '../components/projects/StageRail';
 import { ProjectFacts } from '../components/projects/ProjectFacts';
@@ -300,13 +300,15 @@ export default function ProjectsPage() {
                 const active = isProjectActive(p);
                 const delivery = projectDeadlineAlert(p, settings.due_soon_days);
                 const stage = current >= 0 && current < phases.length ? phases[current] : s.phase;
+                const obra = isObraStage(p, { phases, current }, s.phase);
                 return (
                   <li key={p.id}>
                     <Link
                       to={`/projetos/${p.id}`}
                       className={cn(
-                        'block rounded-[16px] border bg-surface px-4 py-4 shadow-card transition-colors hover:border-stone-300 md:px-6',
-                        delivery?.late ? 'border-danger-fg/40' : delivery ? 'border-warning-fg/40' : 'border-line',
+                        'block rounded-[16px] border px-4 py-4 shadow-card transition-colors hover:border-stone-300 md:px-6',
+                        obra ? 'bg-brand-100' : 'bg-surface',
+                        delivery?.late ? 'border-danger-fg/40' : delivery ? 'border-warning-fg/40' : obra ? 'border-brand-200' : 'border-line',
                       )}
                     >
                       <div className="grid gap-x-8 gap-y-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_200px] md:items-center">
