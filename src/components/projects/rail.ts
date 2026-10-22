@@ -29,6 +29,9 @@ export function projectRail(summary: ProjectSummary, templatePhases: string[] = 
 /** Etapa macro que não é uma fase das tarefas: reunião marcada com o cliente. */
 export const CLIENT_MEETING_STAGE = 'Reunião com cliente';
 
+/** Etapa macro de acompanhamento da obra. */
+export const CONSTRUCTION_STAGE = 'Obra';
+
 /**
  * Etapa macro da lista de projetos: a escolhida à mão ou, no automático, a etapa atual pelas
  * tarefas (ou "Finalizado", "Etapas concluídas", "Sem tarefas").
