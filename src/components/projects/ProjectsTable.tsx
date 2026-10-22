@@ -6,7 +6,7 @@ import { cn, formatDateShort, formatMinutes, formatNumber } from '../../lib/util
 import { Avatar, AvatarStack } from '../ui';
 import { ProjectStagePicker } from './ProjectStage';
 import { alertWhen, projectDeadlineAlert, type ProjectFactsData } from './facts';
-import { projectRail } from './rail';
+import { isObraStage, projectRail } from './rail';
 import { ProjectDeadline, StageRail } from './StageRail';
 import type { ProjectSummary } from './useProjectSummaries';
 
@@ -14,7 +14,7 @@ const first = (name: string) => name.split(' ')[0];
 const TH = 'whitespace-nowrap border-b border-line px-3 py-2.5 text-left text-[12px] font-medium text-faint';
 const TD = 'whitespace-nowrap px-3 py-2.5 align-middle';
 /** Coluna do nome, fixa à esquerda (mais estreita no celular). */
-const STICKY = 'sticky left-0 w-[168px] min-w-[168px] max-w-[168px] bg-surface shadow-[1px_0_0_rgb(var(--line))] sm:w-[260px] sm:min-w-[260px] sm:max-w-[260px] md:w-[300px] md:min-w-[300px] md:max-w-[300px]';
+const STICKY = 'sticky left-0 w-[168px] min-w-[168px] max-w-[168px] shadow-[1px_0_0_rgb(var(--line))] sm:w-[260px] sm:min-w-[260px] sm:max-w-[260px] md:w-[300px] md:min-w-[300px] md:max-w-[300px]';
 
 /**
  * Lista de projetos em tabela: uma linha por projeto, o nome fixo à esquerda e as informações
@@ -50,7 +50,7 @@ export function ProjectsTable({
         <table className="w-full min-w-[1480px] border-separate border-spacing-0 text-[13px]">
           <thead>
             <tr>
-              <th className={cn(TH, STICKY, 'z-10 border-b border-line')}>Projeto</th>
+              <th className={cn(TH, STICKY, 'z-10 border-b border-line bg-surface')}>Projeto</th>
               <th className={cn(TH, 'w-[260px]')}>Status</th>
               <th className={cn(TH, 'w-[200px]')}>Progresso</th>
               <th className={TH}>Entrega</th>
@@ -77,22 +77,27 @@ export function ProjectsTable({
               const [task, ...rest] = f?.alerts ?? [];
               const next = f?.next && f.next.task.due_date ? f.next : null;
               const late = !!delivery?.late || (task?.days ?? 0) < 0;
+              // Em obra: a linha toda em marrom claro (tom da marca)
+              const obra = isObraStage(p, { phases, current }, s.phase);
               return (
                 <tr
                   key={p.id}
                   onClick={() => navigate(`/projetos/${p.id}`)}
-                  className="group cursor-pointer hover:bg-canvas"
+                  className={cn('group cursor-pointer', obra ? 'bg-brand-100 hover:bg-brand-200' : 'hover:bg-canvas')}
                   data-project-row={p.id}
+                  data-project-obra={obra ? 'sim' : undefined}
                 >
-                  <td className={cn(TD, STICKY, 'z-[1] group-hover:bg-canvas')}>
-                    {(delivery || task) && <span className={cn('absolute inset-y-0 left-0 w-[3px]', late ? 'bg-danger-solid' : 'bg-warning-solid')} aria-hidden />}
+                  <td className={cn(TD, STICKY, 'z-[1]', obra ? 'bg-brand-100 group-hover:bg-brand-200' : 'bg-surface group-hover:bg-canvas')}>
+                    {(delivery || task || obra) && (
+                      <span className={cn('absolute inset-y-0 left-0 w-[3px]', late ? 'bg-danger-solid' : delivery || task ? 'bg-warning-solid' : 'bg-brand-400')} aria-hidden />
+                    )}
                     <Link to={`/projetos/${p.id}`} onClick={(e) => e.stopPropagation()} className="block min-w-0 font-display text-[14px] font-semibold text-ink hover:underline" data-project-name>
                       <span className="block truncate">{p.name}</span>
                     </Link>
                     <span className="block truncate text-[12px] text-faint">{s.client?.name ?? 'Cliente removido'}</span>
                   </td>
                   <td className={cn(TD, 'w-[260px] max-w-[260px]')}>
-                    <ProjectStagePicker project={p} rail={{ phases, current }} fallback={s.phase} />
+                    <ProjectStagePicker project={p} rail={{ phases, current }} fallback={s.phase} tasks={s.tasks} />
                   </td>
                   <td className={cn(TD, 'w-[200px]')}>
                     <div className="flex items-baseline justify-between gap-3 text-[12.5px]">

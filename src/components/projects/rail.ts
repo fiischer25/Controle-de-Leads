@@ -45,7 +45,9 @@ export function macroStage(
   const autoLabel =
     project.status === 'concluido'
       ? 'Finalizado'
-      : current >= 0 && current < phases.length
+      : project.status === 'obra'
+        ? CONSTRUCTION_STAGE
+        : current >= 0 && current < phases.length
         ? phases[current]
         : current >= phases.length && phases.length
           ? 'Etapas concluídas'
@@ -53,3 +55,10 @@ export function macroStage(
   const manual = project.macro_stage?.trim();
   return manual ? { label: manual, auto: false, autoLabel } : { label: autoLabel, auto: true, autoLabel };
 }
+
+/** O projeto está em obra na lista (escolhido na lista ou pelo status interno)? */
+export const isObraStage = (
+  project: { status: string; macro_stage?: string | null },
+  rail: { phases: string[]; current: number },
+  fallback = '',
+) => macroStage(project, rail, fallback).label === CONSTRUCTION_STAGE;

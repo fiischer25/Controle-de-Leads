@@ -15,6 +15,7 @@ import { useToast } from '../context/ToastContext';
 import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
 import { autoProjectStatus, orderedPhases, totalMinutes } from '../lib/domain';
 import type { Project, ProjectStatus, Task } from '../lib/types';
+import { CONSTRUCTION_STAGE } from '../components/projects/rail';
 import {
   byPosition,
   cn,
@@ -112,8 +113,13 @@ export default function ProjectDetailPage() {
   const allDone = tasks.length > 0 && open.length === 0 && (project.status === 'nao_iniciado' || project.status === 'em_andamento' || project.status === 'pausado');
 
   /** Status escolhido à mão fica até voltar ao automático (null). */
-  const setStatus = (status: ProjectStatus | null) =>
-    updateProject(project.id, status ? { status, status_manual: true } : { status: autoProjectStatus(tasks), status_manual: false }).catch(toast.error);
+  const setStatus = (status: ProjectStatus | null) => {
+    const patch: Partial<Project> = status ? { status, status_manual: true } : { status: autoProjectStatus(tasks), status_manual: false };
+    // Obra aqui também é a etapa "Obra" na lista de projetos (e sair de Obra tira a etapa)
+    if (status === 'obra') patch.macro_stage = CONSTRUCTION_STAGE;
+    else if (project.macro_stage === CONSTRUCTION_STAGE) patch.macro_stage = null;
+    return updateProject(project.id, patch).catch(toast.error);
+  };
 
   const addQuick = async (phaseName: string) => {
     const title = quick[phaseName]?.trim();

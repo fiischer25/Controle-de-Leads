@@ -83,14 +83,22 @@ export default async function ({ browser }) {
       await page.waitForTimeout(200);
       eq((await project()).macro_stage, 'Obra', 'obra na lista');
       eq(await picker().getAttribute('data-project-stage'), 'Obra', 'obra na lista (tela)');
-      eq((await project()).status, 'em_andamento', 'a etapa da lista mudou o status interno');
+      // Obra na lista também muda o status interno, e a linha fica em marrom claro
+      eq([(await project()).status, (await project()).status_manual], ['obra', true], 'status interno em obra');
+      eq(await row.getAttribute('data-project-obra'), 'sim', 'linha de obra');
+      ok(/bg-brand-100/.test(await row.getAttribute('class')), 'linha de obra sem cor');
+      await row.locator('[data-project-dot="obra"]').waitFor();
       // Depois muda para uma etapa (LD - Levantamento de Dados, a primeira do modelo)
       await picker().click();
       const phases = await menu.getByRole('menuitemradio').allInnerTexts();
-      const ld = phases.find((t) => /^LD - /.test(t)) ?? phases[1];
+      const stagesOnly = phases.filter((t) => !['Reunião com cliente', 'Obra'].includes(t) && !/^Automático/.test(t));
+      const ld = stagesOnly.find((t) => /^LD - /.test(t)) ?? stagesOnly[0];
       await menu.getByRole('menuitemradio', { name: ld, exact: true }).click();
       await page.waitForTimeout(200);
       eq((await project()).macro_stage, ld, 'etapa escolhida');
+      // Saiu de Obra: o status interno volta a seguir as tarefas e a linha volta ao normal
+      eq([(await project()).status, (await project()).status_manual], ['em_andamento', false], 'status interno depois de sair de obra');
+      eq(await row.getAttribute('data-project-obra'), null, 'linha ainda marcada como obra');
       await page.reload();
       eq(await picker().getAttribute('data-project-stage'), ld, 'etapa depois de recarregar');
       eq(await picker().getAttribute('data-stage-auto'), 'nao', 'etapa à mão');
@@ -192,9 +200,13 @@ export default async function ({ browser }) {
       eq((await project()).status, 'obra', 'as tarefas mudaram o status manual');
       await page.goto(BASE + '/projetos');
       await page.locator(`[data-project-row="${pid}"] [data-project-dot="obra"]`).waitFor();
+      // Obra escolhida dentro do projeto aparece como etapa Obra na lista, com a linha colorida
+      eq(await page.locator(`[data-project-row="${pid}"] [data-project-stage]`).getAttribute('data-project-stage'), 'Obra', 'etapa Obra na lista');
+      eq(await page.locator(`[data-project-row="${pid}"]`).getAttribute('data-project-obra'), 'sim', 'linha de obra pelo status interno');
       await page.goto(`${BASE}/projetos/${pid}`);
       await pickStatus('Automático (pelas tarefas)');
       eq([(await project()).status, (await project()).status_manual], ['nao_iniciado', false], 'de volta ao automático');
+      eq((await project()).macro_stage ?? null, null, 'etapa Obra continuou na lista');
     },
     page,
   );

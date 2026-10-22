@@ -3,7 +3,8 @@ import { CalendarDays, Check, ChevronDown, HardHat, RotateCcw, type LucideIcon }
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { PROJECT_STATUS_STYLE } from '../../lib/status';
-import type { Project, ProjectStatus } from '../../lib/types';
+import { autoProjectStatus } from '../../lib/domain';
+import type { Project, ProjectStatus, Task } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { Popover } from '../ui';
 import { CLIENT_MEETING_STAGE, CONSTRUCTION_STAGE, macroStage } from './rail';
@@ -15,11 +16,11 @@ const SPECIAL: Array<{ label: string; Icon: LucideIcon; text: string }> = [
 ];
 const specialOf = (label: string) => SPECIAL.find((x) => x.label === label);
 
-/** Cor do indicador pelo status interno: verde em andamento, laranja pausado, azul obra. */
+/** Cor do indicador pelo status interno: verde em andamento, laranja pausado, marrom obra. */
 const DOT: Record<ProjectStatus, string> = {
   em_andamento: 'bg-success-solid shadow-[0_0_0_3px_rgb(var(--success-bg))]',
   pausado: 'bg-warning-solid shadow-[0_0_0_3px_rgb(var(--warning-bg))]',
-  obra: 'bg-info-solid shadow-[0_0_0_3px_rgb(var(--info-bg))]',
+  obra: 'bg-brand-500 shadow-[0_0_0_3px_rgb(var(--brand-200))]',
   nao_iniciado: 'border-[1.5px] border-stone-400 bg-transparent',
   concluido: 'bg-stone-400',
   cancelado: 'bg-stone-300',
@@ -48,17 +49,24 @@ export function ProjectStagePicker({
   project,
   rail,
   fallback,
+  tasks,
 }: {
   project: Project;
   rail: { phases: string[]; current: number };
   fallback?: string;
+  /** Tarefas do projeto: ao sair de Obra, o status interno volta a seguir as tarefas. */
+  tasks: Pick<Task, 'status'>[];
 }) {
   const { updateProject } = useData();
   const toast = useToast();
   const stage = macroStage(project, rail, fallback);
   const set = (value: string | null) => {
-    if ((project.macro_stage ?? null) === value) return;
-    updateProject(project.id, { macro_stage: value }).catch(toast.error);
+    const patch: Partial<Project> = { macro_stage: value };
+    // Obra na lista é também o status interno do projeto (e sair dela devolve ao automático)
+    if (value === CONSTRUCTION_STAGE) Object.assign(patch, { status: 'obra', status_manual: true });
+    else if (project.status === 'obra') Object.assign(patch, { status: autoProjectStatus(tasks), status_manual: false });
+    if ((project.macro_stage ?? null) === value && (patch.status ?? project.status) === project.status) return;
+    updateProject(project.id, patch).catch(toast.error);
   };
   const special = specialOf(stage.label);
   const options = rail.phases.filter((ph) => !specialOf(ph));
