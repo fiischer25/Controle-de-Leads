@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { isProjectActive } from '../../lib/domain';
 import { cn, formatDateShort, formatMinutes, formatNumber } from '../../lib/utils';
-import { Avatar, AvatarStack, StatusBadge } from '../ui';
+import { Avatar, AvatarStack } from '../ui';
+import { ProjectStagePicker } from './ProjectStage';
 import { alertWhen, projectDeadlineAlert, type ProjectFactsData } from './facts';
 import { projectRail } from './rail';
 import { ProjectDeadline, StageRail } from './StageRail';
@@ -50,8 +51,8 @@ export function ProjectsTable({
           <thead>
             <tr>
               <th className={cn(TH, STICKY, 'z-10 border-b border-line')}>Projeto</th>
-              <th className={TH}>Status</th>
-              <th className={cn(TH, 'w-[260px]')}>Etapa atual</th>
+              <th className={cn(TH, 'w-[260px]')}>Status</th>
+              <th className={cn(TH, 'w-[200px]')}>Progresso</th>
               <th className={TH}>Entrega</th>
               <th className={cn(TH, 'w-[300px]')}>Alerta</th>
               <th className={cn(TH, 'w-[300px]')}>Próximo prazo</th>
@@ -90,13 +91,13 @@ export function ProjectsTable({
                     </Link>
                     <span className="block truncate text-[12px] text-faint">{s.client?.name ?? 'Cliente removido'}</span>
                   </td>
-                  <td className={TD}>
-                    <StatusBadge kind="project" value={p.status} />
+                  <td className={cn(TD, 'w-[260px] max-w-[260px]')}>
+                    <ProjectStagePicker project={p} rail={{ phases, current }} fallback={s.phase} />
                   </td>
-                  <td className={cn(TD, 'w-[260px]')}>
+                  <td className={cn(TD, 'w-[200px]')}>
                     <div className="flex items-baseline justify-between gap-3 text-[12.5px]">
-                      <span className="max-w-[190px] truncate text-stone-700" title={stage}>
-                        {active && phases.length > 0 && current >= 0 && current < phases.length ? `${current + 1}/${phases.length} · ${stage}` : stage}
+                      <span className="truncate text-stone-700" title={stage}>
+                        {active && phases.length > 0 && current >= 0 && current < phases.length ? `Etapa ${current + 1} de ${phases.length}` : stage}
                       </span>
                       <span className="shrink-0 font-semibold tabular text-ink">{s.progress}%</span>
                     </div>

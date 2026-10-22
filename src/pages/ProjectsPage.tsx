@@ -5,10 +5,11 @@ import { useData } from '../context/DataContext';
 import { PROJECT_STATUS } from '../lib/constants';
 import { isProjectActive } from '../lib/domain';
 import { byPosition, cn, downloadFile, formatDate, formatNumber, matches, toCsv, today } from '../lib/utils';
-import { ActionLink, Avatar, AvatarStack, Button, EmptyState, FilterPick, PageHeader, SearchField, StatusBadge, Tabs, Toolbar } from '../components/ui';
+import { ActionLink, Avatar, AvatarStack, Button, EmptyState, FilterPick, PageHeader, SearchField, Tabs, Toolbar } from '../components/ui';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { useProjectSummaries, type ProjectSummary } from '../components/projects/useProjectSummaries';
-import { projectRail, templatePhasesByType } from '../components/projects/rail';
+import { macroStage, projectRail, templatePhasesByType } from '../components/projects/rail';
+import { ProjectStageTag } from '../components/projects/ProjectStage';
 import { ProjectDeadline, StageRail } from '../components/projects/StageRail';
 import { ProjectFacts } from '../components/projects/ProjectFacts';
 import { ProjectsTable } from '../components/projects/ProjectsTable';
@@ -118,6 +119,7 @@ export default function ProjectsPage() {
           Cliente: s.client?.name ?? '',
           Tipo: s.type?.name ?? '',
           Status: PROJECT_STATUS[s.project.status].label,
+          'Etapa (lista)': macroStage(s.project, projectRail(s, templates[s.project.project_type_id]), s.phase).label,
           'Etapa atual': s.phase,
           'Progresso (%)': s.progress,
           Início: formatDate(s.project.start_date),
@@ -311,7 +313,7 @@ export default function ProjectsPage() {
                         <div className="min-w-0">
                           <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
                             <span className="min-w-0 truncate font-display text-[16px] font-semibold tracking-[0.01em] text-ink">{p.name}</span>
-                            <StatusBadge kind="project" value={p.status} />
+                            <ProjectStageTag project={p} rail={{ phases, current }} fallback={s.phase} />
                           </div>
                           <div className="mt-0.5 truncate text-[12.5px] text-faint">
                             {s.client?.name ?? 'Cliente removido'}
