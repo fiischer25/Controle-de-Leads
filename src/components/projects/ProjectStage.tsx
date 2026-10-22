@@ -1,12 +1,19 @@
 import type { MouseEvent, ReactNode } from 'react';
-import { CalendarDays, Check, ChevronDown, RotateCcw } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, HardHat, RotateCcw, type LucideIcon } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { PROJECT_STATUS_STYLE } from '../../lib/status';
 import type { Project, ProjectStatus } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { Popover } from '../ui';
-import { CLIENT_MEETING_STAGE, macroStage } from './rail';
+import { CLIENT_MEETING_STAGE, CONSTRUCTION_STAGE, macroStage } from './rail';
+
+/** Etapas fixas do menu (além das etapas das tarefas), com ícone e cor próprios. */
+const SPECIAL: Array<{ label: string; Icon: LucideIcon; text: string }> = [
+  { label: CLIENT_MEETING_STAGE, Icon: CalendarDays, text: 'text-info-fg' },
+  { label: CONSTRUCTION_STAGE, Icon: HardHat, text: 'text-brand-700' },
+];
+const specialOf = (label: string) => SPECIAL.find((x) => x.label === label);
 
 /** Cor do indicador pelo status interno: verde em andamento, laranja pausado, azul obra. */
 const DOT: Record<ProjectStatus, string> = {
@@ -53,10 +60,10 @@ export function ProjectStagePicker({
     if ((project.macro_stage ?? null) === value) return;
     updateProject(project.id, { macro_stage: value }).catch(toast.error);
   };
-  const isMeeting = stage.label === CLIENT_MEETING_STAGE;
-  const options = [...rail.phases];
+  const special = specialOf(stage.label);
+  const options = rail.phases.filter((ph) => !specialOf(ph));
   // Etapa escolhida que não está mais nas tarefas: continua no menu
-  if (!stage.auto && !isMeeting && !options.includes(stage.label)) options.push(stage.label);
+  if (!stage.auto && !special && !options.includes(stage.label)) options.push(stage.label);
   return (
     <div onClick={stop} className="min-w-0">
       <Popover
@@ -72,8 +79,8 @@ export function ProjectStagePicker({
             className="flex max-w-full items-center gap-2 rounded-[8px] py-1 pl-1 pr-1.5 text-left text-[12.5px] transition-colors hover:bg-ink/[0.05]"
           >
             <ProjectStatusDot status={project.status} className="ml-0.5" />
-            {isMeeting && <CalendarDays className="h-3.5 w-3.5 shrink-0 text-info-fg" strokeWidth={1.8} aria-hidden />}
-            <span className={cn('min-w-0 truncate', isMeeting ? 'font-medium text-info-fg' : 'text-ink')} title={stage.label}>
+            {special && <special.Icon className={cn('h-3.5 w-3.5 shrink-0', special.text)} strokeWidth={1.8} aria-hidden />}
+            <span className={cn('min-w-0 truncate', special ? cn('font-medium', special.text) : 'text-ink')} title={stage.label}>
               {stage.label}
             </span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-faint" strokeWidth={1.8} aria-hidden />
@@ -83,16 +90,19 @@ export function ProjectStagePicker({
         {(close) => (
           <div onClick={stop} role="menu" aria-label={`Etapa de ${project.name}`}>
             <div className="px-2.5 pb-1 pt-1.5 text-[11.5px] font-medium uppercase tracking-[0.06em] text-faint">Etapa na lista</div>
-            <Option
-              active={isMeeting}
-              icon={<CalendarDays className="h-4 w-4 text-info-fg" strokeWidth={1.8} />}
-              onClick={() => {
-                close();
-                set(CLIENT_MEETING_STAGE);
-              }}
-            >
-              {CLIENT_MEETING_STAGE}
-            </Option>
+            {SPECIAL.map((x) => (
+              <Option
+                key={x.label}
+                active={!stage.auto && stage.label === x.label}
+                icon={<x.Icon className={cn('h-4 w-4', x.text)} strokeWidth={1.8} />}
+                onClick={() => {
+                  close();
+                  set(x.label);
+                }}
+              >
+                {x.label}
+              </Option>
+            ))}
             {options.length > 0 && <div className="mx-2 my-1 border-t border-line" />}
             {options.map((ph) => (
               <Option
@@ -144,12 +154,12 @@ function Option({ active, icon, onClick, children }: { active: boolean; icon?: R
 /** Etapa macro só para leitura (cartões), com o indicador do status interno. */
 export function ProjectStageTag({ project, rail, fallback }: { project: Project; rail: { phases: string[]; current: number }; fallback?: string }) {
   const stage = macroStage(project, rail, fallback);
-  const isMeeting = stage.label === CLIENT_MEETING_STAGE;
+  const special = specialOf(stage.label);
   return (
     <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-ink/[0.04] px-2 py-0.5 text-[12px]" data-project-stage={stage.label}>
       <ProjectStatusDot status={project.status} />
-      {isMeeting && <CalendarDays className="h-3 w-3 shrink-0 text-info-fg" strokeWidth={1.8} aria-hidden />}
-      <span className={cn('min-w-0 truncate', isMeeting ? 'font-medium text-info-fg' : 'text-stone-700')}>{stage.label}</span>
+      {special && <special.Icon className={cn('h-3 w-3 shrink-0', special.text)} strokeWidth={1.8} aria-hidden />}
+      <span className={cn('min-w-0 truncate', special ? cn('font-medium', special.text) : 'text-stone-700')}>{stage.label}</span>
     </span>
   );
 }

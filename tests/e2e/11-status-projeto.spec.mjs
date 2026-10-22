@@ -77,6 +77,13 @@ export default async function ({ browser }) {
       eq((await project()).macro_stage, 'Reunião com cliente', 'etapa salva');
       ok(new URL(page.url()).pathname === '/projetos', 'abriu o projeto ao escolher a etapa');
       eq(await picker().getAttribute('data-project-stage'), 'Reunião com cliente', 'etapa na lista');
+      // Obra também é uma opção fixa do menu
+      await picker().click();
+      await menu.getByRole('menuitemradio', { name: 'Obra', exact: true }).click();
+      await page.waitForTimeout(200);
+      eq((await project()).macro_stage, 'Obra', 'obra na lista');
+      eq(await picker().getAttribute('data-project-stage'), 'Obra', 'obra na lista (tela)');
+      eq((await project()).status, 'em_andamento', 'a etapa da lista mudou o status interno');
       // Depois muda para uma etapa (LD - Levantamento de Dados, a primeira do modelo)
       await picker().click();
       const phases = await menu.getByRole('menuitemradio').allInnerTexts();
