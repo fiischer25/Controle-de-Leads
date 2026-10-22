@@ -172,6 +172,11 @@ export interface Project {
   status: ProjectStatus;
   /** Definido à mão (ex.: Obra): as tarefas não mudam mais o status. Falso = automático. */
   status_manual?: boolean;
+  /**
+   * Etapa macro mostrada na lista de projetos (ex.: "LD - Levantamento de Dados" ou "Reunião com
+   * cliente"), escolhida à mão. Null = automático, a etapa atual pelas tarefas (migração 20261024).
+   */
+  macro_stage?: string | null;
   manager_id: string | null;
   member_ids: string[];
   start_date: string;

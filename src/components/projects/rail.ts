@@ -25,3 +25,28 @@ export function projectRail(summary: ProjectSummary, templatePhases: string[] = 
   const pending = summary.tasks.some((x) => x.status !== 'done');
   return { phases, current: pending ? phases.indexOf(summary.phase) : phases.length };
 }
+
+/** Etapa macro que não é uma fase das tarefas: reunião marcada com o cliente. */
+export const CLIENT_MEETING_STAGE = 'Reunião com cliente';
+
+/**
+ * Etapa macro da lista de projetos: a escolhida à mão ou, no automático, a etapa atual pelas
+ * tarefas (ou "Finalizado", "Etapas concluídas", "Sem tarefas").
+ */
+export function macroStage(
+  project: { status: string; macro_stage?: string | null },
+  rail: { phases: string[]; current: number },
+  fallback = '',
+): { label: string; auto: boolean; autoLabel: string } {
+  const { phases, current } = rail;
+  const autoLabel =
+    project.status === 'concluido'
+      ? 'Finalizado'
+      : current >= 0 && current < phases.length
+        ? phases[current]
+        : current >= phases.length && phases.length
+          ? 'Etapas concluídas'
+          : fallback || 'Sem tarefas';
+  const manual = project.macro_stage?.trim();
+  return manual ? { label: manual, auto: false, autoLabel } : { label: autoLabel, auto: true, autoLabel };
+}

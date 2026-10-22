@@ -29,14 +29,16 @@ export default async function ({ browser }) {
       await page.goto(BASE + '/projetos');
       // Tabela: uma linha por projeto, informações em colunas (rola para o lado)
       const row = page.locator(`[data-project-row="${pid}"]`);
-      await row.getByText('Em andamento', { exact: true }).waitFor();
+      // Status da lista: a etapa macro, com o indicador verde do status interno (Em andamento)
+      await row.getByRole('img', { name: 'Status do projeto: Em andamento' }).first().waitFor();
+      eq(await row.locator('[data-project-stage]').getAttribute('data-stage-auto'), 'sim', 'etapa automática');
       // Detalhes sem abrir o projeto, focados em prazos (sem financeiro)
       await row.locator('[data-manager]').waitFor();
       ok(/^\d+\/\d+/.test(await row.locator('[data-tasks]').innerText()), 'tarefas concluídas/total');
       ok(/\d+h/.test(await row.locator('[data-hours]').innerText()), 'horas registradas');
       ok((await page.locator('[data-next-deadline]').count()) > 0, 'próximo prazo na lista');
       ok(!/Honorários|recebid|R\$/.test(await page.locator('[data-projects-table]').innerText()), 'financeiro na lista de projetos');
-      for (const h of ['Etapa atual', 'Entrega', 'Alerta', 'Próximo prazo', 'Responsável', 'Equipe', 'Tarefas', 'Horas']) {
+      for (const h of ['Status', 'Progresso', 'Entrega', 'Alerta', 'Próximo prazo', 'Responsável', 'Equipe', 'Tarefas', 'Horas']) {
         await page.getByRole('columnheader', { name: h, exact: true }).waitFor();
       }
       await page.getByRole('combobox', { name: 'Ordenar' }).click();
@@ -54,6 +56,56 @@ export default async function ({ browser }) {
       await page.locator(`a[href="/projetos/${pid}"] [data-project-facts]`).waitFor();
       await page.getByRole('button', { name: 'Ver em tabela' }).click();
       await page.locator('[data-projects-table]').waitFor();
+    },
+    page,
+  );
+
+  await s.step(
+    'status da lista: etapa macro, reunião com cliente e cor pelo status interno',
+    async () => {
+      await page.goto(BASE + '/projetos');
+      const row = page.locator(`[data-project-row="${pid}"]`);
+      const name = (await project()).name;
+      const picker = () => row.getByRole('button', { name: new RegExp(`^Etapa de ${name}: `) });
+      const auto = await picker().getAttribute('data-project-stage');
+      ok(auto && auto.length > 0, 'etapa automática vazia');
+      // Reunião com cliente (sem abrir o projeto)
+      await picker().click();
+      const menu = page.getByRole('menu', { name: `Etapa de ${name}` });
+      await menu.getByRole('menuitemradio', { name: 'Reunião com cliente' }).click();
+      await page.waitForTimeout(200);
+      eq((await project()).macro_stage, 'Reunião com cliente', 'etapa salva');
+      ok(new URL(page.url()).pathname === '/projetos', 'abriu o projeto ao escolher a etapa');
+      eq(await picker().getAttribute('data-project-stage'), 'Reunião com cliente', 'etapa na lista');
+      // Depois muda para uma etapa (LD - Levantamento de Dados, a primeira do modelo)
+      await picker().click();
+      const phases = await menu.getByRole('menuitemradio').allInnerTexts();
+      const ld = phases.find((t) => /^LD - /.test(t)) ?? phases[1];
+      await menu.getByRole('menuitemradio', { name: ld, exact: true }).click();
+      await page.waitForTimeout(200);
+      eq((await project()).macro_stage, ld, 'etapa escolhida');
+      await page.reload();
+      eq(await picker().getAttribute('data-project-stage'), ld, 'etapa depois de recarregar');
+      eq(await picker().getAttribute('data-stage-auto'), 'nao', 'etapa à mão');
+      // Status interno pausado: indicador laranja, sozinho; a etapa continua
+      await patchTable(page, 'projects', "rows.forEach((p) => { if (p.id === arg) p.status = 'pausado'; });", pid);
+      await page.reload();
+      await row.locator('[data-project-dot="pausado"]').waitFor();
+      ok(/warning-solid/.test(await row.locator('[data-project-dot="pausado"]').getAttribute('class')), 'pausado sem laranja');
+      eq(await picker().getAttribute('data-project-stage'), ld, 'etapa depois de pausar');
+      await patchTable(page, 'projects', "rows.forEach((p) => { if (p.id === arg) p.status = 'em_andamento'; });", pid);
+      await page.reload();
+      ok(/success-solid/.test(await row.locator('[data-project-dot="em_andamento"]').getAttribute('class')), 'em andamento sem verde');
+      // Cartões mostram a mesma etapa
+      await page.getByRole('button', { name: 'Ver em cartões' }).click();
+      await page.locator(`a[href="/projetos/${pid}"] [data-project-stage="${ld}"]`).waitFor();
+      await page.getByRole('button', { name: 'Ver em tabela' }).click();
+      // Volta ao automático
+      await picker().click();
+      await menu.getByRole('menuitemradio', { name: /^Automático/ }).click();
+      await page.waitForTimeout(200);
+      eq((await project()).macro_stage, null, 'automático');
+      eq(await picker().getAttribute('data-project-stage'), auto, 'etapa automática de volta');
     },
     page,
   );
@@ -132,7 +184,7 @@ export default async function ({ browser }) {
       await page.waitForTimeout(300);
       eq((await project()).status, 'obra', 'as tarefas mudaram o status manual');
       await page.goto(BASE + '/projetos');
-      await page.locator(`[data-project-row="${pid}"]`).getByText('Obra', { exact: true }).waitFor();
+      await page.locator(`[data-project-row="${pid}"] [data-project-dot="obra"]`).waitFor();
       await page.goto(`${BASE}/projetos/${pid}`);
       await pickStatus('Automático (pelas tarefas)');
       eq([(await project()).status, (await project()).status_manual], ['nao_iniciado', false], 'de volta ao automático');
