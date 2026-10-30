@@ -15,10 +15,9 @@ export default async function ({ browser }) {
       await page.goto(BASE + '/');
       for (const t of ['Em andamento', 'Horas da equipe']) await page.getByText(t, { exact: true }).first().waitFor();
       await page.getByText(/^Financeiro · /).waitFor();
-      // Caixa do mês seguinte: recebido no mês anterior, contas e sobra deste mês
+      // Mesmo mês: entradas, contas e sobra do mês
       await page.getByText('Saldo em contas', { exact: true }).first().waitFor();
-      for (const t of [/^Recebido em /, /^Contas de /, /^Sobra de /]) await page.locator('.metric-tile').getByText(t).first().waitFor();
-      await page.locator('[data-next-cycle]').waitFor();
+      for (const t of [/^Entradas de /, /^Contas de /, /^Sobra de /]) await page.locator('[data-month-cards] .metric-tile').getByText(t).first().waitFor();
       await page.getByRole('heading', { name: 'Fluxo de caixa' }).waitFor();
       await page.getByRole('heading', { name: 'Vencidos e próximos 30 dias' }).waitFor();
       await page.getByText(/A receber em 30 dias:/).waitFor();

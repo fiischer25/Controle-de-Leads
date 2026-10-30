@@ -79,6 +79,7 @@ export default function FinanceReportPage() {
       endTotal,
       totals,
       result: Math.round((totals.inPaid - totals.outPaid) * 100) / 100,
+      leftover: Math.round((totals.inPlanned - totals.outPlanned) * 100) / 100,
       income: group('receita'),
       expense: group('despesa'),
       projects: Object.entries(byProject)
@@ -91,6 +92,7 @@ export default function FinanceReportPage() {
     };
   }, [fin.accounts, fin.entries, fin.categoryMap, maps.projects, month, t]);
 
+  const monthName = MONTHS_FULL[Number(month.slice(5, 7)) - 1].toLowerCase();
   const now = new Date();
   const generated = `${formatDate(t)} às ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const partyOf = (e: FinanceEntry) => {
@@ -149,11 +151,20 @@ export default function FinanceReportPage() {
         {/* Resumo */}
         <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5 print:grid-cols-5">
           <Box label={`Saldo em ${formatDate(addDays(`${month}-01`, -1)).slice(0, 5)}`} value={r.startTotal} />
-          <Box label="Entradas" value={r.totals.inPaid} tone="text-emerald-800" sub={`previsto ${formatMoney(r.totals.inPlanned)}`} />
-          <Box label="Saídas" value={r.totals.outPaid} sub={`previsto ${formatMoney(r.totals.outPlanned)}`} />
-          <Box label="Resultado" value={r.result} tone={r.result < 0 ? 'text-red-800' : undefined} />
+          <Box label={`Entradas de ${monthName}`} value={r.totals.inPaid} tone="text-emerald-800" sub={`recebido · previsto ${formatMoney(r.totals.inPlanned)}`} />
+          <Box label={`Contas de ${monthName}`} value={r.totals.outPaid} sub={`pago · previsto ${formatMoney(r.totals.outPlanned)}`} />
+          <Box
+            label={`Sobra de ${monthName}`}
+            value={r.result}
+            tone={r.result < 0 ? 'text-red-800' : undefined}
+            sub={`prevista ${formatMoney(r.leftover)}`}
+          />
           <Box label={`Saldo em ${formatDate(r.until).slice(0, 5)}`} value={r.endTotal} />
         </section>
+        <p className="mt-2 text-[11px] text-stone-500" data-report-rule>
+          As entradas de {monthName} pagam as contas de {monthName}. Sobra = entradas − contas do mês (recebido − pago; a prevista inclui o que vence no mês e
+          ainda está em aberto).
+        </p>
         {Math.abs(r.noAccount) >= 0.01 && (
           <p className="mt-2 text-[11px] text-stone-500">
             {formatMoney(r.noAccount)} em lançamentos pagos sem conta definida entram no resultado, mas não nos saldos.
