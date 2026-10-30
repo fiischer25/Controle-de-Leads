@@ -10,14 +10,13 @@ import { ActionLink, BarRow, Button, FilterPick, IconButton, PageHeader, SearchF
 import { EntryFormModal } from '../components/finance/EntryFormModal';
 import { FinanceBilling } from '../components/finance/FinanceBilling';
 import { EntryList } from '../components/finance/EntryList';
-import { CashFlowChart, CashModeSwitch, MonthCards, ReceivablesByMonth } from '../components/finance/FinanceOverviewParts';
+import { CashFlowChart, MonthCards, ReceivablesByMonth } from '../components/finance/FinanceOverviewParts';
 import { ACCOUNT_KIND_LABEL, useFinance } from '../components/finance/useFinance';
 import { FinanceAccounts } from '../components/finance/FinanceAccounts';
 import { FinanceProfitability } from '../components/finance/FinanceProfitability';
 import { FinanceCategories } from '../components/finance/FinanceCategories';
 import { ImportStatementModal } from '../components/finance/ImportStatementModal';
 import { useFinanceOverview } from '../components/finance/useFinanceOverview';
-import { useCashMode } from '../components/finance/cashMode';
 
 type Tab = 'geral' | 'lancamentos' | 'cobranca' | 'contas' | 'rentabilidade' | 'categorias';
 type Editing = { entry?: FinanceEntry; kind?: FinanceKind } | null;
@@ -133,7 +132,6 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
       <div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-faint">{monthLabel(month)}</div>
-          <CashModeSwitch />
         </div>
         <MonthCards data={data} />
         <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
@@ -163,7 +161,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
           title="Fluxo de caixa"
           aside={
             <span className="text-[12.5px] text-faint">
-              {data.mode === 'seguinte' ? 'cada mês: o que entrou no mês anterior × as contas do mês' : 'realizado nos meses passados · previsto nos próximos'}
+              cada mês: as entradas pagam as contas do mesmo mês · previsto nos próximos
             </span>
           }
         />
@@ -247,10 +245,8 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
   const [project, setProject] = useState('');
   const [query, setQuery] = useState('');
 
-  const [mode] = useCashMode();
   // "Vencidos" mostra todos os atrasados, de qualquer mês
   const allMonths = status === 'vencido';
-  // Filtros (menos o mês): valem também para o mês anterior e o seguinte do caixa
   const filtered = useMemo(
     () =>
       fin.entries
@@ -271,18 +267,11 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
 
   const income = sum(rows.filter((e) => e.kind === 'receita').map((e) => e.amount));
   const expense = sum(rows.filter((e) => e.kind === 'despesa').map((e) => e.amount));
-  // Caixa do mês seguinte: o que entrou no mês anterior paga as contas deste mês;
-  // o que entra neste mês paga as contas do próximo
-  const nextCycle = mode === 'seguinte' && !allMonths;
-  const prevMonth = monthKey(addMonthsKey(`${month}-01`, -1));
-  const nextMonth = monthKey(addMonthsKey(`${month}-01`, 1));
-  // Só o que de fato entrou no mês anterior paga as contas; o que ficou para receber aparece à parte
-  const prevIncome = inMonth(prevMonth).filter((e) => e.kind === 'receita');
-  const prevIn = sum(prevIncome.filter((e) => e.paid_at).map((e) => e.amount));
-  const prevMissing = sum(prevIncome.filter((e) => !e.paid_at).map((e) => e.amount));
-  const nextBills = sum(inMonth(nextMonth).filter((e) => e.kind === 'despesa').map((e) => e.amount));
-  const leftover = Math.round((prevIn - expense) * 100) / 100;
-  const nextLeftover = Math.round((income - nextBills) * 100) / 100;
+  // As entradas do mês pagam as contas do mesmo mês
+  const cycle = !allMonths;
+  const incomePaid = sum(rows.filter((e) => e.kind === 'receita' && e.paid_at).map((e) => e.amount));
+  const expensePaid = sum(rows.filter((e) => e.kind === 'despesa' && e.paid_at).map((e) => e.amount));
+  const leftover = Math.round((income - expense) * 100) / 100;
   const name = (key: string) => MONTHS_FULL[Number(key.slice(5, 7)) - 1].toLowerCase();
   const projectsWithEntries = useMemo(() => {
     const ids = new Set(db.finance_entries.map((e) => e.project_id).filter(Boolean) as string[]);
@@ -329,7 +318,6 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
           </button>
         )}
         <div className="flex-1" />
-        <CashModeSwitch />
         <Tabs<KindFilter>
           tabs={[
             { id: 'todos', label: 'Tudo' },
@@ -385,78 +373,63 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
         }
       />
 
-      {nextCycle ? (
+      {cycle ? (
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-cash-cycle>
           <TotalCard
-            label={`Entrou em ${name(prevMonth)}`}
-            value={formatMoney(prevIn)}
+            label={`Entradas de ${name(month)}`}
+            value={formatMoney(income)}
             tone="success"
-            sub={prevMissing > 0 ? `falta receber ${formatMoney(prevMissing)} de ${name(prevMonth)}` : `paga as contas de ${name(month)}`}
+            sub={`recebido ${formatMoney(incomePaid)}${income - incomePaid > 0.004 ? ` · falta ${formatMoney(income - incomePaid)}` : ''}`}
           />
           <TotalCard
             label={`Contas de ${name(month)}`}
             value={formatMoney(expense)}
             tone="danger"
-            sub={`pago ${formatMoney(sum(rows.filter((e) => e.kind === 'despesa' && e.paid_at).map((e) => e.amount)))}`}
+            sub={`pago ${formatMoney(expensePaid)}${expense - expensePaid > 0.004 ? ` · falta ${formatMoney(expense - expensePaid)}` : ''}`}
           />
           <TotalCard
             label={`Sobra de ${name(month)}`}
             value={formatMoney(leftover)}
             tone={leftover < 0 ? 'danger' : 'neutral'}
-            sub={`entrou em ${name(prevMonth)} − contas de ${name(month)}`}
+            sub={leftover < 0 ? `as entradas de ${name(month)} não cobrem as contas` : `entradas − contas de ${name(month)}`}
           />
-          <TotalCard
-            label={`Entrando em ${name(month)}`}
-            value={formatMoney(income)}
-            tone={nextLeftover < 0 ? 'danger' : 'neutral'}
-            sub={`para as contas de ${name(nextMonth)} (${formatMoney(nextBills)})${nextLeftover < 0 ? ` · faltam ${formatMoney(-nextLeftover)}` : ''}`}
-          />
+          <TotalCard label="Lançamentos" value={String(rows.length)} sub={monthLabel(month)} />
         </div>
       ) : (
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <TotalCard
-            label="Receitas"
-            value={formatMoney(income)}
-            tone="success"
-            sub={`recebido ${formatMoney(sum(rows.filter((e) => e.kind === 'receita' && e.paid_at).map((e) => e.amount)))}`}
-          />
-          <TotalCard
-            label="Despesas"
-            value={formatMoney(expense)}
-            tone="danger"
-            sub={`pago ${formatMoney(sum(rows.filter((e) => e.kind === 'despesa' && e.paid_at).map((e) => e.amount)))}`}
-          />
+          <TotalCard label="Receitas vencidas" value={formatMoney(income)} tone="success" sub="a receber, de todos os meses" />
+          <TotalCard label="Despesas vencidas" value={formatMoney(expense)} tone="danger" sub="a pagar, de todos os meses" />
           <TotalCard
             label="Saldo"
             value={formatMoney(Math.round((income - expense) * 100) / 100)}
             tone={income - expense < 0 ? 'danger' : 'neutral'}
             sub="receitas − despesas"
           />
-          <TotalCard label="Lançamentos" value={String(rows.length)} sub={allMonths ? 'vencidos de todos os meses' : monthLabel(month)} />
+          <TotalCard label="Lançamentos" value={String(rows.length)} sub="vencidos de todos os meses" />
         </div>
       )}
 
-      {nextCycle ? (
+      {cycle ? (
         <div className="mt-6 space-y-8">
-          {kind !== 'receita' && (
-            <section aria-labelledby="lanc-contas" data-cycle-section="contas">
-              <h3 id="lanc-contas" className="flex flex-wrap items-baseline gap-x-2 text-[14px] font-semibold text-ink">
-                Contas de {name(month)}
-                <span className="text-[12.5px] font-normal text-faint">pagas com o que entrou em {name(prevMonth)}</span>
-              </h3>
-              <div className="mt-2">
-                <EntryList entries={rows.filter((e) => e.kind !== 'receita')} onOpen={onOpen} empty={`Nenhuma conta em ${name(month)} com esses filtros.`} />
-              </div>
-            </section>
-          )}
           {(kind === 'todos' || kind === 'receita') && (
             <section aria-labelledby="lanc-entradas" data-cycle-section="entradas">
               <h3 id="lanc-entradas" className="flex flex-wrap items-baseline gap-x-2 text-[14px] font-semibold text-ink">
                 Entradas de {name(month)}
-                <span className="text-[12.5px] font-normal text-faint">pagam as contas de {name(nextMonth)}</span>
+                <span className="text-[12.5px] font-normal text-faint">pagam as contas de {name(month)}</span>
               </h3>
               <div className="mt-2">
                 <EntryList entries={rows.filter((e) => e.kind === 'receita')} onOpen={onOpen} empty={`Nenhuma entrada em ${name(month)} com esses filtros.`} />
+              </div>
+            </section>
+          )}
+          {kind !== 'receita' && (
+            <section aria-labelledby="lanc-contas" data-cycle-section="contas">
+              <h3 id="lanc-contas" className="flex flex-wrap items-baseline gap-x-2 text-[14px] font-semibold text-ink">
+                Contas de {name(month)}
+                <span className="text-[12.5px] font-normal text-faint">pagas com as entradas de {name(month)}</span>
+              </h3>
+              <div className="mt-2">
+                <EntryList entries={rows.filter((e) => e.kind !== 'receita')} onOpen={onOpen} empty={`Nenhuma conta em ${name(month)} com esses filtros.`} />
               </div>
             </section>
           )}

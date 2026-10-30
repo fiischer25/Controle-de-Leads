@@ -11,7 +11,7 @@ import { useFinanceOverview } from '../finance/useFinanceOverview';
 
 /**
  * Financeiro nos dashboards (Escritório e Meu painel), com os mesmos números da tela Financeiro:
- * saldo e o mês (no caixa do "mês seguinte": recebido no mês anterior, contas e sobra), a receber/pagar em 30 dias, vencidos, fluxo de caixa
+ * saldo e o mês (entradas e contas do mesmo mês, e a sobra), a receber/pagar em 30 dias, vencidos, fluxo de caixa
  * (no Escritório) e a lista do que venceu e vence nos próximos 30 dias.
  */
 export function FinanceSnapshot({ variant }: { variant: 'office' | 'personal' }) {
@@ -63,7 +63,7 @@ export function FinanceSnapshot({ variant }: { variant: 'office' | 'personal' })
             <SectionHeader
               id="dash-fluxo"
               title="Fluxo de caixa"
-              aside={<span className="text-[12.5px] text-faint">{data.mode === 'seguinte' ? 'entrou no mês anterior × contas do mês' : 'realizado · previsto'}</span>}
+              aside={<span className="text-[12.5px] text-faint">entradas × contas de cada mês</span>}
             />
             <CashFlowChart months={data.flow} />
           </section>

@@ -22,33 +22,28 @@ export default async function ({ browser }) {
   );
 
   await s.step(
-    'caixa do mês seguinte: o recebido no mês anterior paga as contas deste mês',
+    'mesmo mês: as entradas do mês pagam as contas do mesmo mês (visão geral)',
     async () => {
+      // Um navegador que ainda guarda a regra antiga ("mês seguinte") não muda nada
+      await page.evaluate(() => localStorage.setItem('airos:caixa-modo', 'seguinte'));
+      await page.reload();
       const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
       const now = new Date();
-      const key = (d) => d.toISOString().slice(0, 7);
-      const cur = key(new Date(now.getFullYear(), now.getMonth(), 15));
-      const prev = key(new Date(now.getFullYear(), now.getMonth() - 1, 15));
+      const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const curName = MONTHS[now.getMonth()];
-      const prevName = MONTHS[(now.getMonth() + 11) % 12];
-      const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v);
+      const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v).replace(/\s/g, ' ');
       const entries = await ls(page, 'finance_entries');
-      const received = entries.filter((e) => e.kind === 'receita' && e.paid_at?.startsWith(prev)).reduce((a, e) => a + e.amount, 0);
-      const bills = entries.filter((e) => e.kind === 'despesa' && e.due_date.startsWith(cur)).reduce((a, e) => a + e.amount, 0);
-      const card = (label) => page.locator('.metric-tile').filter({ has: page.getByText(label, { exact: true }) }).first();
-      ok((await card(`Recebido em ${prevName}`).innerText()).replace(/\s/g, ' ').includes(brl(received).replace(/\s/g, ' ')), `recebido em ${prevName}: ${brl(received)}`);
-      ok((await card(`Contas de ${curName}`).innerText()).replace(/\s/g, ' ').includes(brl(bills).replace(/\s/g, ' ')), `contas de ${curName}: ${brl(bills)}`);
-      const leftover = received - bills;
-      ok((await card(`Sobra de ${curName}`).innerText()).replace(/\s/g, ' ').includes(brl(Math.abs(leftover)).replace(/\s/g, ' ')), `sobra: ${brl(leftover)}`);
-      await page.locator('[data-next-cycle]').getByText(/contas de /).waitFor();
-      await page.getByText(/o que entrou no mês anterior × as contas do mês/).waitFor();
-      // Volta para o mesmo mês e de novo para o seguinte (fica lembrado)
-      await page.getByRole('button', { name: 'Mesmo mês' }).click();
-      for (const t of ['Entradas do mês', 'Saídas do mês', 'Resultado do mês']) await page.getByText(t, { exact: true }).first().waitFor();
-      await page.reload();
-      await page.getByText('Entradas do mês', { exact: true }).first().waitFor();
-      await page.getByRole('button', { name: 'Entradas pagam o mês seguinte' }).click();
-      await card(`Sobra de ${curName}`).waitFor();
+      const planned = (kind) => Math.round(entries.filter((e) => e.kind === kind && e.due_date.startsWith(cur)).reduce((a, e) => a + e.amount, 0) * 100) / 100;
+      const card = (label) => page.locator('[data-month-cards] .metric-tile').filter({ has: page.getByText(label, { exact: true }) }).first();
+      const text = async (label) => (await card(label).innerText()).replace(/\s/g, ' ');
+      ok((await text(`Entradas de ${curName}`)).includes(brl(planned('receita'))), `entradas de ${curName}: ${brl(planned('receita'))}`);
+      ok((await text(`Contas de ${curName}`)).includes(brl(planned('despesa'))), `contas de ${curName}: ${brl(planned('despesa'))}`);
+      const leftover = planned('receita') - planned('despesa');
+      ok((await text(`Sobra de ${curName}`)).includes(brl(Math.abs(leftover))), `sobra: ${brl(leftover)} em ${await text(`Sobra de ${curName}`)}`);
+      ok((await text(`Sobra de ${curName}`)).includes(`entradas − contas de ${curName}`), 'explicação da sobra');
+      await page.getByText(/as entradas pagam as contas do mesmo mês/).waitFor();
+      ok(!(await page.getByText(/Recebido em |mês anterior/).count()), 'ainda mostra a regra do mês seguinte');
+      ok(!(await page.getByRole('button', { name: /Entradas pagam o mês seguinte|Mesmo mês/ }).count()), 'seletor de regra ainda aparece');
     },
     page,
   );
@@ -121,37 +116,34 @@ export default async function ({ browser }) {
   );
 
   await s.step(
-    'lançamentos seguem o caixa do mês seguinte: o que entrou no mês anterior paga as contas do mês',
+    'lançamentos: as entradas de cada mês pagam as contas do mesmo mês',
     async () => {
       await page.goto(BASE + '/financeiro?aba=lancamentos');
       const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
       const now = new Date();
-      const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const cur = key(now);
-      const prev = key(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+      const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const curName = MONTHS[now.getMonth()];
-      const prevName = MONTHS[(now.getMonth() + 11) % 12];
       const entries = await ls(page, 'finance_entries');
       const when = (e) => (e.paid_at ?? e.due_date).slice(0, 7);
-      // Entradas: só o recebido no mês; contas: tudo do mês (pago na data do pagamento, em aberto no vencimento)
-      const total = (kind, month) =>
-        Math.round(entries.filter((e) => e.kind === kind && (kind === 'receita' ? e.paid_at?.slice(0, 7) === month : when(e) === month)).reduce((a, e) => a + e.amount, 0) * 100) / 100;
+      const total = (kind) => Math.round(entries.filter((e) => e.kind === kind && when(e) === cur).reduce((a, e) => a + e.amount, 0) * 100) / 100;
       const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v).replace(/\s/g, ' ');
       const card = (label) => page.locator('[data-cash-cycle] .metric-tile').filter({ has: page.getByText(label, { exact: true }) });
       const text = async (label) => (await card(label).innerText()).replace(/\s/g, ' ');
-      ok((await text(`Entrou em ${prevName}`)).includes(brl(total('receita', prev))), `entrou em ${prevName}: ${brl(total('receita', prev))}`);
-      ok((await text(`Contas de ${curName}`)).includes(brl(total('despesa', cur))), `contas de ${curName}: ${brl(total('despesa', cur))}`);
-      const leftover = Math.round((total('receita', prev) - total('despesa', cur)) * 100) / 100;
-      ok((await text(`Sobra de ${curName}`)).includes(brl(leftover).replace('-', '')), `sobra: ${brl(leftover)}`);
-      await card(`Entrando em ${curName}`).waitFor();
-      await page.locator('[data-cycle-section="contas"]').getByText(`pagas com o que entrou em ${prevName}`).waitFor();
-      await page.locator('[data-cycle-section="entradas"]').getByText(/pagam as contas de /).waitFor();
-      // No "mesmo mês", volta a soma do próprio mês
-      await page.getByRole('button', { name: 'Mesmo mês' }).click();
-      await page.getByText('receitas − despesas').waitFor();
-      ok(!(await page.locator('[data-cash-cycle]').count()), 'cartões do mês seguinte no modo mesmo mês');
-      await page.getByRole('button', { name: 'Entradas pagam o mês seguinte' }).click();
-      await page.locator('[data-cash-cycle]').waitFor();
+      ok((await text(`Entradas de ${curName}`)).includes(brl(total('receita'))), `entradas de ${curName}: ${brl(total('receita'))}`);
+      ok((await text(`Contas de ${curName}`)).includes(brl(total('despesa'))), `contas de ${curName}: ${brl(total('despesa'))}`);
+      const leftover = Math.round((total('receita') - total('despesa')) * 100) / 100;
+      ok((await text(`Sobra de ${curName}`)).includes(brl(Math.abs(leftover))), `sobra: ${brl(leftover)}`);
+      await page.locator('[data-cycle-section="entradas"]').getByText(`pagam as contas de ${curName}`).waitFor();
+      await page.locator('[data-cycle-section="contas"]').getByText(`pagas com as entradas de ${curName}`).waitFor();
+      // Entradas primeiro, depois as contas que elas pagam
+      const order = await page.locator('[data-cycle-section]').evaluateAll((els) => els.map((e) => e.getAttribute('data-cycle-section')));
+      eq(order, ['entradas', 'contas'], 'ordem das seções');
+      // Outro mês: a mesma regra (entradas e contas do próprio mês)
+      await page.getByRole('button', { name: 'Mês anterior' }).click();
+      const prevName = MONTHS[(now.getMonth() + 11) % 12];
+      await card(`Sobra de ${prevName}`).waitFor();
+      await page.locator('[data-cycle-section="contas"]').getByText(`pagas com as entradas de ${prevName}`).waitFor();
+      await page.getByRole('button', { name: 'Mês atual' }).click();
     },
     page,
   );
@@ -279,6 +271,11 @@ export default async function ({ browser }) {
       await page.goto(BASE + '/financeiro');
       await page.getByRole('button', { name: 'Relatório' }).click();
       await page.getByRole('heading', { name: 'Relatório financeiro' }).waitFor();
+      // Relatório na mesma regra: entradas, contas e sobra do próprio mês
+      const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      const curName = MONTHS[new Date().getMonth()];
+      for (const t of [`Entradas de ${curName}`, `Contas de ${curName}`, `Sobra de ${curName}`]) await page.getByText(t, { exact: true }).waitFor();
+      await page.locator('[data-report-rule]').getByText(`As entradas de ${curName} pagam as contas de ${curName}`, { exact: false }).waitFor();
       await page.emulateMedia({ media: 'print' });
       const pdf = await page.pdf({ format: 'A4' });
       await page.emulateMedia({ media: 'screen' });

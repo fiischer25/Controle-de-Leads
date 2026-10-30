@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from 'react';
-import { ArrowDownLeft, ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Scale, Wallet } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronRight, Scale, Wallet } from 'lucide-react';
 import type { FinanceEntry } from '../../lib/types';
 import { cn, formatCurrency, formatMoney, MONTHS_FULL } from '../../lib/utils';
-import { useCashMode } from './cashMode';
 import type { FinanceOverview } from './useFinanceOverview';
 import { ActionLink, FitText } from '../ui';
 import { EntryList } from './EntryList';
@@ -67,9 +66,8 @@ export interface CashMonth {
  * próximos (pelos vencimentos em aberto), com o resultado de cada mês.
  */
 export function CashFlowChart({ months }: { months: CashMonth[] }) {
-  const [mode] = useCashMode();
-  const inLabel = mode === 'seguinte' ? 'Recebido no mês anterior' : 'Entradas';
-  const outLabel = mode === 'seguinte' ? 'Contas do mês' : 'Saídas';
+  const inLabel = 'Entradas do mês';
+  const outLabel = 'Contas do mês';
   const max = Math.max(1, ...months.flatMap((m) => [m.in, m.out]));
   return (
     <div>
@@ -177,122 +175,49 @@ export function ReceivablesByMonth({
 const monthName = (key: string) => MONTHS_FULL[Number(key.split('-')[1]) - 1].toLowerCase();
 const signed = (v: number) => `${v < 0 ? '−' : ''}${formatCurrency(Math.abs(v))}`;
 
-/** Seletor de como o caixa é organizado (o que entra paga o mês seguinte ou o próprio mês). */
-export function CashModeSwitch() {
-  const [mode, setMode] = useCashMode();
-  const opt = (m: typeof mode, label: string, title: string) => (
-    <button
-      type="button"
-      aria-pressed={mode === m}
-      title={title}
-      onClick={() => setMode(m)}
-      className={cn('rounded-full px-3 py-1 transition-colors', mode === m ? 'bg-ink text-surface' : 'text-muted hover:text-ink')}
-    >
-      {label}
-    </button>
-  );
-  return (
-    <div role="group" aria-label="Organização do caixa" className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface p-0.5 text-[12.5px]">
-      {opt('seguinte', 'Entradas pagam o mês seguinte', 'O que entra num mês paga as contas do mês seguinte')}
-      {opt('mesmo', 'Mesmo mês', 'Entradas e contas do mesmo mês')}
-    </div>
-  );
-}
-
 /**
- * Cartões do mês. No caixa do "mês seguinte": saldo, recebido no mês anterior, contas deste mês e a
- * sobra; abaixo, o que está entrando agora para as contas do próximo mês. No "mesmo mês": entradas,
- * saídas e resultado do mês.
+ * Cartões do mês: as entradas do mês pagam as contas do mesmo mês. Saldo, entradas (recebido
+ * do previsto), contas (pago do previsto) e a sobra (entradas − contas do mês).
  */
 export function MonthCards({ data }: { data: FinanceOverview }) {
-  const saldo = (
-    <KpiCard
-      label="Saldo em contas"
-      value={formatCurrency(data.balance)}
-      tone={data.balance < 0 ? 'danger' : 'neutral'}
-      icon={<Wallet className="h-4 w-4" strokeWidth={1.6} />}
-      sub={
-        <>
-          Previsto no fim do mês: <b className="font-medium text-ink">{formatCurrency(data.projected)}</b>
-        </>
-      }
-    />
-  );
-  if (data.mode === 'mesmo') {
-    return (
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-        {saldo}
-        <KpiCard
-          label="Entradas do mês"
-          value={formatCurrency(data.totals.inPaid)}
-          tone="success"
-          icon={<ArrowDownLeft className="h-4 w-4" strokeWidth={1.6} />}
-          progress={{ value: data.totals.inPaid, max: data.totals.inPlanned, tone: 'success' }}
-          sub={`recebido de ${formatCurrency(data.totals.inPlanned)} previsto`}
-        />
-        <KpiCard
-          label="Saídas do mês"
-          value={formatCurrency(data.totals.outPaid)}
-          tone="danger"
-          icon={<ArrowUpRight className="h-4 w-4" strokeWidth={1.6} />}
-          progress={{ value: data.totals.outPaid, max: data.totals.outPlanned, tone: 'danger' }}
-          sub={`pago de ${formatCurrency(data.totals.outPlanned)} previsto`}
-        />
-        <KpiCard
-          label="Resultado do mês"
-          value={signed(data.result)}
-          tone={data.result < 0 ? 'danger' : data.result > 0 ? 'success' : 'neutral'}
-          icon={<Scale className="h-4 w-4" strokeWidth={1.6} />}
-          sub="recebido − pago"
-        />
-      </div>
-    );
-  }
-  const c = data.cycle;
-  const prev = monthName(c.prevMonth);
   const cur = monthName(data.month);
-  const next = monthName(c.nextMonth);
+  const t = data.totals;
   return (
-    <div>
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-        {saldo}
-        <KpiCard
-          label={`Recebido em ${prev}`}
-          value={formatCurrency(c.receivedPrev)}
-          tone="success"
-          icon={<ArrowDownLeft className="h-4 w-4" strokeWidth={1.6} />}
-          sub={`para pagar as contas de ${cur}`}
-        />
-        <KpiCard
-          label={`Contas de ${cur}`}
-          value={formatCurrency(c.bills)}
-          tone="danger"
-          icon={<ArrowUpRight className="h-4 w-4" strokeWidth={1.6} />}
-          progress={{ value: c.billsPaid, max: c.bills, tone: 'danger' }}
-          sub={`pago ${formatCurrency(c.billsPaid)} · falta ${formatCurrency(Math.max(0, c.bills - c.billsPaid))}`}
-        />
-        <KpiCard
-          label={`Sobra de ${cur}`}
-          value={signed(c.leftover)}
-          tone={c.leftover < 0 ? 'danger' : c.leftover > 0 ? 'success' : 'neutral'}
-          icon={<Scale className="h-4 w-4" strokeWidth={1.6} />}
-          sub={`recebido em ${prev} − contas de ${cur}`}
-        />
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[14px] border border-line bg-surface px-4 py-3 text-[13px] text-muted" data-next-cycle>
-        <span>
-          Entrando em {cur}: <b className="font-semibold tabular text-success-fg">{formatMoney(c.receivedNow)}</b> recebido de{' '}
-          <b className="font-medium tabular text-ink">{formatMoney(c.receivingNow)}</b> previsto
-        </span>
-        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-faint" aria-hidden />
-        <span>
-          contas de {next}: <b className="font-medium tabular text-ink">{formatMoney(c.nextBills)}</b>
-        </span>
-        <span className="text-faint">·</span>
-        <span>
-          sobra prevista: <b className={cn('font-semibold tabular', c.nextLeftover < 0 ? 'text-danger-fg' : 'text-success-fg')}>{formatMoney(c.nextLeftover)}</b>
-        </span>
-      </div>
+    <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4" data-month-cards>
+      <KpiCard
+        label="Saldo em contas"
+        value={formatCurrency(data.balance)}
+        tone={data.balance < 0 ? 'danger' : 'neutral'}
+        icon={<Wallet className="h-4 w-4" strokeWidth={1.6} />}
+        sub={
+          <>
+            Previsto no fim do mês: <b className="font-medium text-ink">{formatCurrency(data.projected)}</b>
+          </>
+        }
+      />
+      <KpiCard
+        label={`Entradas de ${cur}`}
+        value={formatCurrency(t.inPlanned)}
+        tone="success"
+        icon={<ArrowDownLeft className="h-4 w-4" strokeWidth={1.6} />}
+        progress={{ value: t.inPaid, max: t.inPlanned, tone: 'success' }}
+        sub={`recebido ${formatCurrency(t.inPaid)} · falta ${formatCurrency(Math.max(0, t.inOpen))}`}
+      />
+      <KpiCard
+        label={`Contas de ${cur}`}
+        value={formatCurrency(t.outPlanned)}
+        tone="danger"
+        icon={<ArrowUpRight className="h-4 w-4" strokeWidth={1.6} />}
+        progress={{ value: t.outPaid, max: t.outPlanned, tone: 'danger' }}
+        sub={`pago ${formatCurrency(t.outPaid)} · falta ${formatCurrency(Math.max(0, t.outOpen))}`}
+      />
+      <KpiCard
+        label={`Sobra de ${cur}`}
+        value={signed(data.leftover)}
+        tone={data.leftover < 0 ? 'danger' : data.leftover > 0 ? 'success' : 'neutral'}
+        icon={<Scale className="h-4 w-4" strokeWidth={1.6} />}
+        sub={`entradas − contas de ${cur} · até agora ${signed(data.result)}`}
+      />
     </div>
   );
 }
