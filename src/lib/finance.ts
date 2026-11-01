@@ -4,7 +4,7 @@
 
 import type { FinanceAccount, FinanceEntry, FinanceMemberCost, Task, TimeEntry } from './types';
 import { entryMinutes } from './domain';
-import { uid } from './utils';
+import { MONTHS_FULL, uid } from './utils';
 
 export type EntryStatus = 'pago' | 'pendente' | 'vencido';
 
@@ -274,4 +274,20 @@ export function projectFinance(opts: {
     result,
     margin: contracted > 0 ? result / contracted : null,
   };
+}
+
+/** "Outubro de 2026". */
+export function monthLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  return `${MONTHS_FULL[m - 1]} de ${y}`;
+}
+
+/** Meses (AAAA-MM) com algum lançamento, pelo vencimento ou pelo pagamento. */
+export function monthsWithEntries(entries: Array<{ due_date: string; paid_at: string | null }>): Set<string> {
+  const out = new Set<string>();
+  for (const e of entries) {
+    out.add(e.due_date.slice(0, 7));
+    if (e.paid_at) out.add(e.paid_at.slice(0, 7));
+  }
+  return out;
 }

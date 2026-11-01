@@ -49,6 +49,60 @@ export default async function ({ browser }) {
   );
 
   await s.step(
+    'visão geral de outros meses: anterior, meses antigos pelo calendário e clique no gráfico',
+    async () => {
+      await page.goto(BASE + '/financeiro');
+      const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      const now = new Date();
+      const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const cur = key(now);
+      const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prev = key(prevDate);
+      const prevName = MONTHS[prevDate.getMonth()];
+      const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v).replace(/\s/g, ' ');
+      const entries = await ls(page, 'finance_entries');
+      const sumOf = (list) => Math.round(list.reduce((a, e) => a + e.amount, 0) * 100) / 100;
+      const card = (label) => page.locator('[data-month-cards] .metric-tile').filter({ has: page.getByText(label, { exact: true }) }).first();
+      const text = async (label) => (await card(label).innerText()).replace(/\s/g, ' ');
+      // Mês anterior
+      await page.getByRole('button', { name: 'Mês anterior' }).click();
+      await page.waitForURL(new RegExp(`mes=${prev}`));
+      const planned = sumOf(entries.filter((e) => e.kind === 'receita' && e.due_date.startsWith(prev)));
+      ok((await text(`Entradas de ${prevName}`)).includes(brl(planned)), `entradas de ${prevName}: ${brl(planned)}`);
+      await card(`Saldo no fim de ${prevName}`).waitFor();
+      // Mês passado: a sobra é o recebido − pago no mês
+      const realized = sumOf(entries.filter((e) => e.kind === 'receita' && e.paid_at?.startsWith(prev))) - sumOf(entries.filter((e) => e.kind === 'despesa' && e.paid_at?.startsWith(prev)));
+      ok((await text(`Sobra de ${prevName}`)).includes(brl(Math.abs(realized))), `sobra de ${prevName}: ${brl(realized)} em ${await text(`Sobra de ${prevName}`)}`);
+      await page.locator('[data-month-note]').getByText(/já passou/).waitFor();
+      eq(await page.locator(`[data-flow-month="${prev}"]`).getAttribute('aria-pressed'), 'true', 'mês escolhido destacado no gráfico');
+      // Mês antigo pelo calendário: janeiro do ano passado
+      const year = now.getFullYear() - 1;
+      await page.getByRole('button', { name: /^Escolher o mês/ }).click();
+      const picker = page.getByRole('dialog', { name: 'Escolher o mês' });
+      await picker.getByRole('button', { name: 'Ano anterior' }).click();
+      eq(await picker.locator('[data-picker-year]').innerText(), String(year), 'ano no calendário');
+      await picker.getByRole('button', { name: `Janeiro de ${year}`, exact: true }).click();
+      await page.waitForURL(new RegExp(`mes=${year}-01`));
+      await card('Entradas de janeiro').waitFor();
+      eq(await page.locator('[data-month-picker]').getAttribute('data-month-picker'), `${year}-01`, 'mês no seletor');
+      // Clique no mês do gráfico
+      const someFlow = await page.locator('[data-flow-month]').nth(7).getAttribute('data-flow-month');
+      await page.locator(`[data-flow-month="${someFlow}"]`).click();
+      eq(await page.locator('[data-month-picker]').getAttribute('data-month-picker'), someFlow, 'mês pelo gráfico');
+      // O mesmo mês nos lançamentos e no relatório
+      await page.getByRole('button', { name: 'Mês anterior' }).click();
+      const chosen = await page.locator('[data-month-picker]').getAttribute('data-month-picker');
+      await page.getByRole('tab', { name: 'Lançamentos' }).click();
+      eq(await page.locator('[data-month-picker]').getAttribute('data-month-picker'), chosen, 'mês nos lançamentos');
+      await page.getByRole('button', { name: 'Relatório' }).click();
+      await page.waitForURL(new RegExp(`/financeiro/relatorio\\?mes=${chosen}`));
+      await page.goto(BASE + '/financeiro');
+      eq(await page.locator('[data-month-picker]').getAttribute('data-month-picker'), cur, 'sem ?mes volta ao mês atual');
+    },
+    page,
+  );
+
+  await s.step(
     'categorias do escritório cadastradas sozinhas: projeto, acompanhamento, consultoria',
     async () => {
       // Banco só com as categorias iniciais (sem Consultoria) e navegador que ainda não aplicou as sugeridas

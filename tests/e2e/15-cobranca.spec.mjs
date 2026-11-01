@@ -32,10 +32,13 @@ export default async function ({ browser }) {
   await s.step(
     'próximos lembretes e pausar um cliente',
     async () => {
-      // Parcela a receber daqui a 7 dias, de um cliente com telefone
+      // Parcela a receber em 6 a 11 dias, numa segunda ou terça: os três lembretes (5 dias antes, no dia
+      // e 3 dias depois) caem em dia útil e dentro dos próximos 14 dias, qualquer que seja hoje
       const clients = await ls(page, 'clients');
       const client = clients.find((c) => (c.phone ?? '').replace(/\D/g, '').length >= 10);
-      const due = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+      let dueDate = new Date(Date.now() + 6 * 864e5);
+      while (![1, 2].includes(dueDate.getDay())) dueDate = new Date(dueDate.getTime() + 864e5);
+      const due = dueDate.toISOString().slice(0, 10);
       await page.evaluate(
         ([c, d]) => {
           const k = 'airos:v1:finance_entries';
