@@ -65,7 +65,7 @@ export interface CashMonth {
  * Fluxo de caixa: entradas e saídas por mês, realizadas nos meses passados e previstas nos
  * próximos (pelos vencimentos em aberto), com o resultado de cada mês.
  */
-export function CashFlowChart({ months }: { months: CashMonth[] }) {
+export function CashFlowChart({ months, onSelect }: { months: CashMonth[]; onSelect?: (key: string) => void }) {
   const inLabel = 'Entradas do mês';
   const outLabel = 'Contas do mês';
   const max = Math.max(1, ...months.flatMap((m) => [m.in, m.out]));
@@ -86,7 +86,21 @@ export function CashFlowChart({ months }: { months: CashMonth[] }) {
         {months.map((m) => {
           const result = Math.round((m.in - m.out) * 100) / 100;
           return (
-            <div key={m.key} className={cn('flex flex-col items-center rounded-lg px-1 pb-2 pt-3', m.current && 'bg-subtle ring-1 ring-line')}>
+            <div
+              key={m.key}
+              data-flow-month={m.key}
+              role={onSelect ? 'button' : undefined}
+              tabIndex={onSelect ? 0 : undefined}
+              aria-label={onSelect ? `Ver ${m.label} (${m.key.slice(0, 4)})` : undefined}
+              aria-pressed={onSelect ? m.current : undefined}
+              onClick={onSelect ? () => onSelect(m.key) : undefined}
+              onKeyDown={onSelect ? (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onSelect(m.key)) : undefined}
+              className={cn(
+                'flex flex-col items-center rounded-lg px-1 pb-2 pt-3',
+                m.current && 'bg-subtle ring-1 ring-line',
+                onSelect && !m.current && 'cursor-pointer hover:bg-canvas',
+              )}
+            >
               <div className="flex h-40 w-full items-end justify-center gap-1">
                 {(['in', 'out'] as const).map((k) => (
                   <div
@@ -101,7 +115,10 @@ export function CashFlowChart({ months }: { months: CashMonth[] }) {
                   />
                 ))}
               </div>
-              <div className={cn('mt-2 text-[12px]', m.current ? 'font-semibold text-ink' : 'text-faint')}>{m.label}</div>
+              <div className={cn('mt-2 text-[12px]', m.current ? 'font-semibold text-ink' : 'text-faint')}>
+                {m.label}
+                {m.key.slice(5) === '01' && <span className="ml-0.5 text-[10.5px] font-normal text-faint">'{m.key.slice(2, 4)}</span>}
+              </div>
               <div className={cn('text-[11.5px] tabular', result < 0 ? 'text-danger-fg' : result > 0 ? 'text-success-fg' : 'text-faint')} title={formatMoney(result)}>
                 {result === 0 ? '—' : `${result > 0 ? '+' : '−'}${formatCurrency(Math.abs(result)).replace('R$', '').trim()}`}
               </div>
@@ -184,17 +201,37 @@ export function MonthCards({ data }: { data: FinanceOverview }) {
   const t = data.totals;
   return (
     <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4" data-month-cards>
-      <KpiCard
-        label="Saldo em contas"
-        value={formatCurrency(data.balance)}
-        tone={data.balance < 0 ? 'danger' : 'neutral'}
-        icon={<Wallet className="h-4 w-4" strokeWidth={1.6} />}
-        sub={
-          <>
-            Previsto no fim do mês: <b className="font-medium text-ink">{formatCurrency(data.projected)}</b>
-          </>
-        }
-      />
+      {data.period === 'atual' ? (
+        <KpiCard
+          label="Saldo em contas"
+          value={formatCurrency(data.balance)}
+          tone={data.balance < 0 ? 'danger' : 'neutral'}
+          icon={<Wallet className="h-4 w-4" strokeWidth={1.6} />}
+          sub={
+            <>
+              Previsto no fim do mês: <b className="font-medium text-ink">{formatCurrency(data.projected)}</b>
+            </>
+          }
+        />
+      ) : (
+        <KpiCard
+          label={data.period === 'passado' ? `Saldo no fim de ${cur}` : `Saldo previsto no fim de ${cur}`}
+          value={formatCurrency(data.balanceEnd)}
+          tone={data.balanceEnd < 0 ? 'danger' : 'neutral'}
+          icon={<Wallet className="h-4 w-4" strokeWidth={1.6} />}
+          sub={
+            data.period === 'passado' ? (
+              <>
+                No início do mês: <b className="font-medium text-ink">{formatCurrency(data.balanceStart)}</b>
+              </>
+            ) : (
+              <>
+                Hoje: <b className="font-medium text-ink">{formatCurrency(data.balance)}</b>
+              </>
+            )
+          }
+        />
+      )}
       <KpiCard
         label={`Entradas de ${cur}`}
         value={formatCurrency(t.inPlanned)}
@@ -211,13 +248,24 @@ export function MonthCards({ data }: { data: FinanceOverview }) {
         progress={{ value: t.outPaid, max: t.outPlanned, tone: 'danger' }}
         sub={`pago ${formatCurrency(t.outPaid)} · falta ${formatCurrency(Math.max(0, t.outOpen))}`}
       />
-      <KpiCard
-        label={`Sobra de ${cur}`}
-        value={signed(data.leftover)}
-        tone={data.leftover < 0 ? 'danger' : data.leftover > 0 ? 'success' : 'neutral'}
-        icon={<Scale className="h-4 w-4" strokeWidth={1.6} />}
-        sub={`entradas − contas de ${cur} · até agora ${signed(data.result)}`}
-      />
+      {data.period === 'passado' ? (
+        // Mês que já passou: a sobra é o que de fato aconteceu (recebido − pago)
+        <KpiCard
+          label={`Sobra de ${cur}`}
+          value={signed(data.result)}
+          tone={data.result < 0 ? 'danger' : data.result > 0 ? 'success' : 'neutral'}
+          icon={<Scale className="h-4 w-4" strokeWidth={1.6} />}
+          sub={`recebido − pago em ${cur} · previsto ${signed(data.leftover)}`}
+        />
+      ) : (
+        <KpiCard
+          label={`Sobra de ${cur}`}
+          value={signed(data.leftover)}
+          tone={data.leftover < 0 ? 'danger' : data.leftover > 0 ? 'success' : 'neutral'}
+          icon={<Scale className="h-4 w-4" strokeWidth={1.6} />}
+          sub={`entradas − contas de ${cur}${data.period === 'atual' ? ` · até agora ${signed(data.result)}` : ''}`}
+        />
+      )}
     </div>
   );
 }

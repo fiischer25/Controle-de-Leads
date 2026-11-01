@@ -1,12 +1,12 @@
 import { FixReceiptDates } from '../components/finance/FixReceiptDates';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, FileText, Plus, Upload } from 'lucide-react';
+import { ArrowLeftRight, Download, FileText, Plus, Upload } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { addMonthsKey, entryDate, monthKey, sum } from '../lib/finance';
+import { entryDate, monthKey, monthLabel, monthsWithEntries, sum } from '../lib/finance';
 import type { FinanceEntry, FinanceKind } from '../lib/types';
 import { cn, downloadFile, formatCurrency, formatDate, formatMoney, matches, MONTHS_FULL, toCsv, today } from '../lib/utils';
-import { ActionLink, BarRow, Button, FilterPick, IconButton, PageHeader, SearchField, SectionHeader, Tabs, Toolbar } from '../components/ui';
+import { ActionLink, BarRow, Button, FilterPick, PageHeader, SearchField, SectionHeader, Tabs, Toolbar } from '../components/ui';
 import { EntryFormModal } from '../components/finance/EntryFormModal';
 import { FinanceBilling } from '../components/finance/FinanceBilling';
 import { EntryList } from '../components/finance/EntryList';
@@ -17,20 +17,35 @@ import { FinanceProfitability } from '../components/finance/FinanceProfitability
 import { FinanceCategories } from '../components/finance/FinanceCategories';
 import { ImportStatementModal } from '../components/finance/ImportStatementModal';
 import { useFinanceOverview } from '../components/finance/useFinanceOverview';
+import { MonthPicker } from '../components/finance/MonthPicker';
 
 type Tab = 'geral' | 'lancamentos' | 'cobranca' | 'contas' | 'rentabilidade' | 'categorias';
 type Editing = { entry?: FinanceEntry; kind?: FinanceKind } | null;
 
-function monthLabel(key: string) {
-  const [y, m] = key.split('-').map(Number);
-  return `${MONTHS_FULL[m - 1]} de ${y}`;
+/** Mês escolhido (?mes=AAAA-MM), o mesmo na Visão geral e nos Lançamentos; sem ele, o mês atual. */
+function useMonthParam(): [string, (m: string) => void] {
+  const [params, setParams] = useSearchParams();
+  const raw = params.get('mes') ?? '';
+  const month = /^\d{4}-\d{2}$/.test(raw) ? raw : monthKey(today());
+  const setMonth = (m: string) => {
+    const next = new URLSearchParams(params);
+    if (m === monthKey(today())) next.delete('mes');
+    else next.set('mes', m);
+    setParams(next, { replace: true });
+  };
+  return [month, setMonth];
 }
 
 /** Financeiro do escritório: caixa, contas a receber e a pagar, contas, rentabilidade e categorias. */
 export default function FinancePage() {
   const [params, setParams] = useSearchParams();
   const tab = (['geral', 'lancamentos', 'cobranca', 'contas', 'rentabilidade', 'categorias'] as Tab[]).includes(params.get('aba') as Tab) ? (params.get('aba') as Tab) : 'geral';
-  const setTab = (t: Tab) => setParams(t === 'geral' ? {} : { aba: t }, { replace: true });
+  // Ao trocar de aba, o mês escolhido continua
+  const setTab = (t: Tab) => {
+    const next: Record<string, string> = t === 'geral' ? {} : { aba: t };
+    if (params.get('mes')) next.mes = params.get('mes')!;
+    setParams(next, { replace: true });
+  };
   const fin = useFinance();
   const [editing, setEditing] = useState<Editing>(null);
   const [importing, setImporting] = useState<{ account?: string } | null>(null);
@@ -62,7 +77,7 @@ export default function FinancePage() {
         }
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" icon={<FileText className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate('/financeiro/relatorio')} className="max-md:hidden">
+            <Button variant="ghost" icon={<FileText className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate(`/financeiro/relatorio${params.get('mes') ? `?mes=${params.get('mes')}` : ''}`)} className="max-md:hidden">
               Relatório
             </Button>
             <Button variant="ghost" icon={<ArrowLeftRight className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setEditing({ kind: 'transferencia' })} className="max-md:hidden">
@@ -120,18 +135,25 @@ export default function FinancePage() {
 // ---------------------------------------------------------------- Visão geral
 function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab: (t: Tab) => void }) {
   const fin = useFinance();
-  const t = today();
-  const month = monthKey(t);
+  const [month, setMonth] = useMonthParam();
+  const marked = useMemo(() => monthsWithEntries(fin.entries), [fin.entries]);
+  const isCurrent = month === monthKey(today());
+  const name = MONTHS_FULL[Number(month.slice(5, 7)) - 1].toLowerCase();
 
-  const data = useFinanceOverview();
+  const data = useFinanceOverview(undefined, month);
 
   const maxCat = data.categories[0]?.[1] ?? 1;
 
   return (
     <div className="flex flex-col gap-12 md:gap-14">
       <div>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-faint">{monthLabel(month)}</div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <MonthPicker value={month} onChange={setMonth} marked={marked} className="-ml-2" />
+          {!isCurrent && (
+            <span className="text-[12.5px] text-faint" data-month-note>
+              {month < monthKey(today()) ? 'mês que já passou: o que de fato entrou e saiu' : 'mês que ainda vem: previsto pelos vencimentos'}
+            </span>
+          )}
         </div>
         <MonthCards data={data} />
         <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
@@ -161,12 +183,12 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
           title="Fluxo de caixa"
           aside={
             <span className="text-[12.5px] text-faint">
-              cada mês: as entradas pagam as contas do mesmo mês · previsto nos próximos
+              cada mês: as entradas pagam as contas do mesmo mês · previsto nos próximos · clique num mês para ver
             </span>
           }
         />
         <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card">
-          <CashFlowChart months={data.flow} />
+          <CashFlowChart months={data.flow} onSelect={setMonth} />
         </div>
       </section>
 
@@ -191,7 +213,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
         </section>
         <div className="space-y-12">
           <section aria-labelledby="saldos">
-            <SectionHeader id="saldos" title="Saldos" aside={<ActionLink onClick={() => onTab('contas')} muted>Contas</ActionLink>} />
+            <SectionHeader id="saldos" title={isCurrent ? 'Saldos' : 'Saldos hoje'} aside={<ActionLink onClick={() => onTab('contas')} muted>Contas</ActionLink>} />
             <ul className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
               {fin.accounts
                 .filter((a) => a.active)
@@ -213,7 +235,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
             </ul>
           </section>
           <section aria-labelledby="por-categoria" className="panel min-w-0">
-            <SectionHeader id="por-categoria" title="Despesas do mês" aside={<span className="text-[12.5px] text-faint">por categoria</span>} />
+            <SectionHeader id="por-categoria" title={`Despesas de ${name}`} aside={<span className="text-[12.5px] text-faint">por categoria</span>} />
             <div className="space-y-4 border-t border-hairline pt-4">
               {data.categories.length === 0 && <p className="text-[13px] text-faint">Nenhuma despesa com vencimento neste mês.</p>}
               {data.categories.map(([id, value]) => {
@@ -234,10 +256,9 @@ type KindFilter = 'todos' | FinanceKind;
 function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onImport: () => void }) {
   const { db, maps } = useData();
   const fin = useFinance();
-  const t = today();
-  const [params] = useSearchParams();
-  // ?mes=AAAA-MM abre direto no mês (link de "A receber por mês")
-  const [month, setMonth] = useState(/^\d{4}-\d{2}$/.test(params.get('mes') ?? '') ? params.get('mes')! : monthKey(t));
+  // ?mes=AAAA-MM: o mesmo mês escolhido na Visão geral (e o link de "A receber por mês")
+  const [month, setMonth] = useMonthParam();
+  const marked = useMemo(() => monthsWithEntries(fin.entries), [fin.entries]);
   const [kind, setKind] = useState<KindFilter>('todos');
   const [status, setStatus] = useState('');
   const [account, setAccount] = useState('');
@@ -303,20 +324,7 @@ function Entries({ onOpen, onImport }: { onOpen: (e: FinanceEntry) => void; onIm
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <div className={cn('flex items-center gap-1', allMonths && 'opacity-40')}>
-          <IconButton label="Mês anterior" onClick={() => setMonth(monthKey(addMonthsKey(`${month}-01`, -1)))} disabled={allMonths}>
-            <ChevronLeft className="h-4 w-4" />
-          </IconButton>
-          <span className="min-w-[150px] text-center font-display text-[15px] font-semibold text-ink">{monthLabel(month)}</span>
-          <IconButton label="Próximo mês" onClick={() => setMonth(monthKey(addMonthsKey(`${month}-01`, 1)))} disabled={allMonths}>
-            <ChevronRight className="h-4 w-4" />
-          </IconButton>
-        </div>
-        {month !== monthKey(t) && !allMonths && (
-          <button type="button" onClick={() => setMonth(monthKey(t))} className="text-[13px] text-faint hover:text-ink">
-            Mês atual
-          </button>
-        )}
+        <MonthPicker value={month} onChange={setMonth} marked={marked} disabled={allMonths} className="-ml-2" />
         <div className="flex-1" />
         <Tabs<KindFilter>
           tabs={[
