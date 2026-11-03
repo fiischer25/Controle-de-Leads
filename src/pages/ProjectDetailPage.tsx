@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, ExternalLink, HardHat, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, ExternalLink, HardHat, Hourglass, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ProjectFinanceTab } from '../components/finance/ProjectFinanceTab';
 import { PlannedActualTab } from '../components/projects/PlannedActualTab';
@@ -16,6 +16,7 @@ import { PROJECT_STATUS, PROJECT_STATUS_ORDER } from '../lib/constants';
 import { autoProjectStatus, orderedPhases, totalMinutes } from '../lib/domain';
 import type { Project, ProjectStatus, Task } from '../lib/types';
 import { CONSTRUCTION_STAGE } from '../components/projects/rail';
+import { CLIENT_WAIT_STAGE, daysLabel as waitDaysLabel, endWaits, openWait, sinceLabel, totalWaitDays, waitDays, waitsByPhase } from '../lib/clientWait';
 import {
   byPosition,
   cn,
@@ -111,15 +112,29 @@ export default function ProjectDetailPage() {
   const currentIdx = project.status === 'concluido' ? phases.length : open.length === 0 && tasks.length ? phases.length : phases.indexOf(phase);
   // Todas as tarefas concluídas: pergunta se o projeto foi finalizado ou segue em obra
   const allDone = tasks.length > 0 && open.length === 0 && (project.status === 'nao_iniciado' || project.status === 'em_andamento' || project.status === 'pausado');
+  // Com o cliente analisando (Aguardando retorno cliente) e o tempo de cada etapa com ele
+  const waiting = openWait(project.client_waits);
+  const waitedByPhase = waitsByPhase(project.client_waits, today());
+  const waitedTotal = totalWaitDays(project.client_waits, today());
 
   /** Status escolhido à mão fica até voltar ao automático (null). */
   const setStatus = (status: ProjectStatus | null) => {
     const patch: Partial<Project> = status ? { status, status_manual: true } : { status: autoProjectStatus(tasks), status_manual: false };
     // Obra aqui também é a etapa "Obra" na lista de projetos (e sair de Obra tira a etapa)
-    if (status === 'obra') patch.macro_stage = CONSTRUCTION_STAGE;
-    else if (project.macro_stage === CONSTRUCTION_STAGE) patch.macro_stage = null;
+    if (status === 'obra') {
+      patch.macro_stage = CONSTRUCTION_STAGE;
+      // Foi para obra: o cliente já retornou
+      if (waiting) patch.client_waits = endWaits(project.client_waits, today());
+    } else if (project.macro_stage === CONSTRUCTION_STAGE) patch.macro_stage = null;
     return updateProject(project.id, patch).catch(toast.error);
   };
+
+  /** O cliente retornou: fecha o período e a lista volta à etapa automática (pelas tarefas). */
+  const clientReturned = () =>
+    updateProject(project.id, {
+      client_waits: endWaits(project.client_waits, today()),
+      ...(project.macro_stage === CLIENT_WAIT_STAGE ? { macro_stage: null } : {}),
+    }).catch(toast.error);
 
   const addQuick = async (phaseName: string) => {
     const title = quick[phaseName]?.trim();
@@ -200,6 +215,28 @@ export default function ProjectDetailPage() {
         }
       />
 
+      {waiting && (
+        <section
+          aria-label="Aguardando retorno do cliente"
+          data-client-waiting={waitDays(waiting, today())}
+          className="mb-6 flex flex-col gap-3 rounded-[14px] border border-warning-line bg-warning-bg px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="flex items-start gap-2.5 text-[14px] text-ink">
+            <Hourglass className="mt-0.5 h-5 w-5 shrink-0 text-warning-fg" strokeWidth={1.8} />
+            <span>
+              Aguardando retorno do cliente <b className="font-semibold text-warning-fg">{sinceLabel(waitDays(waiting, today()))}</b>, analisando{' '}
+              <b className="font-medium">{waiting.phase}</b>.
+              {waitedTotal > waitDays(waiting, today()) && (
+                <span className="block text-[12.5px] text-muted">No total, o projeto já ficou {waitDaysLabel(waitedTotal)} com o cliente.</span>
+              )}
+            </span>
+          </p>
+          <Button size="sm" variant="primary" icon={<CheckCircle2 className="h-4 w-4" strokeWidth={1.6} />} onClick={clientReturned} className="shrink-0">
+            Cliente retornou
+          </Button>
+        </section>
+      )}
+
       {allDone && (
         <section
           aria-label="Todas as tarefas concluídas"
@@ -235,6 +272,15 @@ export default function ProjectDetailPage() {
                   <div className={cn('mt-2 truncate pr-2 text-[12px]', state === 'current' ? 'font-medium text-ink' : 'text-faint')} title={p}>
                     {p}
                   </div>
+                  {waitedByPhase[p] && (
+                    <div
+                      className={cn('flex items-center gap-1 truncate pr-2 text-[11.5px] tabular', waitedByPhase[p].open ? 'font-medium text-warning-fg' : 'text-faint')}
+                      title={waitedByPhase[p].open ? `Com o cliente ${sinceLabel(waitedByPhase[p].openDays)}` : `Cliente analisou por ${waitDaysLabel(waitedByPhase[p].days)}`}
+                    >
+                      <Hourglass className="h-3 w-3 shrink-0" strokeWidth={1.8} aria-hidden />
+                      cliente: {waitDaysLabel(waitedByPhase[p].days)}
+                    </div>
+                  )}
                 </div>
               );
             })}

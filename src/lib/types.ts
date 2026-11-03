@@ -163,6 +163,13 @@ export interface ProjectLink {
   url: string;
 }
 
+/** Período em que o projeto ficou com o cliente analisando uma etapa (datas AAAA-MM-DD). */
+export interface ClientWait {
+  phase: string;
+  started_at: string;
+  ended_at: string | null;
+}
+
 export interface Project {
   id: string;
   code: string;
@@ -177,6 +184,8 @@ export interface Project {
    * cliente"), escolhida à mão. Null = automático, a etapa atual pelas tarefas (migração 20261024).
    */
   macro_stage?: string | null;
+  /** Períodos aguardando retorno do cliente (migração 20261025). */
+  client_waits?: ClientWait[];
   manager_id: string | null;
   member_ids: string[];
   start_date: string;
