@@ -1,20 +1,24 @@
 import type { MouseEvent, ReactNode } from 'react';
-import { CalendarDays, Check, ChevronDown, HardHat, RotateCcw, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, HardHat, Hourglass, RotateCcw, type LucideIcon } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { PROJECT_STATUS_STYLE } from '../../lib/status';
 import { autoProjectStatus } from '../../lib/domain';
 import type { Project, ProjectStatus, Task } from '../../lib/types';
-import { cn } from '../../lib/utils';
+import { cn, today } from '../../lib/utils';
+import { CLIENT_WAIT_STAGE, endWaits, openWait, sinceLabel, startWait, waitDays } from '../../lib/clientWait';
 import { Popover } from '../ui';
 import { CLIENT_MEETING_STAGE, CONSTRUCTION_STAGE, macroStage } from './rail';
 
 /** Etapas fixas do menu (além das etapas das tarefas), com ícone e cor próprios. */
 const SPECIAL: Array<{ label: string; Icon: LucideIcon; text: string }> = [
   { label: CLIENT_MEETING_STAGE, Icon: CalendarDays, text: 'text-info-fg' },
+  { label: CLIENT_WAIT_STAGE, Icon: Hourglass, text: 'text-warning-fg' },
   { label: CONSTRUCTION_STAGE, Icon: HardHat, text: 'text-brand-700' },
 ];
 const specialOf = (label: string) => SPECIAL.find((x) => x.label === label);
+/** Nome curto na lista (o completo fica no menu e no title). */
+const shortLabel = (label: string) => (label === CLIENT_WAIT_STAGE ? 'Aguardando retorno' : label);
 
 /** Cor do indicador pelo status interno: verde em andamento, laranja pausado, marrom obra. */
 const DOT: Record<ProjectStatus, string> = {
@@ -41,6 +45,26 @@ export function ProjectStatusDot({ status, className }: { status: ProjectStatus;
 
 const stop = (e: MouseEvent) => e.stopPropagation();
 
+/** Há quantos dias o projeto está com o cliente (só com "Aguardando retorno cliente"). */
+function WaitChip({ project, small }: { project: Project; small?: boolean }) {
+  const w = openWait(project.client_waits);
+  if (!w) return null;
+  const days = waitDays(w, today());
+  return (
+    <span
+      data-wait-days={days}
+      title={`Com o cliente analisando ${w.phase} ${sinceLabel(days)}`}
+      className={cn(
+        'shrink-0 whitespace-nowrap rounded-full px-1.5 tabular',
+        small ? 'text-[11px]' : 'text-[11.5px]',
+        days > 7 ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg',
+      )}
+    >
+      {sinceLabel(days)}
+    </span>
+  );
+}
+
 /**
  * Status da lista de projetos: a etapa macro (escolhida à mão, ex.: "Reunião com cliente", ou
  * automática pelas tarefas) com o indicador do status interno.
@@ -62,10 +86,16 @@ export function ProjectStagePicker({
   const stage = macroStage(project, rail, fallback);
   const set = (value: string | null) => {
     const patch: Partial<Project> = { macro_stage: value };
+    // Aguardando retorno: guarda desde quando e qual etapa o cliente está analisando; ao sair, fecha o período
+    const waiting = openWait(project.client_waits);
+    if (value === CLIENT_WAIT_STAGE && !waiting) {
+      const analyzed = rail.phases.includes(stage.label) ? stage.label : (rail.phases[rail.current] ?? stage.autoLabel);
+      patch.client_waits = startWait(project.client_waits, analyzed, today());
+    } else if (value !== CLIENT_WAIT_STAGE && waiting) patch.client_waits = endWaits(project.client_waits, today());
     // Obra na lista é também o status interno do projeto (e sair dela devolve ao automático)
     if (value === CONSTRUCTION_STAGE) Object.assign(patch, { status: 'obra', status_manual: true });
     else if (project.status === 'obra') Object.assign(patch, { status: autoProjectStatus(tasks), status_manual: false });
-    if ((project.macro_stage ?? null) === value && (patch.status ?? project.status) === project.status) return;
+    if ((project.macro_stage ?? null) === value && (patch.status ?? project.status) === project.status && !patch.client_waits) return;
     updateProject(project.id, patch).catch(toast.error);
   };
   const special = specialOf(stage.label);
@@ -89,8 +119,9 @@ export function ProjectStagePicker({
             <ProjectStatusDot status={project.status} className="ml-0.5" />
             {special && <special.Icon className={cn('h-3.5 w-3.5 shrink-0', special.text)} strokeWidth={1.8} aria-hidden />}
             <span className={cn('min-w-0 truncate', special ? cn('font-medium', special.text) : 'text-ink')} title={stage.label}>
-              {stage.label}
+              {shortLabel(stage.label)}
             </span>
+            {stage.label === CLIENT_WAIT_STAGE && <WaitChip project={project} />}
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-faint" strokeWidth={1.8} aria-hidden />
           </button>
         )}
@@ -167,7 +198,10 @@ export function ProjectStageTag({ project, rail, fallback }: { project: Project;
     <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-ink/[0.04] px-2 py-0.5 text-[12px]" data-project-stage={stage.label}>
       <ProjectStatusDot status={project.status} />
       {special && <special.Icon className={cn('h-3 w-3 shrink-0', special.text)} strokeWidth={1.8} aria-hidden />}
-      <span className={cn('min-w-0 truncate', special ? cn('font-medium', special.text) : 'text-stone-700')}>{stage.label}</span>
+      <span className={cn('min-w-0 truncate', special ? cn('font-medium', special.text) : 'text-stone-700')} title={stage.label}>
+        {shortLabel(stage.label)}
+      </span>
+      {stage.label === CLIENT_WAIT_STAGE && <WaitChip project={project} small />}
     </span>
   );
 }

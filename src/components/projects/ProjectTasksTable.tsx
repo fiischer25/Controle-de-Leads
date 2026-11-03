@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronDown, ChevronRight, Flag, ListChecks, MoreVertical, Plus, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronRight, Flag, Hourglass, ListChecks, MoreVertical, Plus, X } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { SWATCHES, TASK_PRIORITY, TASK_STATUS_ORDER } from '../../lib/constants';
@@ -7,6 +7,7 @@ import { businessDaysBetween, datesForDuration, entryMinutes } from '../../lib/d
 import { TASK_STATUS_STYLE } from '../../lib/status';
 import type { Project, Task, TaskStatus } from '../../lib/types';
 import { byPosition, cn, formatDateShort, formatMinutes, formatNumber, today } from '../../lib/utils';
+import { daysLabel as waitDaysLabel, sinceLabel, waitsByPhase, type PhaseWait } from '../../lib/clientWait';
 import { Badge, Button, ConfirmDialog, IconButton, Input, MenuItem, Popover } from '../ui';
 import { AssigneePicker } from '../tasks/AssigneePicker';
 import { commonAssignee } from '../tasks/taskBuckets';
@@ -54,6 +55,8 @@ export function ProjectTasksTable({
   const toast = useToast();
   const t = today();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Tempo que cada etapa ficou com o cliente analisando
+  const waits = useMemo(() => waitsByPhase(project.client_waits, t), [project.client_waits, t]);
   const [adding, setAdding] = useState<{ phase: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState<Task | null>(null);
 
@@ -177,6 +180,11 @@ export function ProjectTasksTable({
               <span />
               <span />
             </div>
+            {waits[phase] && (
+              <div className="bg-stone-50/60 px-3 pb-2.5 pl-[52px]">
+                <PhaseWaitChip phase={phase} wait={waits[phase]} />
+              </div>
+            )}
 
             {open &&
               visible.map((task) => {
@@ -449,5 +457,26 @@ function DurationCell({ days, label, onChange }: { days: number | null; label: s
     >
       {days != null ? daysLabel(days) : <span className="text-stone-400">—</span>}
     </button>
+  );
+}
+
+/** Etapa que ficou (ou está) com o cliente analisando: há quantos dias ou por quanto tempo. */
+function PhaseWaitChip({ phase, wait }: { phase: string; wait: PhaseWait }) {
+  const text = wait.open
+    ? `Com o cliente ${sinceLabel(wait.openDays)}`
+    : `Cliente analisou por ${waitDaysLabel(wait.days)}${wait.times > 1 ? ` (${wait.times} vezes)` : ''}`;
+  return (
+    <span
+      data-phase-wait={phase}
+      data-wait-days={wait.days}
+      title={wait.open && wait.times > 1 ? `${text} · ${waitDaysLabel(wait.days)} no total nesta etapa` : text}
+      className={cn(
+        'inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] tabular',
+        wait.open ? 'bg-warning-bg font-medium text-warning-fg' : 'bg-ink/[0.05] text-stone-600',
+      )}
+    >
+      <Hourglass className="h-3 w-3 shrink-0" strokeWidth={1.8} aria-hidden />
+      <span className="truncate">{text}</span>
+    </span>
   );
 }

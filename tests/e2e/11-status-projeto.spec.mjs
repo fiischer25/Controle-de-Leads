@@ -91,7 +91,7 @@ export default async function ({ browser }) {
       // Depois muda para uma etapa (LD - Levantamento de Dados, a primeira do modelo)
       await picker().click();
       const phases = await menu.getByRole('menuitemradio').allInnerTexts();
-      const stagesOnly = phases.filter((t) => !['Reunião com cliente', 'Obra'].includes(t) && !/^Automático/.test(t));
+      const stagesOnly = phases.filter((t) => !['Reunião com cliente', 'Aguardando retorno cliente', 'Obra'].includes(t) && !/^Automático/.test(t));
       const ld = stagesOnly.find((t) => /^LD - /.test(t)) ?? stagesOnly[0];
       await menu.getByRole('menuitemradio', { name: ld, exact: true }).click();
       await page.waitForTimeout(200);
@@ -121,6 +121,56 @@ export default async function ({ browser }) {
       await page.waitForTimeout(200);
       eq((await project()).macro_stage, null, 'automático');
       eq(await picker().getAttribute('data-project-stage'), auto, 'etapa automática de volta');
+    },
+    page,
+  );
+
+  await s.step(
+    'aguardando retorno do cliente: dias com o cliente na lista, no projeto e na etapa analisada',
+    async () => {
+      await page.goto(BASE + '/projetos');
+      const row = page.locator(`[data-project-row="${pid}"]`);
+      const name = (await project()).name;
+      const picker = () => row.getByRole('button', { name: new RegExp(`^Etapa de ${name}: `) });
+      const phase = await picker().getAttribute('data-project-stage');
+      await picker().click();
+      await page.getByRole('menu', { name: `Etapa de ${name}` }).getByRole('menuitemradio', { name: 'Aguardando retorno cliente' }).click();
+      await page.waitForTimeout(200);
+      const day = (n) => new Date(Date.now() + n * 864e5 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+      let p = await project();
+      eq(p.macro_stage, 'Aguardando retorno cliente', 'etapa na lista');
+      eq(p.client_waits, [{ phase, started_at: day(0), ended_at: null }], 'período com o cliente (etapa em análise)');
+      await row.locator('[data-wait-days="0"]').getByText('desde hoje').waitFor();
+      // Cinco dias depois
+      await patchTable(page, 'projects', `rows.forEach((x) => { if (x.id === arg) x.client_waits[0].started_at = '${day(-5)}'; });`, pid);
+      await page.reload();
+      await row.locator('[data-wait-days="5"]').getByText('há 5 dias').waitFor();
+      // Dentro do projeto: aviso, etapa analisada na tabela e no trilho
+      await page.goto(`${BASE}/projetos/${pid}`);
+      const banner = page.getByRole('region', { name: 'Aguardando retorno do cliente' });
+      await banner.getByText('há 5 dias').waitFor();
+      await banner.getByText(phase, { exact: true }).waitFor();
+      await page.locator(`[data-phase-wait="${phase}"]`).getByText('Com o cliente há 5 dias').waitFor();
+      await page.getByRole('region', { name: 'Etapas' }).getByText('cliente: 5 dias').waitFor();
+      // O cliente retornou: fecha o período e a lista volta ao automático
+      await banner.getByRole('button', { name: 'Cliente retornou' }).click();
+      await banner.waitFor({ state: 'detached' });
+      p = await project();
+      eq([p.macro_stage ?? null, p.client_waits[0].ended_at], [null, day(0)], 'retorno do cliente');
+      await page.locator(`[data-phase-wait="${phase}"]`).getByText('Cliente analisou por 5 dias').waitFor();
+      await page.goto(BASE + '/projetos');
+      eq(await picker().getAttribute('data-stage-auto'), 'sim', 'lista de volta ao automático');
+      ok(!(await row.locator('[data-wait-days]').count()), 'dias com o cliente ainda na lista');
+      // De novo com o cliente e trocar direto para uma etapa também fecha o período
+      await picker().click();
+      await page.getByRole('menu', { name: `Etapa de ${name}` }).getByRole('menuitemradio', { name: 'Aguardando retorno cliente' }).click();
+      await page.waitForTimeout(200);
+      eq((await project()).client_waits.length, 2, 'segundo período');
+      await picker().click();
+      await page.getByRole('menu', { name: `Etapa de ${name}` }).getByRole('menuitemradio', { name: /^Automático/ }).click();
+      await page.waitForTimeout(200);
+      eq((await project()).client_waits.map((w) => !!w.ended_at), [true, true], 'períodos fechados');
+      await patchTable(page, 'projects', "rows.forEach((x) => { if (x.id === arg) x.client_waits = []; });", pid);
     },
     page,
   );

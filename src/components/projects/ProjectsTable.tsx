@@ -51,7 +51,7 @@ export function ProjectsTable({
           <thead>
             <tr>
               <th className={cn(TH, STICKY, 'z-10 border-b border-line bg-surface')}>Projeto</th>
-              <th className={cn(TH, 'w-[260px]')}>Status</th>
+              <th className={cn(TH, 'w-[300px]')}>Status</th>
               <th className={cn(TH, 'w-[200px]')}>Progresso</th>
               <th className={TH}>Entrega</th>
               <th className={cn(TH, 'w-[300px]')}>Alerta</th>
@@ -96,7 +96,7 @@ export function ProjectsTable({
                     </Link>
                     <span className="block truncate text-[12px] text-faint">{s.client?.name ?? 'Cliente removido'}</span>
                   </td>
-                  <td className={cn(TD, 'w-[260px] max-w-[260px]')}>
+                  <td className={cn(TD, 'w-[300px] max-w-[300px]')}>
                     <ProjectStagePicker project={p} rail={{ phases, current }} fallback={s.phase} tasks={s.tasks} />
                   </td>
                   <td className={cn(TD, 'w-[200px]')}>
