@@ -3,7 +3,7 @@ import { CalendarDays, ChevronDown, ChevronRight, Flag, Hourglass, ListChecks, M
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { SWATCHES, TASK_PRIORITY, TASK_STATUS_ORDER } from '../../lib/constants';
-import { businessDaysBetween, datesForDuration, entryMinutes } from '../../lib/domain';
+import { durationDays, datesForDuration, entryMinutes } from '../../lib/domain';
 import { TASK_STATUS_STYLE } from '../../lib/status';
 import type { Project, Task, TaskStatus } from '../../lib/types';
 import { byPosition, cn, formatDateShort, formatMinutes, formatNumber, today } from '../../lib/utils';
@@ -161,7 +161,7 @@ export function ProjectTasksTable({
                   {done}/{all.length} {all.length === 1 ? 'tarefa' : 'tarefas'}
                 </span>
               </span>
-              <span className="text-[12.5px] tabular text-stone-600">{pStart && pEnd ? daysLabel(businessDaysBetween(pStart, pEnd)) : ''}</span>
+              <span className="text-[12.5px] tabular text-stone-600">{pStart && pEnd ? daysLabel(durationDays(pStart, pEnd)) : ''}</span>
               <span className="text-[12.5px] tabular text-stone-600">{pStart ? formatDateShort(pStart) : ''}</span>
               <span className="text-[12.5px] tabular text-stone-600">{pEnd ? formatDateShort(pEnd) : ''}</span>
               <span className="text-right text-[12.5px] tabular text-stone-600">{est ? `${formatNumber(est, 1)}h` : ''}</span>
@@ -250,7 +250,7 @@ export function ProjectTasksTable({
                       )}
                     </Popover>
                     <DurationCell
-                      days={task.start_date && task.due_date ? businessDaysBetween(task.start_date, task.due_date) : null}
+                      days={task.start_date && task.due_date ? durationDays(task.start_date, task.due_date) : null}
                       label={`Duração de ${task.title}`}
                       onChange={(n) => updateTask(task.id, datesForDuration(task, n)).catch(toast.error)}
                     />
@@ -420,7 +420,7 @@ function DateCell({ value, label, className, onChange }: { value: string | null;
   );
 }
 
-/** Duração em dias úteis: sai do início e do fim; editada, recalcula o fim (ou o início, se só houver fim). */
+/** Duração em dias corridos (sábado e domingo contam): sai do início e do fim; editada, recalcula o fim (ou o início, se só houver fim). */
 function DurationCell({ days, label, onChange }: { days: number | null; label: string; onChange: (n: number) => void }) {
   const [editing, setEditing] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -452,7 +452,7 @@ function DurationCell({ days, label, onChange }: { days: number | null; label: s
       type="button"
       onClick={() => setEditing(true)}
       aria-label={days != null ? `${label}: ${daysLabel(days)}` : `Definir ${label.charAt(0).toLowerCase()}${label.slice(1)}`}
-      title="Calculada pelo início e fim; altere para recalcular o fim"
+      title="Dias corridos (com sábado e domingo), pelo início e fim; altere para recalcular o fim"
       className="flex h-7 items-center rounded-md text-left text-[12.5px] tabular text-stone-700 hover:bg-stone-100"
     >
       {days != null ? daysLabel(days) : <span className="text-stone-400">—</span>}
