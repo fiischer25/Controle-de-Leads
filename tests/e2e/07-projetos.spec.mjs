@@ -75,7 +75,7 @@ export default async function ({ browser }) {
   );
 
   await s.step(
-    'definir início e duração na tabela calcula o fim',
+    'definir início e duração na tabela calcula o fim (dias corridos, com sábado e domingo)',
     async () => {
       await page.getByRole('button', { name: `Definir início de ${task.title}` }).click();
       await page.getByLabel(`Início de ${task.title}`).fill('2026-10-05');
@@ -84,7 +84,8 @@ export default async function ({ browser }) {
       await page.keyboard.press('Enter');
       await page.waitForTimeout(300);
       const t2 = (await ls(page, 'tasks')).find((t) => t.id === task.id);
-      ok(t2.start_date === '2026-10-05' && t2.due_date > '2026-10-16', `datas ${t2.start_date} → ${t2.due_date}`);
+      // 12 dias corridos a partir de 05/10 (segunda) terminam em 16/10, contando o fim de semana
+      eq([t2.start_date, t2.due_date], ['2026-10-05', '2026-10-16'], 'datas em dias corridos');
       await page.getByRole('button', { name: `Duração de ${task.title}: 12 dias` }).waitFor();
     },
     page,
@@ -94,9 +95,10 @@ export default async function ({ browser }) {
     'mudar o fim recalcula a duração',
     async () => {
       await page.getByRole('button', { name: new RegExp(`^Fim de ${task.title}`) }).click();
-      await page.getByLabel(`Fim de ${task.title}`).fill('2026-10-09');
+      // Segunda a domingo: 7 dias corridos
+      await page.getByLabel(`Fim de ${task.title}`).fill('2026-10-11');
       await page.keyboard.press('Enter');
-      await page.getByRole('button', { name: `Duração de ${task.title}: 5 dias` }).waitFor();
+      await page.getByRole('button', { name: `Duração de ${task.title}: 7 dias` }).waitFor();
     },
     page,
   );
@@ -105,8 +107,8 @@ export default async function ({ browser }) {
     'duração na gaveta da tarefa',
     async () => {
       await page.getByRole('button', { name: task.title, exact: true }).first().click();
-      const f = page.getByRole('dialog').getByLabel('Duração (dias úteis)');
-      eq(await f.inputValue(), '5', 'duração na gaveta');
+      const f = page.getByRole('dialog').getByLabel('Duração (dias corridos)');
+      eq(await f.inputValue(), '7', 'duração na gaveta');
       await f.fill('3');
       await f.blur();
       await page.waitForTimeout(300);

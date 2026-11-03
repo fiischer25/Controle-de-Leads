@@ -1,5 +1,5 @@
 import type { Project, ProjectStatus, Task, TaskTemplate, TimeEntry } from './types';
-import { addBusinessDays, addDays, byPosition, nextBusinessDay, nowIso, today, uid } from './utils';
+import { addDays, byPosition, diffDays, nowIso, today, uid } from './utils';
 
 /**
  * Gera as tarefas de um projeto a partir das tarefas-modelo do tipo de projeto: etapa, ordem,
@@ -41,34 +41,22 @@ export function buildProjectTasks(opts: {
 }
 
 /**
- * Datas para uma duração digitada (dias úteis, contando início e fim): mantém o início e
- * recalcula o fim; sem início, conta para trás a partir do fim; sem nenhuma data, começa hoje.
+ * Datas para uma duração digitada, em dias corridos (sábado e domingo contam), contando o início e
+ * o fim: mantém o início e recalcula o fim; sem início, conta para trás a partir do fim; sem
+ * nenhuma data, começa hoje. Ex.: 20 dias a partir de 01/10 terminam em 20/10.
  */
 export function datesForDuration(task: Pick<Task, 'start_date' | 'due_date'>, days: number): { start_date: string; due_date: string } {
   const n = Math.max(1, Math.round(days));
-  if (task.start_date) return { start_date: task.start_date, due_date: addBusinessDays(task.start_date, n - 1) };
-  if (task.due_date) {
-    let start = task.due_date;
-    for (let left = n - 1; left > 0; ) {
-      start = addDays(start, -1);
-      if (nextBusinessDay(start) === start) left--;
-    }
-    return { start_date: start, due_date: task.due_date };
-  }
-  const start = nextBusinessDay(today());
-  return { start_date: start, due_date: addBusinessDays(start, n - 1) };
+  if (task.start_date) return { start_date: task.start_date, due_date: addDays(task.start_date, n - 1) };
+  if (task.due_date) return { start_date: addDays(task.due_date, -(n - 1)), due_date: task.due_date };
+  const start = today();
+  return { start_date: start, due_date: addDays(start, n - 1) };
 }
 
-/** Dias úteis entre duas datas, contando as duas pontas (seg→sex = 5). */
-export function businessDaysBetween(start: string, end: string): number {
+/** Duração em dias corridos entre duas datas, contando as duas pontas (seg→dom = 7). */
+export function durationDays(start: string, end: string): number {
   if (end < start) return 0;
-  let n = 0;
-  let k = nextBusinessDay(start);
-  while (k <= end) {
-    n++;
-    k = addBusinessDays(k, 1);
-  }
-  return n;
+  return diffDays(start, end) + 1;
 }
 
 export function projectProgress(tasks: Task[]): number {
