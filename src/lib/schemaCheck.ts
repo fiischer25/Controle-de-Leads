@@ -40,6 +40,7 @@ const REQUIRED: Array<{ file: string; label: string; probe: (b: SupabaseBackend)
   { file: '20261020000000_pricings.sql', label: 'Precificação de projetos', probe: (b) => b.probe('pricings', 'id,data,total') },
   { file: '20261021000000_billing_reminders.sql', label: 'Lembretes de cobrança', probe: (b) => b.probe('billing_reminder_log', 'id,entry_id,kind') },
   { file: '20261022000000_member_cost_precision.sql', label: 'Custo da equipe por mês (sem arredondar)', probe: (b) => b.probeRpc('airos_member_cost_precision', {}) },
+  { file: '20261026000000_finance_payroll.sql', label: 'Folha de pagamento (mês de referência e pessoa)', probe: (b) => b.probe('finance_entries', 'reference_month,member_id') },
   { file: '20261025000000_project_client_waits.sql', label: 'Aguardando retorno do cliente (dias com o cliente)', probe: (b) => b.probe('projects', 'client_waits') },
   { file: '20261024000000_project_macro_stage.sql', label: 'Etapa macro na lista de projetos', probe: (b) => b.probe('projects', 'macro_stage') },
   { file: '20261023000000_task_status_meeting.sql', label: 'Status de tarefa "Reunião agendada"', probe: (b) => b.probeRpc('airos_task_status_meeting', {}) },

@@ -312,6 +312,8 @@ export interface AppSettings {
   wa_alerts_weekends?: boolean;
   /** Lembretes de cobrança no WhatsApp (migração 20261021000000). */
   billing_enabled?: boolean;
+  /** Dia do mês seguinte em que a folha é paga (migração 20261026). */
+  payroll_day?: number;
   billing_days_before?: number;
   billing_on_due?: boolean;
   billing_days_after?: number;
@@ -388,6 +390,10 @@ export interface FinanceEntry {
   lead_id?: string | null;
   /** Comprovantes e notas. Migração 20261007. */
   attachments?: FinanceAttachment[];
+  /** Mês a que se refere (AAAA-MM), ex.: salário de setembro pago em outubro. Migração 20261026. */
+  reference_month?: string | null;
+  /** Pessoa da equipe a quem o salário é pago (folha). Migração 20261026. */
+  member_id?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

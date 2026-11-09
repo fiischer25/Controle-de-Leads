@@ -1,15 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { FileText, Paperclip, Trash2, X } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
-import { settledDate, splitEqual, type EntryDraft, type RepeatMode } from '../../lib/finance';
+import { addMonthsKey, monthKey, settledDate, splitEqual, type EntryDraft, type RepeatMode } from '../../lib/finance';
+import { SALARY_CATEGORY } from '../../lib/payroll';
 import type { FinanceEntry, FinanceKind } from '../../lib/types';
-import { formatMoney, today } from '../../lib/utils';
+import { formatMoney, MONTHS_FULL, today } from '../../lib/utils';
 import { Button, Checkbox, ConfirmDialog, Field, IconButton, Input, Modal, Segmented, Select, Spinner, Textarea } from '../ui';
 import { MoneyInput } from './MoneyInput';
 import { ATTACHMENT_ACCEPT, formatBytes, MAX_ATTACHMENT_BYTES, useFinance } from './useFinance';
 
 const KIND_LABEL: Record<FinanceKind, string> = { receita: 'Receita', despesa: 'Despesa', transferencia: 'Transferência' };
+const monthName = (key: string) => `${MONTHS_FULL[Number(key.slice(5, 7)) - 1].toLowerCase()} de ${key.slice(0, 4)}`;
 
 /** Cadastro e edição de lançamento: conta a receber, conta a pagar ou transferência. */
 export function EntryFormModal({
@@ -39,6 +41,9 @@ export function EntryFormModal({
     document: entry?.document ?? defaults?.document ?? null,
     notes: entry?.notes ?? defaults?.notes ?? null,
   }));
+  // Mês a que se refere (ex.: salário de setembro pago em outubro); vazio = o próprio mês
+  const [refMonth, setRefMonth] = useState(entry?.reference_month ?? defaults?.reference_month ?? '');
+  const refTouched = useRef(!!(entry?.reference_month ?? defaults?.reference_month));
   const [mode, setMode] = useState<RepeatMode>('unica');
   const [count, setCount] = useState(12);
   const [applyNext, setApplyNext] = useState(false);
@@ -109,6 +114,8 @@ export function EntryFormModal({
       to_account_id: isTransfer ? v.to_account_id : null,
       // Transferência acontece na data informada
       paid_at: isTransfer ? v.due_date : v.paid_at,
+      // Só manda a referência quando há uma (ou para apagar a que existia): funciona sem a migração 20261026
+      ...(!isTransfer && refMonth ? { reference_month: refMonth } : entry?.reference_month ? { reference_month: null } : {}),
     };
     try {
       if (entry) {
@@ -221,7 +228,18 @@ export function EntryFormModal({
           </Field>
         ) : (
           <Field label="Categoria">
-            <Select value={v.category_id ?? ''} onChange={(e) => set('category_id', e.target.value || null)} aria-label="Categoria">
+            <Select
+              value={v.category_id ?? ''}
+              onChange={(e) => {
+                const id = e.target.value || null;
+                set('category_id', id);
+                // Salário: sugere o mês anterior ao pagamento (pago em outubro, referente a setembro)
+                if (!refTouched.current && v.kind === 'despesa' && id && SALARY_CATEGORY.test(fin.categoryMap[id]?.name ?? '')) {
+                  setRefMonth(monthKey(addMonthsKey(v.due_date || today(), -1)));
+                }
+              }}
+              aria-label="Categoria"
+            >
               <option value="">Sem categoria</option>
               {cats.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -232,6 +250,27 @@ export function EntryFormModal({
           </Field>
         )}
 
+        {!isTransfer && (
+          <Field
+            label="Referente a"
+            hint={
+              refMonth && refMonth !== monthKey(v.due_date || today())
+                ? `${v.kind === 'receita' ? 'Recebido' : 'Pago'} em ${monthName(monthKey(v.due_date || today()))}, referente a ${monthName(refMonth)}.`
+                : 'Opcional. Ex.: salário de setembro pago no dia 5 de outubro.'
+            }
+          >
+            <Input
+              type="month"
+              value={refMonth}
+              onChange={(e) => {
+                refTouched.current = true;
+                setRefMonth(e.target.value);
+              }}
+              placeholder="AAAA-MM"
+              aria-label="Referente a (mês)"
+            />
+          </Field>
+        )}
         {!isTransfer && (
           <>
             <Field label="Projeto" hint="Liga o lançamento à rentabilidade do projeto.">
