@@ -3,9 +3,13 @@ import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import type { FinanceEntry } from '../../lib/types';
 import { cn, formatMoney, formatDateShort, today } from '../../lib/utils';
-import { settledDate } from '../../lib/finance';
+import { monthKey, settledDate } from '../../lib/finance';
 import { Badge } from '../ui';
 import { STATUS_STYLE, useFinance } from './useFinance';
+
+const SHORT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+/** "set/26" */
+const refLabel = (key: string) => `${SHORT[Number(key.slice(5, 7)) - 1]}/${key.slice(2, 4)}`;
 
 /**
  * Lista de lançamentos: data, descrição (categoria · projeto · parcela), conta, valor e
@@ -81,6 +85,11 @@ export function EntryList({
                   {category && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} aria-hidden />}
                   <span className="truncate">{sub.join(' · ')}</span>
                   {counter && <span className="shrink-0 tabular">· {counter}</span>}
+                  {e.reference_month && e.reference_month !== monthKey(e.paid_at ?? e.due_date) && (
+                    <span className="shrink-0 rounded-full bg-ink/[0.05] px-1.5 text-[11.5px] text-muted" data-entry-ref={e.reference_month} title={`Referente a ${refLabel(e.reference_month)}`}>
+                      ref. {refLabel(e.reference_month)}
+                    </span>
+                  )}
                 </span>
               </span>
               {!compact && <span className="hidden truncate py-3 text-[13px] text-muted md:block">{transfer ? '' : (account?.name ?? 'Sem conta')}</span>}

@@ -161,6 +161,8 @@ export function buildSeries(draft: EntryDraft, mode: RepeatMode, count: number, 
     id: uid(),
     amount,
     due_date: addMonthsKey(draft.due_date, i),
+    // Mês de referência anda junto (salário de set. pago em out., de out. pago em nov...)
+    ...(draft.reference_month ? { reference_month: monthKey(addMonthsKey(`${draft.reference_month}-01`, i)) } : {}),
     paid_at: i === 0 ? draft.paid_at : null,
     series_id: seriesId,
     installment: n > 1 ? i + 1 : null,

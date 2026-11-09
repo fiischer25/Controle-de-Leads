@@ -9,6 +9,7 @@ import { cn, downloadFile, formatCurrency, formatDate, formatMoney, matches, MON
 import { ActionLink, BarRow, Button, FilterPick, PageHeader, SearchField, SectionHeader, Tabs, Toolbar } from '../components/ui';
 import { EntryFormModal } from '../components/finance/EntryFormModal';
 import { FinanceBilling } from '../components/finance/FinanceBilling';
+import { FinancePayroll } from '../components/finance/FinancePayroll';
 import { EntryList } from '../components/finance/EntryList';
 import { CashFlowChart, MonthCards, ReceivablesByMonth } from '../components/finance/FinanceOverviewParts';
 import { ACCOUNT_KIND_LABEL, useFinance } from '../components/finance/useFinance';
@@ -19,7 +20,7 @@ import { ImportStatementModal } from '../components/finance/ImportStatementModal
 import { useFinanceOverview } from '../components/finance/useFinanceOverview';
 import { MonthPicker } from '../components/finance/MonthPicker';
 
-type Tab = 'geral' | 'lancamentos' | 'cobranca' | 'contas' | 'rentabilidade' | 'categorias';
+type Tab = 'geral' | 'lancamentos' | 'cobranca' | 'folha' | 'contas' | 'rentabilidade' | 'categorias';
 type Editing = { entry?: FinanceEntry; kind?: FinanceKind } | null;
 
 /** Mês escolhido (?mes=AAAA-MM), o mesmo na Visão geral e nos Lançamentos; sem ele, o mês atual. */
@@ -39,7 +40,7 @@ function useMonthParam(): [string, (m: string) => void] {
 /** Financeiro do escritório: caixa, contas a receber e a pagar, contas, rentabilidade e categorias. */
 export default function FinancePage() {
   const [params, setParams] = useSearchParams();
-  const tab = (['geral', 'lancamentos', 'cobranca', 'contas', 'rentabilidade', 'categorias'] as Tab[]).includes(params.get('aba') as Tab) ? (params.get('aba') as Tab) : 'geral';
+  const tab = (['geral', 'lancamentos', 'cobranca', 'folha', 'contas', 'rentabilidade', 'categorias'] as Tab[]).includes(params.get('aba') as Tab) ? (params.get('aba') as Tab) : 'geral';
   // Ao trocar de aba, o mês escolhido continua
   const setTab = (t: Tab) => {
     const next: Record<string, string> = t === 'geral' ? {} : { aba: t };
@@ -98,6 +99,7 @@ export default function FinancePage() {
           { id: 'geral', label: 'Visão geral' },
           { id: 'lancamentos', label: 'Lançamentos' },
           { id: 'cobranca', label: 'Cobrança' },
+          { id: 'folha', label: 'Folha' },
           { id: 'contas', label: 'Contas', count: fin.accounts.filter((a) => a.active).length },
           { id: 'rentabilidade', label: 'Rentabilidade' },
           { id: 'categorias', label: 'Categorias' },
@@ -114,6 +116,7 @@ export default function FinancePage() {
         {tab === 'geral' && <Overview onOpen={(entry) => setEditing({ entry })} onTab={setTab} />}
         {tab === 'lancamentos' && <Entries onOpen={(entry) => setEditing({ entry })} onImport={() => setImporting({})} />}
         {tab === 'cobranca' && <FinanceBilling />}
+        {tab === 'folha' && <FinancePayroll onOpen={(entry) => setEditing({ entry })} />}
         {tab === 'contas' && <FinanceAccounts onImport={(account) => setImporting({ account })} />}
         {tab === 'rentabilidade' && <FinanceProfitability />}
         {tab === 'categorias' && <FinanceCategories />}

@@ -36,6 +36,9 @@ function translateError(message: string): string {
   if (/projects_status_check/i.test(message) || (/status_manual/i.test(message) && /column|schema cache/i.test(message))) {
     return 'O banco ainda não tem o status “Obra”. Abra Configurações → Banco de dados e aplique “Status do projeto: Obra” (migração 20261018000000_project_status_obra.sql).';
   }
+  if (/reference_month|member_id|payroll_day/i.test(message) && /column|schema cache/i.test(message)) {
+    return 'O banco ainda não tem a folha de pagamento. Abra Configurações → Banco de dados e aplique “Folha de pagamento” (migração 20261026000000_finance_payroll.sql).';
+  }
   if (/client_waits/i.test(message) && /column|schema cache/i.test(message)) {
     return 'O banco ainda não guarda o tempo com o cliente. Abra Configurações → Banco de dados e aplique “Aguardando retorno do cliente” (migração 20261025000000_project_client_waits.sql).';
   }
