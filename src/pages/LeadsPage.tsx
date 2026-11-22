@@ -43,7 +43,8 @@ export default function LeadsPage() {
   const { db, maps, moveLead, settings, closeDeal } = useData();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
-  const [view, setView] = useState<View>(readView);
+  // ?visao=painel abre direto no painel (ex.: link do Escritório)
+  const [view, setView] = useState<View>(() => (params.get('visao') === 'painel' ? 'painel' : readView()));
   const [query, setQuery] = useState('');
   const [owner, setOwner] = useState('');
   const [source, setSource] = useState('');
@@ -71,6 +72,18 @@ export default function LeadsPage() {
       return matches(query, l.name, l.city, l.phone, l.email, l.notes);
     });
   }, [db.leads, owner, source, type, period, query, t]);
+
+  // Resultado do mês: os mesmos filtros, menos o de entrada (o mês escolhido no painel manda)
+  const filteredAnyTime = useMemo(
+    () =>
+      db.leads.filter((l) => {
+        if (owner && l.owner_id !== owner) return false;
+        if (source && l.source_id !== source) return false;
+        if (type && l.project_type_id !== type) return false;
+        return matches(query, l.name, l.city, l.phone, l.email, l.notes);
+      }),
+    [db.leads, owner, source, type, query],
+  );
 
   const byStage = useMemo(() => {
     const map: Record<string, Lead[]> = {};
@@ -277,7 +290,7 @@ export default function LeadsPage() {
       {/* Conteúdo */}
       <div className="mt-6 md:mt-8">
         {view === 'painel' ? (
-          <LeadsDashboard leads={filtered} onSource={setSource} />
+          <LeadsDashboard leads={filtered} monthLeads={filteredAnyTime} onSource={setSource} onOpenLead={openLead} />
         ) : !desktop ? null : view === 'kanban' ? (
           /* Desktop: quadro arrastável */
           <div className="scrollbar-thin -mx-5 overflow-x-auto px-5 pb-6 md:-mx-8 md:px-8 xl:-mx-12 xl:px-12">

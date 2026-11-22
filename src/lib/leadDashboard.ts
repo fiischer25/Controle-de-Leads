@@ -222,3 +222,63 @@ export function leadDashboard(opts: {
     months,
   };
 }
+
+// ---------------------------------------------------------------- resultado do mês
+export interface MonthResult {
+  /** AAAA-MM */
+  key: string;
+  /** Leads novos: contatos que entraram no mês. */
+  newLeads: number;
+  /** Oportunidades no funil durante o mês: entraram até o fim do mês e não estavam decididas antes dele. */
+  inFunnel: number;
+  /** Das no funil, quantas têm proposta (valor). */
+  withProposal: number;
+  /** Projetos fechados (ganhas no mês), do mais recente ao mais antigo. */
+  won: Lead[];
+  wonValue: number;
+  lost: number;
+  lostValue: number;
+  /** Ganhas ÷ decididas no mês. */
+  conversion: number | null;
+  /** Valor médio dos fechados com valor. */
+  avgTicket: number | null;
+}
+
+const endOfMonthIso = (key: string) => {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+};
+
+/** Resultado comercial de um mês: projetos fechados e valor, leads novos e oportunidades no funil. */
+export function monthResult(leads: Lead[], stages: LeadStage[], key: string): MonthResult {
+  const kind = new Map(stages.map((s) => [s.id, s.kind]));
+  const start = `${key}-01`;
+  const next = endOfMonthIso(key); // primeiro dia do mês seguinte
+  const value = (l: Lead) => l.proposal_value ?? 0;
+  const closedIn = (l: Lead) => !!l.closed_at && monthKey(l.closed_at) === key;
+  const won = leads.filter((l) => kind.get(l.stage_id) === 'won' && closedIn(l)).sort((a, b) => (b.closed_at ?? '').localeCompare(a.closed_at ?? ''));
+  const lost = leads.filter((l) => kind.get(l.stage_id) === 'lost' && closedIn(l));
+  // No funil no mês: entrou antes do fim do mês e não foi decidida antes do início dele
+  const funnel = leads.filter((l) => l.created_at.slice(0, 10) < next && !(kind.get(l.stage_id) !== 'open' && l.closed_at && l.closed_at.slice(0, 10) < start));
+  const withValue = won.filter((l) => value(l) > 0);
+  const wonValue = won.reduce((a, l) => a + value(l), 0);
+  return {
+    key,
+    newLeads: leads.filter((l) => monthKey(l.created_at) === key).length,
+    inFunnel: funnel.length,
+    withProposal: funnel.filter((l) => value(l) > 0).length,
+    won,
+    wonValue,
+    lost: lost.length,
+    lostValue: lost.reduce((a, l) => a + value(l), 0),
+    conversion: won.length + lost.length ? won.length / (won.length + lost.length) : null,
+    avgTicket: withValue.length ? withValue.reduce((a, l) => a + value(l), 0) / withValue.length : null,
+  };
+}
+
+/** Os últimos `n` meses (do mais recente ao mais antigo). */
+export function monthHistory(leads: Lead[], stages: LeadStage[], today: string, n = 12): MonthResult[] {
+  return lastMonths(today, n)
+    .reverse()
+    .map((k) => monthResult(leads, stages, k));
+}

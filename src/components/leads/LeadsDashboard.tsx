@@ -1,9 +1,12 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
-import { leadDashboard, topWithOthers, type Bucket } from '../../lib/leadDashboard';
+import { leadDashboard, monthHistory, monthResult, topWithOthers, type Bucket } from '../../lib/leadDashboard';
+import { monthLabel as fullMonth } from '../../lib/finance';
+import { MonthPicker } from '../finance/MonthPicker';
 import { CSS_COLOR } from '../../lib/status';
 import type { Lead } from '../../lib/types';
-import { cn, formatCurrency, MONTHS_FULL, today } from '../../lib/utils';
+import { cn, formatCurrency, formatDateShort, MONTHS_FULL, today } from '../../lib/utils';
 import { BarRow, EmptyState, MetricRow, SectionHeader } from '../ui';
 
 const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
@@ -14,14 +17,31 @@ const monthLabel = (key: string) => `${MONTHS_FULL[Number(key.slice(5, 7)) - 1].
  * Painel das Oportunidades: resultado, taxa de conversão, valores em aberto, fechados e não
  * fechados, de onde vêm os leads, perfil e localidades. Segue os filtros da tela.
  */
-export function LeadsDashboard({ leads, onSource }: { leads: Lead[]; onSource: (id: string) => void }) {
-  const { db } = useData();
+export function LeadsDashboard({
+  leads,
+  monthLeads,
+  onSource,
+  onOpenLead,
+}: {
+  leads: Lead[];
+  /** Para o resultado do mês: os mesmos filtros, menos o de entrada (o mês escolhido manda). */
+  monthLeads: Lead[];
+  onSource: (id: string) => void;
+  onOpenLead: (id: string) => void;
+}) {
+  const { db, maps } = useData();
+  const [month, setMonth] = useState(today().slice(0, 7));
+  const top = useRef<HTMLElement>(null);
+  const result = useMemo(() => monthResult(monthLeads, db.lead_stages, month), [monthLeads, db.lead_stages, month]);
+  const history = useMemo(() => monthHistory(monthLeads, db.lead_stages, today(), 12), [monthLeads, db.lead_stages]);
+  const name = MONTHS_FULL[Number(month.slice(5, 7)) - 1].toLowerCase();
+  const decidedMonth = result.won.length + result.lost;
   const d = useMemo(
     () => leadDashboard({ leads, stages: db.lead_stages, sources: db.lead_sources, types: db.project_types, today: today() }),
     [leads, db.lead_stages, db.lead_sources, db.project_types],
   );
 
-  if (!leads.length) {
+  if (!leads.length && !monthLeads.length) {
     return <EmptyState title="Nenhuma oportunidade" description="Sem oportunidades com estes filtros. Limpe os filtros ou cadastre uma oportunidade." className="py-16" />;
   }
 
@@ -31,8 +51,73 @@ export function LeadsDashboard({ leads, onSource }: { leads: Lead[]; onSource: (
 
   return (
     <div className="space-y-8 md:space-y-10" data-leads-dashboard>
+      <section ref={top} aria-labelledby="ld-mes" className="scroll-mt-24 space-y-4" data-month-result={month}>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 id="ld-mes" className="text-[12px] font-medium uppercase tracking-[0.08em] text-faint">
+            Resultado do mês
+          </h2>
+          <MonthPicker value={month} onChange={setMonth} className="-mr-2" />
+        </div>
+        <MetricRow
+          items={[
+            {
+              label: 'Projetos fechados',
+              value: result.won.length,
+              sub: decidedMonth ? `${pct(result.conversion)} de conversão · ${result.lost} não ${result.lost === 1 ? 'fechado' : 'fechados'}` : 'nenhum decidido no mês',
+            },
+            { label: 'Valor fechado', value: formatCurrency(result.wonValue), sub: result.avgTicket ? `média ${formatCurrency(result.avgTicket)} por projeto` : `em ${name}` },
+            { label: 'Leads novos', value: result.newLeads, sub: `contatos que entraram em ${name}` },
+            {
+              label: 'Oportunidades no funil',
+              value: result.inFunnel,
+              sub: `${plural(result.withProposal, 'com proposta', 'com proposta')} · em negociação no mês`,
+              hint: 'Oportunidades que estavam abertas em algum momento do mês (entraram até o fim dele e não tinham sido decididas antes)',
+            },
+          ]}
+        />
+        <div className="panel">
+          <SectionHeader
+            title={`Fechados em ${name}`}
+            aside={<span className="text-[12.5px] text-faint">{plural(result.won.length, 'projeto', 'projetos')} · {formatCurrency(result.wonValue)}</span>}
+          />
+          {result.won.length === 0 ? (
+            <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhum projeto fechado em {fullMonth(month).toLowerCase()}.</p>
+          ) : (
+            <ul>
+              {result.won.map((l) => {
+                const project = db.projects.find((p) => p.lead_id === l.id);
+                const type = l.project_type_id ? maps.types[l.project_type_id]?.name : null;
+                return (
+                  <li
+                    key={l.id}
+                    data-won-lead={l.name}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 border-t border-hairline py-3 text-[13px] sm:grid-cols-[minmax(0,1fr)_minmax(0,180px)_70px_120px]"
+                  >
+                    <button type="button" onClick={() => onOpenLead(l.id)} className="min-w-0 text-left">
+                      <span className="block truncate text-ink hover:underline hover:decoration-stone-300 hover:underline-offset-4">{l.name}</span>
+                      <span className="block truncate text-[12px] text-faint">{[type, l.city].filter(Boolean).join(' · ') || '—'}</span>
+                    </button>
+                    <span className="hidden min-w-0 truncate sm:block">
+                      {project ? (
+                        <Link to={`/projetos/${project.id}`} className="text-accent-fg hover:underline">
+                          {project.name}
+                        </Link>
+                      ) : (
+                        <span className="text-faint">sem projeto ainda</span>
+                      )}
+                    </span>
+                    <span className="hidden tabular text-muted sm:block">{formatDateShort(l.closed_at!.slice(0, 10))}</span>
+                    <span className="text-right font-medium tabular text-ink">{l.proposal_value ? formatCurrency(l.proposal_value) : '—'}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </section>
+
       <MetricRow
-        label="Resultado"
+        label="Geral (com os filtros)"
         items={[
           { label: 'Oportunidades', value: d.total, sub: `${plural(d.open, 'em negociação', 'em negociação')}` },
           {
@@ -58,27 +143,33 @@ export function LeadsDashboard({ leads, onSource }: { leads: Lead[]; onSource: (
       <section aria-labelledby="ld-meses" className="panel">
         <SectionHeader
           id="ld-meses"
-          title="Resultado por mês"
+          title="Mês a mês"
           aside={
             <span className="text-[12.5px] text-faint">
-              ganhas e não ganhas no mês da decisão{d.avgDaysToClose !== null && ` · fecham em ${plural(d.avgDaysToClose, 'dia', 'dias')}, em média`}
+              últimos 12 meses · clique para ver o mês{d.avgDaysToClose !== null && ` · fecham em ${plural(d.avgDaysToClose, 'dia', 'dias')}, em média`}
             </span>
           }
         />
         <Table
-          cols="grid-cols-[minmax(0,1fr)_52px_52px_minmax(84px,auto)] sm:grid-cols-[minmax(0,1fr)_64px_56px_76px_76px_minmax(110px,auto)]"
-          head={['Mês', 'Entraram', 'Ganhas', 'Não ganhas', 'Conversão', 'Valor fechado']}
-          hideOnMobile={[3, 4]}
-          rows={d.months.map((m) => ({
+          cols="grid-cols-[minmax(0,1fr)_52px_56px_minmax(84px,auto)] sm:grid-cols-[minmax(0,1fr)_64px_64px_64px_minmax(110px,auto)_76px_76px]"
+          head={['Mês', 'Leads novos', 'No funil', 'Fechados', 'Valor fechado', 'Não fechados', 'Conversão']}
+          hideOnMobile={[1, 5, 6]}
+          rows={history.map((m) => ({
             key: m.key,
-            data: { 'data-lead-month': m.key },
+            data: { 'data-lead-month': m.key, ...(m.key === month ? { 'data-selected': 'sim' } : {}) },
+            onClick: () => {
+              setMonth(m.key);
+              top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            },
+            title: `Ver ${fullMonth(m.key).toLowerCase()}`,
             cells: [
-              <span key="m" className="text-ink">{monthLabel(m.key)}</span>,
-              m.entered,
-              m.won,
-              m.lost,
-              pct(m.won + m.lost ? m.won / (m.won + m.lost) : null),
+              <span key="m" className={cn(m.key === month ? 'font-semibold text-ink' : 'text-ink')}>{monthLabel(m.key)}</span>,
+              m.newLeads,
+              m.inFunnel,
+              <span key="w" className={cn(m.won.length ? 'font-medium text-ink' : '')}>{m.won.length}</span>,
               <span key="v" className={cn('whitespace-nowrap', m.wonValue ? 'font-medium text-ink' : 'text-faint')}>{m.wonValue ? formatCurrency(m.wonValue) : '—'}</span>,
+              m.lost,
+              pct(m.conversion),
             ],
           }))}
         />

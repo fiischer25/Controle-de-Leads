@@ -11,7 +11,7 @@ import { join } from 'node:path';
 const dir = mkdtempSync(join(tmpdir(), 'airos-leads-'));
 const out = join(dir, 'leadDashboard.mjs');
 await build({ entryPoints: [new URL('../../src/lib/leadDashboard.ts', import.meta.url).pathname], bundle: true, format: 'esm', outfile: out, logLevel: 'silent' });
-const { leadDashboard, topWithOthers, areaRange, lastMonths } = await import(out);
+const { leadDashboard, topWithOthers, areaRange, lastMonths, monthResult, monthHistory } = await import(out);
 rmSync(dir, { recursive: true, force: true });
 
 const T = '2026-10-20';
@@ -96,4 +96,35 @@ test('auxiliares: "Outras", faixa de área e meses na virada do ano', () => {
   assert.equal(areaRange(80).label, 'Até 80 m²');
   assert.equal(areaRange(301).label, 'Acima de 300 m²');
   assert.deepEqual(lastMonths('2026-02-10', 4), ['2025-11', '2025-12', '2026-01', '2026-02']);
+});
+
+test('resultado do mês: projetos fechados e valor, leads novos e oportunidades no funil', () => {
+  const L = [
+    // entrou em set, fechou em out
+    lead({ stage_id: 'ganho', proposal_value: 50000, created_at: '2026-09-10T12:00:00Z', closed_at: '2026-10-11T12:00:00Z' }),
+    // entrou e fechou em out
+    lead({ stage_id: 'ganho', proposal_value: 30000, created_at: '2026-10-02T12:00:00Z', closed_at: '2026-10-20T12:00:00Z' }),
+    // perdida em out
+    lead({ stage_id: 'perdido', proposal_value: 40000, created_at: '2026-10-01T12:00:00Z', closed_at: '2026-10-25T12:00:00Z' }),
+    // aberta, entrou em out, com proposta
+    lead({ stage_id: 'prop', proposal_value: 20000, created_at: '2026-10-15T12:00:00Z' }),
+    // decidida antes de out: fora do funil de out
+    lead({ stage_id: 'ganho', proposal_value: 10000, created_at: '2026-08-01T12:00:00Z', closed_at: '2026-09-05T12:00:00Z' }),
+    // entrou em nov: fora de out
+    lead({ stage_id: 'novo', created_at: '2026-11-02T12:00:00Z' }),
+  ];
+  const oct = monthResult(L, stages, '2026-10');
+  assert.equal(oct.won.length, 2);
+  assert.equal(oct.wonValue, 80000);
+  assert.equal(oct.won[0].proposal_value, 30000, 'mais recente primeiro');
+  assert.equal(oct.newLeads, 3);
+  assert.equal(oct.inFunnel, 4);
+  assert.equal(oct.withProposal, 4);
+  assert.equal(oct.lost, 1);
+  assert.equal(oct.conversion, 2 / 3);
+  assert.equal(oct.avgTicket, 40000);
+  const sep = monthResult(L, stages, '2026-09');
+  assert.deepEqual([sep.won.length, sep.wonValue, sep.newLeads, sep.inFunnel], [1, 10000, 1, 2]);
+  const h = monthHistory(L, stages, '2026-11-22', 3);
+  assert.deepEqual(h.map((m) => m.key), ['2026-11', '2026-10', '2026-09']);
 });
