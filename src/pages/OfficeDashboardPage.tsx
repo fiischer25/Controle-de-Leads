@@ -14,6 +14,7 @@ import { MonthBars } from '../components/charts/MonthBars';
 import { useHomeData } from '../components/dashboard/useHomeData';
 import { FunnelSection, ProjectsSection, TeamSection } from '../components/dashboard/HomeSections';
 import { FinanceSnapshot } from '../components/dashboard/FinanceSnapshot';
+import { monthResult } from '../lib/leadDashboard';
 import { useFinance } from '../components/finance/useFinance';
 import { useProjectSummaries } from '../components/projects/useProjectSummaries';
 
@@ -108,10 +109,12 @@ export default function OfficeDashboardPage() {
     return {
       followups,
       newThisMonth: db.leads.filter((l) => l.created_at.slice(0, 7) === month).length,
+      // Projetos fechados no mês (ganhas) e o valor
+      closed: monthResult(db.leads, db.lead_stages, month),
       stale: open.filter((l) => diffDays(t, (l.stage_changed_at ?? l.created_at).slice(0, 10)) >= staleDays).length,
       staleDays,
     };
-  }, [db.leads, maps.stages, settings.lead_stale_days]);
+  }, [db.leads, db.lead_stages, maps.stages, settings.lead_stale_days]);
 
   // Financeiro (só para quem tem o módulo)
   const fin = useFinance();
@@ -288,9 +291,15 @@ export default function OfficeDashboardPage() {
             <MetricRow
               label="Comercial"
               items={[
+                {
+                  label: 'Fechados no mês',
+                  value: commercial.closed.won.length,
+                  sub: formatCurrency(commercial.closed.wonValue),
+                  to: '/oportunidades?visao=painel',
+                  hint: 'Projetos fechados (oportunidades ganhas) neste mês e o valor',
+                },
                 { label: 'Oportunidades abertas', value: home.kpis.openLeads, to: '/oportunidades' },
                 { label: 'Valor no funil', value: formatCurrency(home.funnelTotal), sub: 'propostas em aberto' },
-                { label: 'Retornos pendentes', value: commercial.followups.length, tone: commercial.followups.length ? 'text-warning-fg' : undefined },
                 { label: 'Novos leads no mês', value: commercial.newThisMonth },
                 { label: 'Conversão', value: home.kpis.conversion === null ? '—' : `${home.kpis.conversion}%`, sub: `90 dias · ${home.kpis.won90} ganhos` },
                 { label: `Parados há +${commercial.staleDays} dias`, value: commercial.stale, tone: commercial.stale ? 'text-danger-fg' : undefined },

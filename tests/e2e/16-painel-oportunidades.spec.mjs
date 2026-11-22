@@ -54,11 +54,47 @@ export default async function ({ browser }) {
       eq(norm(await tile('Fechados').locator('.metric-value').innerText()), 'R$ 90.000', 'fechados');
       ok(norm(await tile('Fechados').innerText()).includes('3 negócios · média R$ 30.000'), 'ticket médio');
       eq(norm(await tile('Não fechados').locator('.metric-value').innerText()), 'R$ 40.000', 'não fechados');
-      // Mês atual: 6 entraram, 3 ganhas, 1 não ganha
+      // Mês atual: 6 leads novos, 6 no funil, 3 fechados (R$ 90.000), 1 não fechado, 75%
       const key = new Date().toISOString().slice(0, 7);
       const month = norm(await dash.locator(`[data-lead-month="${key}"]`).innerText());
-      ok(/6\s+3\s+1\s+75%\s+R\$ 90\.000/.test(month.replace(/\n/g, ' ')), `mês atual: ${month}`);
-      eq(await dash.locator('[data-lead-month]').count(), 6, 'últimos 6 meses');
+      ok(/6\s+6\s+3\s+R\$ 90\.000\s+1\s+75%/.test(month.replace(/\n/g, ' ')), `mês atual: ${month}`);
+      eq(await dash.locator('[data-lead-month]').count(), 12, 'últimos 12 meses');
+    },
+    page,
+  );
+
+  await s.step(
+    'resultado do mês: projetos fechados, valor, leads novos e oportunidades no funil',
+    async () => {
+      const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      const now = new Date();
+      const cur = now.toISOString().slice(0, 7);
+      const box = page.locator('[data-month-result]');
+      eq(await box.getAttribute('data-month-result'), cur, 'mês atual');
+      const tile = (label) => box.locator('.metric-tile').filter({ has: page.getByText(label, { exact: true }) });
+      const val = async (label) => norm(await tile(label).locator('.metric-value').innerText());
+      eq([await val('Projetos fechados'), await val('Valor fechado'), await val('Leads novos'), await val('Oportunidades no funil')], ['3', 'R$ 90.000', '6', '6'], 'números do mês');
+      ok(norm(await tile('Projetos fechados').innerText()).includes('75% de conversão'), 'conversão do mês');
+      ok(norm(await tile('Valor fechado').innerText()).includes('média R$ 30.000'), 'média por projeto');
+      eq(await box.locator('[data-won-lead]').count(), 3, 'lista dos fechados');
+      await box.getByText(`Fechados em ${MONTHS[now.getMonth()]}`).waitFor();
+      // Mês anterior: nada fechado
+      await box.getByRole('button', { name: 'Mês anterior' }).click();
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+      await box.getByText(new RegExp(`Nenhum projeto fechado em ${MONTHS[prev.getMonth()]}`)).waitFor();
+      eq(await val('Projetos fechados'), '0', 'mês anterior');
+      // Clique no mês da tabela volta para ele
+      await page.locator(`[data-lead-month="${cur}"]`).click();
+      await page.waitForFunction((c) => document.querySelector('[data-month-result]')?.getAttribute('data-month-result') === c, cur);
+      eq(await val('Valor fechado'), 'R$ 90.000', 'de volta ao mês atual');
+      // Escritório: atalho "Fechados no mês"
+      await page.goto(BASE + '/');
+      const office = page.locator('.metric-tile', { has: page.getByText('Fechados no mês', { exact: true }) });
+      eq(norm(await office.locator('.metric-value').innerText()), '3', 'fechados no mês no Escritório');
+      ok(norm(await office.innerText()).includes('R$ 90.000'), 'valor no Escritório');
+      await office.click();
+      await page.waitForURL(/\/oportunidades\?visao=painel/);
+      await page.locator('[data-month-result]').waitFor();
     },
     page,
   );
@@ -85,10 +121,10 @@ export default async function ({ browser }) {
       const row = dash.locator(`[data-lead-source="${s.ctx.b}"]`);
       ok(/2\s+2\s+0\s+100%\s+R\$ 80\.000/.test(norm(await row.innerText()).replace(/\n/g, ' ')), `origem: ${await row.innerText()}`);
       await row.click();
-      await page.waitForFunction(() => document.querySelector('[data-leads-dashboard] .metric-value')?.textContent === '2');
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-leads-dashboard] .metric-tile')].find((t) => t.textContent.startsWith('Oportunidades') && !t.textContent.startsWith('Oportunidades no funil'))?.querySelector('.metric-value')?.textContent === '2');
       eq(await dash.locator('[data-lead-source]').count(), 1, 'só a origem escolhida');
       await page.getByRole('button', { name: 'Limpar' }).click();
-      await page.waitForFunction(() => document.querySelector('[data-leads-dashboard] .metric-value')?.textContent === '6');
+      await page.waitForFunction(() => [...document.querySelectorAll('[data-leads-dashboard] .metric-tile')].find((t) => t.textContent.startsWith('Oportunidades') && !t.textContent.startsWith('Oportunidades no funil'))?.querySelector('.metric-value')?.textContent === '6');
       // A aba escolhida fica guardada
       await page.reload();
       await page.locator('[data-leads-dashboard]').waitFor();
