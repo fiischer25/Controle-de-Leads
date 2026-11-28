@@ -14,7 +14,7 @@ export function MobileTimerBar({ className }: { className?: string }) {
   if (!timer) return null;
   return (
     <div className={cn('flex h-11 items-center gap-2.5 rounded-[12px] bg-surface pl-3 pr-1 shadow-[0_0_0_1px_rgb(var(--line))] md:hidden', className)}>
-      <span className="h-[7px] w-[7px] shrink-0 animate-timer-dot rounded-full bg-[#d07a62]" aria-hidden />
+      <span className="h-[7px] w-[7px] shrink-0 animate-timer-dot rounded-full bg-danger-solid" aria-hidden />
       <span className="font-mono text-[13px] tabular text-ink">{timer.elapsed}</span>
       <button
         type="button"

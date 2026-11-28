@@ -187,7 +187,7 @@ export default function ProjectsPage() {
         }
         actions={
           <>
-            <Button variant="ghost" icon={<Download className="h-4 w-4" strokeWidth={1.6} />} onClick={exportCsv} className="max-sm:hidden">
+            <Button variant="secondary" icon={<Download className="h-4 w-4" strokeWidth={1.6} />} onClick={exportCsv} className="max-sm:hidden">
               Exportar
             </Button>
             <Button variant="primary" icon={<Plus className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setCreating(true)}>
@@ -307,8 +307,8 @@ export default function ProjectsPage() {
                       to={`/projetos/${p.id}`}
                       className={cn(
                         'block rounded-[16px] border px-4 py-4 shadow-card transition-colors hover:border-stone-300 md:px-6',
-                        obra ? 'bg-brand-100' : 'bg-surface',
-                        delivery?.late ? 'border-danger-fg/40' : delivery ? 'border-warning-fg/40' : obra ? 'border-brand-200' : 'border-line',
+                        obra ? 'bg-sand-100' : 'bg-surface',
+                        delivery?.late ? 'border-danger-fg/40' : delivery ? 'border-warning-fg/40' : obra ? 'border-sand-200' : 'border-line',
                       )}
                     >
                       <div className="grid gap-x-8 gap-y-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_200px] md:items-center">

@@ -1,67 +1,68 @@
 /* AIROS · tokens de cor (RGB separado por espaço para suportar /opacidade no Tailwind)
+   Paleta neutra fria (cinzas azulados) com destaque índigo; status em verde, âmbar, azul e vermelho.
    Importar no CSS global (ex.: src/index.css) antes de @tailwind base. */
 :root {
-  --canvas: 246 245 242;        /* #f6f5f2  (v2 usa #f7f6f3 no fundo do Início — aceitar qualquer um) */
-  --surface: 255 255 255;       /* #ffffff */
-  --subtle: 250 249 247;        /* #faf9f7 */
-  --line: 233 230 225;          /* #e9e6e1 */
-  --line-strong: 220 216 209;   /* #dcd8d1 */
-  --ink: 18 17 16;              /* #121110 */
-  --muted: 107 101 92;          /* #6b655c */
-  --faint: 138 131 121;         /* #8a8379 */
-  --accent: 143 124 97;         /* #8f7c61 */
-  --accent-fg: 95 81 63;        /* #5f513f */
+  --canvas: 245 246 248;     /* #f5f6f8 */
+  --surface: 255 255 255;    /* #ffffff */
+  --subtle: 249 250 251;     /* #f9fafb */
+  --line: 228 231 236;       /* #e4e7ec */
+  --line-strong: 208 213 221; /* #d0d5dd */
+  --ink: 16 24 40;           /* #101828 */
+  --muted: 71 84 103;        /* #475467 */
+  --faint: 102 112 133;      /* #667085 */
+  --accent: 79 70 229;       /* #4f46e5 */
+  --accent-fg: 67 56 202;    /* #4338ca */
 
-  --danger-bg: 250 240 237;     /* #faf0ed */
-  --danger-line: 239 207 197;   /* #efcfc5 */
-  --danger-solid: 180 85 60;    /* #b4553c */
-  --danger-fg: 140 59 39;       /* #8c3b27 */
+  --danger-bg: 254 243 242;  /* #fef3f2 */
+  --danger-line: 254 205 202; /* #fecdca */
+  --danger-solid: 217 45 32; /* #d92d20 */
+  --danger-fg: 180 35 24;    /* #b42318 */
 
-  --warning-bg: 250 244 232;    /* #faf4e8 */
-  --warning-line: 236 219 179;  /* #ecdbb3 */
-  --warning-solid: 181 134 47;  /* #b5862f */
-  --warning-fg: 125 91 26;      /* #7d5b1a */
+  --warning-bg: 255 250 235; /* #fffaeb */
+  --warning-line: 254 223 137; /* #fedf89 */
+  --warning-solid: 247 144 9; /* #f79009 */
+  --warning-fg: 181 71 8;    /* #b54708 */
 
-  --info-bg: 239 243 245;       /* #eff3f5 */
-  --info-line: 207 219 226;     /* #cfdbe2 */
-  --info-solid: 85 117 137;     /* #557589 */
-  --info-fg: 59 85 102;         /* #3b5566 */
+  --info-bg: 239 248 255;    /* #eff8ff */
+  --info-line: 178 221 255;  /* #b2ddff */
+  --info-solid: 46 144 250;  /* #2e90fa */
+  --info-fg: 23 92 211;      /* #175cd3 */
 
-  --success-bg: 239 244 239;    /* #eff4ef */
-  --success-line: 207 222 207;  /* #cfdecf */
-  --success-solid: 93 130 99;   /* #5d8263 */
-  --success-fg: 63 93 69;       /* #3f5d45 */
+  --success-bg: 236 253 243; /* #ecfdf3 */
+  --success-line: 171 239 198; /* #abefc6 */
+  --success-solid: 23 178 106; /* #17b26a */
+  --success-fg: 6 118 71;    /* #067647 */
 }
 
 .dark {
-  --canvas: 18 17 16;           /* #121110 */
-  --surface: 27 26 24;          /* #1b1a18 */
-  --subtle: 33 31 28;           /* #211f1c */
-  --line: 44 41 38;             /* #2c2926 */
-  --line-strong: 58 54 49;      /* #3a3631 */
-  --ink: 242 239 234;           /* #f2efea */
-  --muted: 168 161 152;         /* #a8a198 */
-  --faint: 125 119 110;         /* #7d776e */
-  --accent: 185 166 138;        /* #b9a68a */
-  --accent-fg: 214 199 175;     /* #d6c7af */
+  --canvas: 12 17 29;        /* #0c111d */
+  --surface: 22 27 38;       /* #161b26 */
+  --subtle: 29 35 48;        /* #1d2330 */
+  --line: 44 51 65;          /* #2c3341 */
+  --line-strong: 61 70 87;   /* #3d4657 */
+  --ink: 240 242 246;        /* #f0f2f6 */
+  --muted: 167 176 191;      /* #a7b0bf */
+  --faint: 125 135 153;      /* #7d8799 */
+  --accent: 129 140 248;     /* #818cf8 */
+  --accent-fg: 165 180 252;  /* #a5b4fc */
 
-  --danger-bg: 46 29 24;        /* #2e1d18 */
-  --danger-line: 90 51 40;      /* #5a3328 */
-  --danger-solid: 208 122 98;   /* #d07a62 */
-  --danger-fg: 235 165 143;     /* #eba58f */
+  --danger-bg: 55 20 18;     /* #371412 */
+  --danger-line: 122 39 26;  /* #7a271a */
+  --danger-solid: 240 68 56; /* #f04438 */
+  --danger-fg: 253 162 155;  /* #fda29b */
 
-  --warning-bg: 44 36 22;       /* #2c2416 */
-  --warning-line: 90 70 34;     /* #5a4622 */
-  --warning-solid: 201 154 72;  /* #c99a48 */
-  --warning-fg: 227 194 126;    /* #e3c27e */
+  --warning-bg: 51 33 10;    /* #33210a */
+  --warning-line: 122 70 6;  /* #7a4606 */
+  --warning-solid: 253 176 34; /* #fdb022 */
+  --warning-fg: 254 200 75;  /* #fec84b */
 
-  --info-bg: 26 35 41;          /* #1a2329 */
-  --info-line: 52 73 90;        /* #34495a */
-  --info-solid: 123 157 179;    /* #7b9db3 */
-  --info-fg: 169 195 212;       /* #a9c3d4 */
+  --info-bg: 16 33 58;       /* #10213a */
+  --info-line: 24 73 169;    /* #1849a9 */
+  --info-solid: 83 177 253;  /* #53b1fd */
+  --info-fg: 132 202 255;    /* #84caff */
 
-  --success-bg: 27 38 29;       /* #1b261d */
-  --success-line: 54 80 59;     /* #36503b */
-  --success-solid: 127 165 133; /* #7fa585 */
-  --success-fg: 174 205 178;    /* #aecdb2 */
+  --success-bg: 11 43 30;    /* #0b2b1e */
+  --success-line: 8 93 58;   /* #085d3a */
+  --success-solid: 71 205 137; /* #47cd89 */
+  --success-fg: 117 224 167; /* #75e0a7 */
 }

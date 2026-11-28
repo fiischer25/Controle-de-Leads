@@ -83,13 +83,13 @@ export function ProjectsTable({
                 <tr
                   key={p.id}
                   onClick={() => navigate(`/projetos/${p.id}`)}
-                  className={cn('group cursor-pointer', obra ? 'bg-brand-100 hover:bg-brand-200' : 'hover:bg-canvas')}
+                  className={cn('group cursor-pointer', obra ? 'bg-sand-100 hover:bg-sand-200' : 'hover:bg-canvas')}
                   data-project-row={p.id}
                   data-project-obra={obra ? 'sim' : undefined}
                 >
-                  <td className={cn(TD, STICKY, 'z-[1]', obra ? 'bg-brand-100 group-hover:bg-brand-200' : 'bg-surface group-hover:bg-canvas')}>
+                  <td className={cn(TD, STICKY, 'z-[1]', obra ? 'bg-sand-100 group-hover:bg-sand-200' : 'bg-surface group-hover:bg-canvas')}>
                     {(delivery || task || obra) && (
-                      <span className={cn('absolute inset-y-0 left-0 w-[3px]', late ? 'bg-danger-solid' : delivery || task ? 'bg-warning-solid' : 'bg-brand-400')} aria-hidden />
+                      <span className={cn('absolute inset-y-0 left-0 w-[3px]', late ? 'bg-danger-solid' : delivery || task ? 'bg-warning-solid' : 'bg-sand-400')} aria-hidden />
                     )}
                     <Link to={`/projetos/${p.id}`} onClick={(e) => e.stopPropagation()} className="block min-w-0 font-display text-[14px] font-semibold text-ink hover:underline" data-project-name>
                       <span className="block truncate">{p.name}</span>

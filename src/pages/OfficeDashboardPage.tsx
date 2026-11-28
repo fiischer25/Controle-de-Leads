@@ -184,7 +184,7 @@ export default function OfficeDashboardPage() {
         actions={
           <div className="hidden items-center gap-2 md:flex">
             {can('relatorios') && (
-              <Button variant="ghost" icon={<HeartPulse className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate('/relatorios?aba=saude')}>
+              <Button variant="accent" icon={<HeartPulse className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate('/relatorios?aba=saude')}>
                 Saúde do escritório
               </Button>
             )}
