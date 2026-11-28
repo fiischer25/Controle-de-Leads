@@ -1,3 +1,4 @@
+import { AirosWordmark } from './AirosLogo';
 import { useBranding } from '../../context/BrandingContext';
 import { cn } from '../../lib/utils';
 
@@ -10,6 +11,11 @@ export function BrandMark({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg
   if (logo_url) {
     const dims = { sm: 'h-7 max-w-[140px]', md: 'h-9 max-w-[168px]', lg: 'h-14 max-w-[240px]' }[size];
     return <img src={logo_url} alt={office_name} className={cn('w-auto object-contain object-left dark:brightness-0 dark:invert', dims, className)} />;
+  }
+  // Airos: logotipo oficial (SVG da marca)
+  if (/airos/i.test(office_name)) {
+    const h = { sm: 'h-5', md: 'h-7', lg: 'h-11' }[size];
+    return <AirosWordmark title={office_name} className={cn('block w-auto max-w-full self-start text-ink', h, className)} />;
   }
   const [first, ...rest] = office_name.trim().split(/\s+/);
   return (

@@ -1,3 +1,4 @@
+import { AirosArq } from './AirosLogo';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -244,9 +245,13 @@ function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => vo
     <div className="flex h-full flex-col gap-8 px-3.5 pb-6 pt-8 xl:px-5">
       <div className="flex h-9 items-center px-1.5 xl:px-2.5">
         <BrandMark className="hidden xl:block" />
-        <span className="font-display text-[15px] font-bold text-ink xl:hidden" aria-label={office_name}>
-          {office_name.trim().charAt(0).toUpperCase()}
-        </span>
+        {/airos/i.test(office_name) ? (
+          <AirosArq title={office_name} className="h-6 w-auto text-ink xl:hidden" />
+        ) : (
+          <span className="font-display text-[15px] font-bold text-ink xl:hidden" aria-label={office_name}>
+            {office_name.trim().charAt(0).toUpperCase()}
+          </span>
+        )}
       </div>
 
       <button
@@ -274,7 +279,7 @@ function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => vo
                   cn(
                     'relative flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-body transition-colors max-xl:justify-center',
                     isActive
-                      ? 'bg-brand-50 font-semibold text-brand-700 [&_svg]:text-brand-600'
+                      ? 'bg-brand-100 font-semibold text-ink [&_svg]:text-brand-600'
                       : 'text-muted hover:bg-stone-100 hover:text-ink',
                   )
                 }

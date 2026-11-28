@@ -1,17 +1,18 @@
 /* AIROS · tokens de cor (RGB separado por espaço para suportar /opacidade no Tailwind)
-   Paleta neutra fria (cinzas azulados) com destaque índigo; status em verde, âmbar, azul e vermelho.
+   Marca Airos (pasta AIROS no Drive): preto couro #232323, concreto #505049, céu #C5CBCB,
+   mármore claro #E6DACF e madeira nobre #461602. Status em verde, âmbar, azul e vermelho.
    Importar no CSS global (ex.: src/index.css) antes de @tailwind base. */
 :root {
-  --canvas: 245 246 248;     /* #f5f6f8 */
+  --canvas: 244 245 245;     /* #f4f5f5 */
   --surface: 255 255 255;    /* #ffffff */
-  --subtle: 249 250 251;     /* #f9fafb */
-  --line: 228 231 236;       /* #e4e7ec */
-  --line-strong: 208 213 221; /* #d0d5dd */
-  --ink: 16 24 40;           /* #101828 */
-  --muted: 71 84 103;        /* #475467 */
-  --faint: 102 112 133;      /* #667085 */
-  --accent: 79 70 229;       /* #4f46e5 */
-  --accent-fg: 67 56 202;    /* #4338ca */
+  --subtle: 249 250 250;     /* #f9fafa */
+  --line: 227 230 230;       /* #e3e6e6 */
+  --line-strong: 197 203 203; /* #c5cbcb */
+  --ink: 35 35 35;           /* #232323 */
+  --muted: 80 80 73;         /* #505049 */
+  --faint: 118 123 121;      /* #767b79 */
+  --accent: 70 22 2;         /* #461602 */
+  --accent-fg: 70 22 2;      /* #461602 */
 
   --danger-bg: 254 243 242;  /* #fef3f2 */
   --danger-line: 254 205 202; /* #fecdca */
@@ -35,16 +36,16 @@
 }
 
 .dark {
-  --canvas: 12 17 29;        /* #0c111d */
-  --surface: 22 27 38;       /* #161b26 */
-  --subtle: 29 35 48;        /* #1d2330 */
-  --line: 44 51 65;          /* #2c3341 */
-  --line-strong: 61 70 87;   /* #3d4657 */
-  --ink: 240 242 246;        /* #f0f2f6 */
-  --muted: 167 176 191;      /* #a7b0bf */
-  --faint: 125 135 153;      /* #7d8799 */
-  --accent: 129 140 248;     /* #818cf8 */
-  --accent-fg: 165 180 252;  /* #a5b4fc */
+  --canvas: 17 17 17;        /* #111111 */
+  --surface: 27 27 26;       /* #1b1b1a */
+  --subtle: 35 35 35;        /* #232323 */
+  --line: 46 46 43;          /* #2e2e2b */
+  --line-strong: 62 62 57;   /* #3e3e39 */
+  --ink: 241 243 243;        /* #f1f3f3 */
+  --muted: 178 181 179;      /* #b2b5b3 */
+  --faint: 138 142 140;      /* #8a8e8c */
+  --accent: 230 218 207;     /* #e6dacf */
+  --accent-fg: 230 218 207;  /* #e6dacf */
 
   --danger-bg: 55 20 18;     /* #371412 */
   --danger-line: 122 39 26;  /* #7a271a */
