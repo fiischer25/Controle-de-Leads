@@ -60,6 +60,7 @@ export const CSS_COLOR = {
   success: 'rgb(var(--success-solid))',
   stone: (n: number) => `rgb(var(--stone-${n}))`,
   brand: (n: number) => `rgb(var(--brand-${n}))`,
+  sand: (n: number) => `rgb(var(--sand-${n}))`,
 };
 
 // ------------------------------------------------------------------ Tarefas
@@ -89,7 +90,8 @@ export const TASK_STATUS_STYLE: Record<TaskStatus, StatusStyle> = {
 export const PROJECT_STATUS_STYLE: Record<ProjectStatus, StatusStyle> = {
   nao_iniciado: { label: 'Não iniciado', tone: 'neutral', badge: TONE_BADGE.neutral, dot: 'border border-stone-500 bg-transparent', color: CSS_COLOR.stone(400) },
   em_andamento: { label: 'Em andamento', tone: 'info', badge: TONE_BADGE.info, dot: TONE_DOT.info, color: CSS_COLOR.info },
-  obra: { label: 'Obra', tone: 'brand', badge: TONE_BADGE.brand, dot: TONE_DOT.brand, color: CSS_COLOR.brand(500) },
+  // Obra: tom areia (marrom claro), o mesmo da linha do projeto na lista
+  obra: { label: 'Obra', tone: 'brand', badge: 'bg-sand-100 text-sand-700', dot: 'bg-sand-500', color: CSS_COLOR.sand(500) },
   pausado: { label: 'Pausado', tone: 'neutral', badge: TONE_BADGE.neutral, dot: 'bg-stone-400', icon: 'pause', color: CSS_COLOR.stone(500) },
   concluido: { label: 'Finalizado', tone: 'success', badge: TONE_BADGE.success, dot: TONE_DOT.success, icon: 'check', color: CSS_COLOR.success },
   // Cancelado é um encerramento, não um alerta: neutro.

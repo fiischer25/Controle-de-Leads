@@ -14,7 +14,7 @@ import { CLIENT_MEETING_STAGE, CONSTRUCTION_STAGE, macroStage } from './rail';
 const SPECIAL: Array<{ label: string; Icon: LucideIcon; text: string }> = [
   { label: CLIENT_MEETING_STAGE, Icon: CalendarDays, text: 'text-info-fg' },
   { label: CLIENT_WAIT_STAGE, Icon: Hourglass, text: 'text-warning-fg' },
-  { label: CONSTRUCTION_STAGE, Icon: HardHat, text: 'text-brand-700' },
+  { label: CONSTRUCTION_STAGE, Icon: HardHat, text: 'text-sand-700' },
 ];
 const specialOf = (label: string) => SPECIAL.find((x) => x.label === label);
 /** Nome curto na lista (o completo fica no menu e no title). */
@@ -24,7 +24,7 @@ const shortLabel = (label: string) => (label === CLIENT_WAIT_STAGE ? 'Aguardando
 const DOT: Record<ProjectStatus, string> = {
   em_andamento: 'bg-success-solid shadow-[0_0_0_3px_rgb(var(--success-bg))]',
   pausado: 'bg-warning-solid shadow-[0_0_0_3px_rgb(var(--warning-bg))]',
-  obra: 'bg-brand-500 shadow-[0_0_0_3px_rgb(var(--brand-200))]',
+  obra: 'bg-sand-500 shadow-[0_0_0_3px_rgb(var(--sand-200))]',
   nao_iniciado: 'border-[1.5px] border-stone-400 bg-transparent',
   concluido: 'bg-stone-400',
   cancelado: 'bg-stone-300',

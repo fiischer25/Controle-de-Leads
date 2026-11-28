@@ -1,6 +1,6 @@
 import { useMemo, useState, type DragEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowDown, ArrowUp, Check, Download, Plus, Trophy, XCircle } from 'lucide-react';
+import { ArrowDown, ArrowUp, BarChart3, Check, Columns3, Download, List, Plus, Trophy, XCircle } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { funnelOrder, stageColor } from '../lib/status';
@@ -218,7 +218,7 @@ export default function LeadsPage() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button variant="ghost" icon={<Download className="h-4 w-4" strokeWidth={1.6} />} onClick={exportCsv} className="max-sm:hidden">
+          <Button variant="secondary" icon={<Download className="h-4 w-4" strokeWidth={1.6} />} onClick={exportCsv} className="max-sm:hidden">
             Exportar
           </Button>
           <Button
@@ -275,9 +275,10 @@ export default function LeadsPage() {
         </div>
         <Tabs<View>
           tabs={[
-            { id: 'kanban', label: 'Quadro' },
-            ...(desktop ? [{ id: 'list' as View, label: 'Lista' }] : []),
-            { id: 'painel', label: 'Painel' },
+            { id: 'kanban', label: <TabLabel icon={<Columns3 />}>Quadro</TabLabel> },
+            ...(desktop ? [{ id: 'list' as View, label: <TabLabel icon={<List />}>Lista</TabLabel> }] : []),
+            // Painel (resultado do mês e indicadores) com ícone de gráfico, para achar fácil
+            { id: 'painel', label: <TabLabel icon={<BarChart3 />}>Painel</TabLabel> },
           ]}
           value={!desktop && view === 'list' ? 'kanban' : view}
           onChange={changeView}
@@ -711,5 +712,15 @@ function LeadList({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => vo
         {leads.length} {leads.length === 1 ? 'oportunidade' : 'oportunidades'}
       </p>
     </div>
+  );
+}
+
+/** Rótulo de aba com ícone (o ícone fica escondido do leitor de tela). */
+function TabLabel({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0">
+      {icon}
+      {children}
+    </span>
   );
 }

@@ -86,7 +86,7 @@ export default async function ({ browser }) {
       // Obra na lista também muda o status interno, e a linha fica em marrom claro
       eq([(await project()).status, (await project()).status_manual], ['obra', true], 'status interno em obra');
       eq(await row.getAttribute('data-project-obra'), 'sim', 'linha de obra');
-      ok(/bg-brand-100/.test(await row.getAttribute('class')), 'linha de obra sem cor');
+      ok(/bg-sand-100/.test(await row.getAttribute('class')), 'linha de obra sem cor');
       await row.locator('[data-project-dot="obra"]').waitFor();
       // Depois muda para uma etapa (LD - Levantamento de Dados, a primeira do modelo)
       await picker().click();

@@ -121,15 +121,19 @@ function useDialog(containerRef: RefObject<HTMLElement>, onClose: () => void) {
 }
 
 // ================================================================ Button
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'dark';
+type Variant = 'primary' | 'secondary' | 'accent' | 'ghost' | 'danger' | 'dark';
 type Size = 'xs' | 'sm' | 'md' | 'touch';
 
 const variants: Record<Variant, string> = {
+  // Ação principal: cor de destaque (índigo), com leve sombra
   primary:
-    'bg-ink text-surface hover:bg-stone-800 disabled:bg-stone-200 disabled:text-stone-500 data-[loading=true]:bg-stone-800 data-[loading=true]:text-surface',
+    'bg-brand-600 text-white shadow-[0_1px_2px_rgb(16_24_40/0.08),inset_0_1px_0_rgb(255_255_255/0.12)] hover:bg-brand-700 disabled:bg-stone-200 disabled:text-stone-500 disabled:shadow-none data-[loading=true]:bg-brand-700 data-[loading=true]:text-white dark:bg-brand-400 dark:hover:bg-brand-300',
   dark: 'bg-ink text-surface hover:bg-stone-800 disabled:bg-stone-200 disabled:text-stone-500 data-[loading=true]:bg-stone-800 data-[loading=true]:text-surface',
   secondary:
     'border border-line-strong bg-surface text-ink shadow-xs hover:border-stone-300 hover:bg-canvas disabled:border-line disabled:bg-subtle disabled:text-stone-400 disabled:shadow-none',
+  // Atalhos para resumos e relatórios: fundo de destaque claro, para achar de longe
+  accent:
+    'border border-brand-200 bg-brand-50 text-brand-700 hover:border-brand-300 hover:bg-brand-100 disabled:border-line disabled:bg-subtle disabled:text-stone-400',
   ghost: 'text-stone-800 hover:bg-ink/5 hover:text-ink disabled:text-stone-400 disabled:hover:bg-transparent',
   danger:
     'border border-danger-line bg-surface text-danger-fg hover:border-danger-solid/50 hover:bg-danger-bg disabled:border-line disabled:bg-subtle disabled:text-stone-400',
@@ -1603,12 +1607,12 @@ export function Tabs<T extends string>({
               size === 'sm' ? 'pb-[3px] text-[13px]' : 'py-3 text-[13.5px] sm:text-body',
               bordered && '-mb-px',
               active
-                ? cn('font-medium text-ink', underline === 2 ? 'shadow-[inset_0_-2px_0_rgb(var(--ink))]' : 'shadow-[inset_0_-1px_0_rgb(var(--ink))]')
-                : 'text-faint hover:text-ink',
+                ? cn('font-semibold text-brand-700', underline === 2 ? 'shadow-[inset_0_-2px_0_rgb(var(--accent))]' : 'shadow-[inset_0_-2px_0_rgb(var(--accent))]')
+                : 'text-muted hover:text-ink',
             )}
           >
             {t.label}
-            {t.count !== undefined && <span className={cn('tabular', active ? 'text-ink' : 'text-faint')}>{t.count}</span>}
+            {t.count !== undefined && <span className={cn('tabular', active ? 'text-brand-700' : 'text-faint')}>{t.count}</span>}
           </button>
         );
       })}

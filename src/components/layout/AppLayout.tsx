@@ -274,8 +274,8 @@ function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => vo
                   cn(
                     'relative flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-body transition-colors max-xl:justify-center',
                     isActive
-                      ? 'bg-canvas font-medium text-ink shadow-[inset_0_0_0_1px_rgb(var(--line))]'
-                      : 'text-muted hover:bg-canvas/70 hover:text-ink',
+                      ? 'bg-brand-50 font-semibold text-brand-700 [&_svg]:text-brand-600'
+                      : 'text-muted hover:bg-stone-100 hover:text-ink',
                   )
                 }
               >
@@ -316,7 +316,7 @@ function TimerPill() {
   if (!timer) return <StartTimerMenu />;
   return (
     <div className="flex h-[34px] min-w-0 items-center gap-2.5 rounded-full bg-surface pl-3 pr-1 shadow-[0_0_0_1px_rgb(var(--line))]">
-      <span className="h-[7px] w-[7px] shrink-0 animate-timer-dot rounded-full bg-[#d07a62]" aria-hidden />
+      <span className="h-[7px] w-[7px] shrink-0 animate-timer-dot rounded-full bg-danger-solid" aria-hidden />
       <span className="font-mono text-[12.5px] tabular text-ink" aria-label="Tempo decorrido">{timer.elapsed}</span>
       <button
         type="button"
@@ -420,7 +420,7 @@ function MobileAppBar({ title, onSearch, isHome }: { title: string; onSearch: ()
       </div>
       {compact && timer && (
         <span className="mr-1 inline-flex items-center gap-1.5 font-mono text-xs tabular text-ink">
-          <span className="h-1.5 w-1.5 animate-timer-dot rounded-full bg-[#d07a62]" aria-hidden />
+          <span className="h-1.5 w-1.5 animate-timer-dot rounded-full bg-danger-solid" aria-hidden />
           {timer.elapsed}
         </span>
       )}

@@ -78,7 +78,7 @@ export default function FinancePage() {
         }
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" icon={<FileText className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate(`/financeiro/relatorio${params.get('mes') ? `?mes=${params.get('mes')}` : ''}`)} className="max-md:hidden">
+            <Button variant="accent" icon={<FileText className="h-4 w-4" strokeWidth={1.6} />} onClick={() => navigate(`/financeiro/relatorio${params.get('mes') ? `?mes=${params.get('mes')}` : ''}`)}>
               Relatório
             </Button>
             <Button variant="ghost" icon={<ArrowLeftRight className="h-4 w-4" strokeWidth={1.6} />} onClick={() => setEditing({ kind: 'transferencia' })} className="max-md:hidden">
