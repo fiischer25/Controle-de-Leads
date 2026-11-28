@@ -204,7 +204,7 @@ export function AgendaView({ mine = false }: { mine?: boolean } = {}) {
                     >
                       <span
                         className={cn(
-                          'inline-flex h-6 w-6 items-center justify-center rounded-full text-[12.5px] tabular',
+                          'inline-flex h-6 w-6 items-center justify-center rounded-sm text-[12.5px] tabular',
                           isToday ? 'bg-ink font-medium text-surface' : inMonth ? 'text-ink' : 'text-stone-300',
                         )}
                       >
@@ -213,7 +213,7 @@ export function AgendaView({ mine = false }: { mine?: boolean } = {}) {
                       {/* Celular: só pontos; o dia selecionado mostra os detalhes abaixo. */}
                       <div className="mt-1.5 flex flex-wrap gap-1 px-1 sm:hidden" aria-hidden>
                         {evs.slice(0, 6).map((e) => (
-                          <span key={e.id} className={cn('h-1.5 w-1.5 rounded-full', (e.done || !inMonth) && 'opacity-40')} style={{ backgroundColor: e.color }} />
+                          <span key={e.id} className={cn('h-1.5 w-1.5 rounded-sm', (e.done || !inMonth) && 'opacity-40')} style={{ backgroundColor: e.color }} />
                         ))}
                       </div>
                       <div className="mt-1 hidden space-y-0.5 sm:block">
@@ -222,7 +222,7 @@ export function AgendaView({ mine = false }: { mine?: boolean } = {}) {
                             key={e.id}
                             className={cn('flex items-center gap-1 truncate px-0.5 text-[11.5px] leading-4', e.done ? 'text-faint line-through' : 'text-stone-700', !inMonth && 'opacity-50')}
                           >
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: e.color }} />
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-sm" style={{ backgroundColor: e.color }} />
                             {e.time && e.kind === 'meeting' && <span className="shrink-0 font-mono text-[10.5px] tabular text-muted">{e.time}</span>}
                             <span className="truncate">{e.title}</span>
                           </div>
@@ -257,7 +257,7 @@ export function AgendaView({ mine = false }: { mine?: boolean } = {}) {
                           <span className="min-w-0">
                             <span className={cn('block truncate text-[13.5px] leading-5', e.done ? 'text-faint line-through' : 'text-ink')}>{e.title}</span>
                             <span className="flex items-center gap-1.5 text-[12.5px] text-faint">
-                              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: e.color }} aria-hidden />
+                              <span className="h-1.5 w-1.5 rounded-sm" style={{ backgroundColor: e.color }} aria-hidden />
                               {KIND_META[e.kind].one}
                             </span>
                           </span>

@@ -97,7 +97,7 @@ export function TaskRow({
           options={TASK_STATUS_ORDER.map((s) => ({
             value: s,
             label: TASK_STATUS_STYLE[s].label,
-            icon: <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', TASK_STATUS_STYLE[s].dot)} />,
+            icon: <span className={cn('h-1.5 w-1.5 shrink-0 rounded-sm', TASK_STATUS_STYLE[s].dot)} />,
           }))}
           aria-label="Status"
           className={cn('h-7 rounded-xs border-transparent px-2 text-xs font-medium', status.badge)}

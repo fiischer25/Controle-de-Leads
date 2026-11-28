@@ -45,7 +45,7 @@ export function ProjectsTable({
     return () => window.removeEventListener('resize', check);
   }, [rows.length]);
   return (
-    <div className="relative overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
+    <div className="relative overflow-hidden rounded-[2px] border border-line bg-surface shadow-card">
       <div ref={box} onScroll={check} className="overflow-x-auto" data-projects-table>
         <table className="w-full min-w-[1480px] border-separate border-spacing-0 text-[13px]">
           <thead>
@@ -189,7 +189,7 @@ function AlertChip({ late, children, title, ...data }: { late: boolean; children
     <div
       {...data}
       title={title}
-      className={cn('flex max-w-full items-center gap-1.5 rounded-[8px] px-2 py-1 text-[12px] font-medium', late ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg')}
+      className={cn('flex max-w-full items-center gap-1.5 rounded-[2px] px-2 py-1 text-[12px] font-medium', late ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg')}
     >
       <AlertTriangle className="h-3 w-3 shrink-0" strokeWidth={2} />
       <span className="min-w-0 truncate">{children}</span>

@@ -20,7 +20,7 @@ function Alert({ late, children, ...data }: { late: boolean; children: ReactNode
   return (
     <div
       {...data}
-      className={cn('flex w-fit max-w-full items-start gap-2 rounded-[9px] px-2.5 py-1.5 text-[12.5px]', late ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg')}
+      className={cn('flex w-fit max-w-full items-start gap-2 rounded-[2px] px-2.5 py-1.5 text-[12.5px]', late ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg')}
     >
       <AlertTriangle className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2} />
       <span className="min-w-0">{children}</span>

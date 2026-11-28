@@ -189,7 +189,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
               {i > 0 && <span className="h-px w-8 bg-stone-300" />}
               <span
                 className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold',
+                  'flex h-7 w-7 items-center justify-center rounded-sm text-xs font-bold',
                   step === n ? 'bg-ink text-surface' : done ? 'bg-success-solid text-surface' : 'bg-stone-200 text-stone-500',
                 )}
               >
@@ -219,8 +219,8 @@ export function ConvertLeadModal({ lead, onClose }: { lead: Lead; onClose: () =>
             <div className="mt-1 text-xs text-stone-500">
               {filled} de {checklist.length} campos obrigatórios
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-200">
-              <div className="h-full rounded-full bg-success-solid transition-all" style={{ width: `${(filled / checklist.length) * 100}%` }} />
+            <div className="mt-2 h-1.5 overflow-hidden rounded-sm bg-stone-200">
+              <div className="h-full rounded-sm bg-success-solid transition-all" style={{ width: `${(filled / checklist.length) * 100}%` }} />
             </div>
             <ul className="mt-3 space-y-1.5">
               {checklist.map((c) => (

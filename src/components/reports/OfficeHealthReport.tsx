@@ -50,7 +50,7 @@ export function OfficeHealthReport() {
   return (
     <div className="space-y-10 md:space-y-12">
       {/* Nota geral e por área */}
-      <section aria-label="Nota do escritório" className="rounded-[16px] border border-line bg-surface p-5 shadow-card md:p-7" data-health-score={h.score ?? ''}>
+      <section aria-label="Nota do escritório" className="rounded-[2px] border border-line bg-surface p-5 shadow-card md:p-7" data-health-score={h.score ?? ''}>
         <div className="grid items-center gap-8 md:grid-cols-[220px_minmax(0,1fr)] md:gap-12">
           <div className="flex items-center gap-5 md:flex-col md:text-center">
             <ScoreRing score={h.score} status={h.status} />
@@ -80,8 +80,8 @@ export function OfficeHealthReport() {
                         <span className="w-10 text-right font-semibold tabular text-ink">{a.score ?? '—'}</span>
                       </span>
                     </div>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-stone-100">
-                      <span className={cn('block h-full rounded-full', TONE_DOT[TONE[a.status]])} style={{ width: `${a.score ?? 0}%` }} />
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-sm bg-stone-100">
+                      <span className={cn('block h-full rounded-sm', TONE_DOT[TONE[a.status]])} style={{ width: `${a.score ?? 0}%` }} />
                     </div>
                   </a>
                 </li>
@@ -95,12 +95,12 @@ export function OfficeHealthReport() {
       <section aria-labelledby="saude-melhorar">
         <SectionHeader id="saude-melhorar" title="O que melhorar primeiro" aside={<span className="text-[12.5px] text-faint">do mais urgente para o menos</span>} />
         {toImprove === 0 ? (
-          <p className="flex items-center gap-2 rounded-[14px] border border-line bg-surface px-5 py-4 text-[13.5px] text-success-fg shadow-card">
+          <p className="flex items-center gap-2 rounded-[2px] border border-line bg-surface px-5 py-4 text-[13.5px] text-success-fg shadow-card">
             <CheckCircle2 className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             {h.status === 'sem_dados' ? 'Ainda não há dados suficientes para apontar melhorias.' : 'Nenhum indicador pedindo atenção agora.'}
           </p>
         ) : (
-          <ol className="divide-y divide-hairline-surface overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
+          <ol className="divide-y divide-hairline-surface overflow-hidden rounded-[2px] border border-line bg-surface shadow-card">
             {h.priorities.map((i, n) => (
               <li key={i.id} className="grid gap-x-4 gap-y-1 px-5 py-4 md:grid-cols-[28px_minmax(0,1fr)_auto]" data-health-priority={i.id}>
                 <span className="hidden pt-0.5 text-[13px] font-semibold tabular text-faint md:block">{n + 1}</span>
@@ -129,7 +129,7 @@ export function OfficeHealthReport() {
             key={a.id}
             id={`saude-${a.id}`}
             aria-labelledby={`saude-${a.id}-t`}
-            className="scroll-mt-6 rounded-[16px] border border-line bg-surface p-5 shadow-card md:p-6"
+            className="scroll-mt-6 rounded-[2px] border border-line bg-surface p-5 shadow-card md:p-6"
           >
             <SectionHeader
               id={`saude-${a.id}-t`}
@@ -168,7 +168,7 @@ function Indicator({ i }: { i: HealthIndicator }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-[13.5px] font-medium text-ink">
-            <span className={cn('h-2 w-2 shrink-0 rounded-full', TONE_DOT[TONE[i.status]])} aria-hidden />
+            <span className={cn('h-2 w-2 shrink-0 rounded-sm', TONE_DOT[TONE[i.status]])} aria-hidden />
             {i.label}
           </div>
           <p className="mt-0.5 text-[12.5px] text-faint">{i.detail}</p>

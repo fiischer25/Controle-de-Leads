@@ -141,7 +141,7 @@ export function TemplatesEditor({ type }: { type: ProjectType }) {
                   <button type="button" onClick={() => setCollapsed((c) => ({ ...c, [phase]: open }))} aria-label={open ? `Recolher ${phase}` : `Expandir ${phase}`} className="text-stone-500 hover:text-ink">
                     {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   </button>
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: phaseColor(pi) }} aria-hidden />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: phaseColor(pi) }} aria-hidden />
                   {renaming?.from === phase ? (
                     <Input
                       value={renaming.to}
@@ -487,10 +487,10 @@ function TemplateTaskModal({
         <div className="sm:col-span-2">
           <div className="label">Checklist ({items.length})</div>
           {items.length > 0 && (
-            <ul className="mb-2 divide-y divide-hairline rounded-[10px] border border-hairline">
+            <ul className="mb-2 divide-y divide-hairline rounded-[2px] border border-hairline">
               {items.map((item, i) => (
                 <li key={i} className="flex items-center gap-2 px-2 py-1">
-                  <span className="h-3.5 w-3.5 shrink-0 rounded-[4px] border border-line-strong" aria-hidden />
+                  <span className="h-3.5 w-3.5 shrink-0 rounded-[2px] border border-line-strong" aria-hidden />
                   <input
                     value={item}
                     onChange={(e) => setItems((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}

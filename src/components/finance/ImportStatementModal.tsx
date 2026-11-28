@@ -180,7 +180,7 @@ export function ImportStatementModal({ defaultAccount, onClose }: { defaultAccou
               </Select>
             </Field>
             <Field label="Arquivo" required>
-              <label className="flex h-10 cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-line-strong px-3 text-[13.5px] text-muted transition-colors hover:border-ink hover:text-ink">
+              <label className="flex h-10 cursor-pointer items-center gap-2 rounded-[2px] border border-dashed border-line-strong px-3 text-[13.5px] text-muted transition-colors hover:border-ink hover:text-ink">
                 <FileUp className="h-4 w-4 shrink-0" />
                 <span className="truncate">{fileName || 'Escolher arquivo .ofx ou .csv'}</span>
                 <input
@@ -199,7 +199,7 @@ export function ImportStatementModal({ defaultAccount, onClose }: { defaultAccou
           </div>
 
           {csv && mapping && (
-            <div className="space-y-4 rounded-[12px] bg-canvas p-4">
+            <div className="space-y-4 rounded-[2px] bg-canvas p-4">
               <p className="text-[13px] text-muted">Confira quais colunas do CSV são a data, a descrição e o valor:</p>
               <div className="grid gap-3 sm:grid-cols-4">
                 <Field label="Data">
@@ -246,7 +246,7 @@ export function ImportStatementModal({ defaultAccount, onClose }: { defaultAccou
               <div className="mb-2 text-[12.5px] text-faint">
                 Prévia · {txns.length} transações · {formatDateShort(txns.map((t) => t.date).sort()[0])} a {formatDateShort(txns.map((t) => t.date).sort().pop())}
               </div>
-              <ul className="max-h-56 overflow-y-auto rounded-[10px] border border-hairline">
+              <ul className="max-h-56 overflow-y-auto rounded-[2px] border border-hairline">
                 {txns.slice(0, 8).map((t) => (
                   <li key={t.ref} className="grid grid-cols-[56px_minmax(0,1fr)_120px] gap-3 border-b border-hairline px-3 py-2 text-[13px] last:border-0">
                     <span className="tabular text-muted">{formatDateShort(t.date)}</span>

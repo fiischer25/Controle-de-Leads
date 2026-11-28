@@ -160,7 +160,7 @@ export function FinancePayroll({ onOpen }: { onOpen: (e: FinanceEntry) => void }
       />
 
       {generic.length > 0 && (
-        <div className="flex items-start gap-2.5 rounded-[12px] border border-warning-line bg-warning-bg px-4 py-3 text-[13px] text-ink" data-payroll-generic>
+        <div className="flex items-start gap-2.5 rounded-[2px] border border-warning-line bg-warning-bg px-4 py-3 text-[13px] text-ink" data-payroll-generic>
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-fg" strokeWidth={1.8} />
           <span>
             Já existe salário lançado sem pessoa em {name(monthKey(due))}:{' '}

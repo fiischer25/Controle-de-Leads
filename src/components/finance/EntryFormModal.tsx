@@ -322,7 +322,7 @@ export function EntryFormModal({
         )}
 
         {!entry && !isTransfer && (
-          <div className="space-y-3 rounded-[12px] bg-canvas px-4 py-3 sm:col-span-2">
+          <div className="space-y-3 rounded-[2px] bg-canvas px-4 py-3 sm:col-span-2">
             <div className="flex flex-wrap items-center gap-3">
               <Segmented<RepeatMode>
                 value={mode}
@@ -364,7 +364,7 @@ export function EntryFormModal({
         <div className="sm:col-span-2">
           <div className="label">Comprovantes e notas</div>
           {(attachments.length > 0 || pending.length > 0) && (
-            <ul className="mb-2 divide-y divide-hairline rounded-[10px] border border-hairline">
+            <ul className="mb-2 divide-y divide-hairline rounded-[2px] border border-hairline">
               {attachments.map((a) => (
                 <li key={a.id} className="flex items-center gap-2 px-3 py-2 text-[13px]">
                   <FileText className="h-4 w-4 shrink-0 text-faint" />
@@ -397,7 +397,7 @@ export function EntryFormModal({
               ))}
             </ul>
           )}
-          <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-accent-fg transition-colors hover:bg-ink/5">
+          <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-sm px-3 text-[13px] font-medium text-accent-fg transition-colors hover:bg-ink/5">
             {uploading ? <Spinner className="h-3.5 w-3.5" /> : <Paperclip className="h-3.5 w-3.5" />}
             Anexar comprovante, boleto ou nota
             <input

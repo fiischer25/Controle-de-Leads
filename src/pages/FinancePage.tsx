@@ -163,17 +163,17 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
           <button
             type="button"
             onClick={() => onTab('lancamentos')}
-            className="rounded-full border border-success-line bg-success-bg px-3 py-1.5 text-success-fg hover:brightness-95"
+            className="rounded-sm border border-success-line bg-success-bg px-3 py-1.5 text-success-fg hover:brightness-95"
           >
             Total a receber em aberto: <b className="font-semibold">{formatMoney(data.receivable)}</b>
           </button>
           {data.overdueIn > 0 && (
-            <button type="button" onClick={() => onTab('lancamentos')} className="rounded-full border border-danger-line bg-danger-bg px-3 py-1.5 text-danger-fg hover:brightness-95">
+            <button type="button" onClick={() => onTab('lancamentos')} className="rounded-sm border border-danger-line bg-danger-bg px-3 py-1.5 text-danger-fg hover:brightness-95">
               A receber vencido: <b className="font-semibold">{formatMoney(data.overdueIn)}</b>
             </button>
           )}
           {data.overdueOut > 0 && (
-            <button type="button" onClick={() => onTab('lancamentos')} className="rounded-full border border-danger-line bg-danger-bg px-3 py-1.5 text-danger-fg hover:brightness-95">
+            <button type="button" onClick={() => onTab('lancamentos')} className="rounded-sm border border-danger-line bg-danger-bg px-3 py-1.5 text-danger-fg hover:brightness-95">
               A pagar vencido: <b className="font-semibold">{formatMoney(data.overdueOut)}</b>
             </button>
           )}
@@ -190,7 +190,7 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
             </span>
           }
         />
-        <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card">
+        <div className="rounded-[2px] border border-line bg-surface p-5 shadow-card">
           <CashFlowChart months={data.flow} onSelect={setMonth} />
         </div>
       </section>
@@ -217,14 +217,14 @@ function Overview({ onOpen, onTab }: { onOpen: (e: FinanceEntry) => void; onTab:
         <div className="space-y-12">
           <section aria-labelledby="saldos">
             <SectionHeader id="saldos" title={isCurrent ? 'Saldos' : 'Saldos hoje'} aside={<ActionLink onClick={() => onTab('contas')} muted>Contas</ActionLink>} />
-            <ul className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
+            <ul className="overflow-hidden rounded-[2px] border border-line bg-surface shadow-card">
               {fin.accounts
                 .filter((a) => a.active)
                 .map((a) => (
                   <li key={a.id} className="flex items-baseline justify-between gap-3 border-b border-line/70 px-4 py-3 last:border-b-0">
                     <span className="min-w-0">
                       <span className="flex items-center gap-2 truncate text-[13.5px] text-ink">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: a.color }} aria-hidden />
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-sm" style={{ backgroundColor: a.color }} aria-hidden />
                         {a.name}
                       </span>
                       <span className="block pl-3.5 text-[12.5px] text-faint">{ACCOUNT_KIND_LABEL[a.kind]}</span>

@@ -26,7 +26,7 @@ export function FeesSection({
       <button
         type="button"
         onClick={() => onToggle(true)}
-        className="mt-8 flex w-full items-center gap-2 rounded-[10px] border border-dashed border-line-strong px-3 py-3 text-left text-[13px] text-faint hover:border-stone-300 hover:text-muted"
+        className="mt-8 flex w-full items-center gap-2 rounded-[2px] border border-dashed border-line-strong px-3 py-3 text-left text-[13px] text-faint hover:border-stone-300 hover:text-muted"
       >
         <Wallet className="h-4 w-4 shrink-0" strokeWidth={1.6} />
         Definir os honorários agora (valor e parcelas)

@@ -262,7 +262,7 @@ export default function OfficeDashboardPage() {
                       key={status}
                       label={
                         <span className="inline-flex items-center gap-2">
-                          <span className={`h-1.5 w-1.5 rounded-full ${TASK_STATUS_STYLE[status].dot}`} aria-hidden />
+                          <span className={`h-1.5 w-1.5 rounded-sm ${TASK_STATUS_STYLE[status].dot}`} aria-hidden />
                           {TASK_STATUS_STYLE[status].label}
                         </span>
                       }

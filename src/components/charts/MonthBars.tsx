@@ -27,7 +27,7 @@ export function MonthBars({
         {months.map((m) => (
           <div key={m.key} className="group relative flex h-full flex-1 items-end justify-center">
             <div
-              className="w-full max-w-[18px] rounded-t-[4px] bg-stone-800 transition-colors group-hover:bg-ink"
+              className="w-full max-w-[18px] rounded-t-[2px] bg-stone-800 transition-colors group-hover:bg-ink"
               style={{ height: `${(m.value / max) * 100}%`, minHeight: m.value > 0 ? 3 : 0 }}
             />
             <span className="pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded-xs bg-ink px-1.5 py-0.5 text-[11px] text-surface tabular group-hover:block">

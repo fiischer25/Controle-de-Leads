@@ -191,7 +191,7 @@ export default function ProjectDetailPage() {
                   ...PROJECT_STATUS_ORDER.map((s) => ({
                     value: s,
                     label: PROJECT_STATUS[s].label,
-                    icon: <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PROJECT_STATUS[s].dot)} />,
+                    icon: <span className={cn('h-1.5 w-1.5 shrink-0 rounded-sm', PROJECT_STATUS[s].dot)} />,
                   })),
                   // Definido à mão: volta a seguir as tarefas
                   ...(project.status_manual ? [{ value: AUTO, label: 'Automático (pelas tarefas)' }] : []),
@@ -219,7 +219,7 @@ export default function ProjectDetailPage() {
         <section
           aria-label="Aguardando retorno do cliente"
           data-client-waiting={waitDays(waiting, today())}
-          className="mb-6 flex flex-col gap-3 rounded-[14px] border border-warning-line bg-warning-bg px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+          className="mb-6 flex flex-col gap-3 rounded-[2px] border border-warning-line bg-warning-bg px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="flex items-start gap-2.5 text-[14px] text-ink">
             <Hourglass className="mt-0.5 h-5 w-5 shrink-0 text-warning-fg" strokeWidth={1.8} />
@@ -240,7 +240,7 @@ export default function ProjectDetailPage() {
       {allDone && (
         <section
           aria-label="Todas as tarefas concluídas"
-          className="mb-6 flex flex-col gap-3 rounded-[14px] border border-line bg-success-bg px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+          className="mb-6 flex flex-col gap-3 rounded-[2px] border border-line bg-success-bg px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="flex items-center gap-2.5 text-[14px] text-ink">
             <CheckCircle2 className="h-5 w-5 shrink-0 text-success-fg" strokeWidth={1.8} />
@@ -266,7 +266,7 @@ export default function ProjectDetailPage() {
               return (
                 <div key={p} className="min-w-0 flex-1">
                   <div
-                    className="h-0.5 rounded-full"
+                    className="h-0.5 rounded-sm"
                     style={{ backgroundColor: state === 'done' ? CSS_COLOR.stone(800) : state === 'current' ? CSS_COLOR.accent : CSS_COLOR.lineStrong }}
                   />
                   <div className={cn('mt-2 truncate pr-2 text-[12px]', state === 'current' ? 'font-medium text-ink' : 'text-faint')} title={p}>
@@ -526,8 +526,8 @@ function TeamTab({ project, tasks }: { project: Project; tasks: Task[] }) {
               <span className="hidden text-right text-[13px] tabular text-muted md:block">{r.done}</span>
               <span className={cn('hidden text-right text-[13px] tabular md:block', r.overdue ? 'text-danger-fg' : 'text-faint')}>{r.overdue}</span>
               <div className="flex items-center gap-3">
-                <div className="h-0.5 flex-1 overflow-hidden rounded-full bg-hairline max-md:w-16">
-                  <div className="h-full rounded-full bg-brand-500" style={{ width: `${(r.minutes / maxMin) * 100}%` }} />
+                <div className="h-0.5 flex-1 overflow-hidden rounded-sm bg-hairline max-md:w-16">
+                  <div className="h-full rounded-sm bg-brand-500" style={{ width: `${(r.minutes / maxMin) * 100}%` }} />
                 </div>
                 <span className="w-16 text-right text-[13px] tabular text-muted">{formatMinutes(r.minutes)}</span>
               </div>
@@ -784,7 +784,7 @@ function ProjectName({ project }: { project: Project }) {
           finish(false);
         }
       }}
-      className="w-full max-w-[640px] rounded-[10px] border border-line-strong bg-surface px-2 py-0.5 font-display text-[inherit] font-semibold leading-[inherit] tracking-[inherit] text-ink outline-none focus:border-ink"
+      className="w-full max-w-[640px] rounded-[2px] border border-line-strong bg-surface px-2 py-0.5 font-display text-[inherit] font-semibold leading-[inherit] tracking-[inherit] text-ink outline-none focus:border-ink"
     />
   );
 }

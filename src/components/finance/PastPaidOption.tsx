@@ -11,7 +11,7 @@ export function PastPaidOption({ rows, checked, onChange }: { rows: PlanRow[]; c
   const past = rows.filter((r) => r.due_date && r.due_date < t).length;
   if (!past) return null;
   return (
-    <div className="mt-4 rounded-[12px] bg-canvas px-4 py-3">
+    <div className="mt-4 rounded-[2px] bg-canvas px-4 py-3">
       <Checkbox
         checked={checked}
         onChange={onChange}

@@ -45,13 +45,13 @@ export function AssigneePicker({
           aria-label={label}
           title={label}
           className={cn(
-            'flex min-w-0 items-center gap-1.5 rounded-full text-left text-[12.5px] transition-colors hover:bg-ink/5',
+            'flex min-w-0 items-center gap-1.5 rounded-sm text-left text-[12.5px] transition-colors hover:bg-ink/5',
             variant === 'cell' ? '-ml-1 max-w-full px-1 py-0.5' : 'p-0.5',
           )}
         >
           {value === 'varios' ? (
             <>
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-500">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-stone-100 text-stone-500">
                 <Users className="h-3 w-3" />
               </span>
               {variant === 'cell' && <span className="truncate text-stone-600">Vários</span>}

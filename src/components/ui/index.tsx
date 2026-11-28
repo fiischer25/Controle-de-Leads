@@ -140,9 +140,9 @@ const variants: Record<Variant, string> = {
 };
 const sizes: Record<Size, string> = {
   xs: 'h-7 gap-1.5 rounded-sm px-2 text-xs',
-  sm: 'h-8 gap-1.5 rounded-[9px] px-3 text-sm',
+  sm: 'h-8 gap-1.5 rounded-[2px] px-3 text-sm',
   md: 'h-9 gap-2 rounded-md px-3.5 text-body',
-  touch: 'h-11 gap-2 rounded-[12px] px-4 text-[15px]',
+  touch: 'h-11 gap-2 rounded-[2px] px-4 text-[15px]',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -188,7 +188,7 @@ export function IconButton({
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; size?: 'xs' | 'sm' | 'md' | 'touch' }) {
   const custom = /(^|\s)(h|w|size)-/.test(className ?? '');
-  const dims = { xs: 'h-7 w-7 rounded-sm', sm: 'h-8 w-8 rounded-[9px]', md: 'h-9 w-9 rounded-md', touch: 'h-11 w-11 rounded-[12px]' }[size];
+  const dims = { xs: 'h-7 w-7 rounded-sm', sm: 'h-8 w-8 rounded-[2px]', md: 'h-9 w-9 rounded-md', touch: 'h-11 w-11 rounded-[2px]' }[size];
   return (
     <button
       type="button"
@@ -533,7 +533,7 @@ export function Listbox({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[70] flex flex-col overflow-hidden rounded-[12px] border border-line bg-surface p-1 shadow-md animate-fade-in"
+            className="fixed z-[70] flex flex-col overflow-hidden rounded-[2px] border border-line bg-surface p-1 shadow-md animate-fade-in"
             style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
           >
             {withSearch && (
@@ -712,7 +712,7 @@ export function Checkbox({
           checked={checked}
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
-          className="peer h-4 w-4 cursor-pointer appearance-none rounded-[5px] border border-line-strong bg-surface transition-colors checked:border-ink checked:bg-ink hover:border-stone-500 disabled:cursor-not-allowed"
+          className="peer h-4 w-4 cursor-pointer appearance-none rounded-[2px] border border-line-strong bg-surface transition-colors checked:border-ink checked:bg-ink hover:border-stone-500 disabled:cursor-not-allowed"
         />
         <Check className="pointer-events-none absolute inset-0 m-auto h-3 w-3 text-surface opacity-0 peer-checked:opacity-100" strokeWidth={3} />
       </span>
@@ -743,11 +743,11 @@ export function Switch({
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={cn('relative h-[18px] w-8 shrink-0 rounded-full transition-colors duration-150', checked ? 'bg-ink' : 'bg-stone-300')}
+        className={cn('relative h-[18px] w-8 shrink-0 rounded-sm transition-colors duration-150', checked ? 'bg-ink' : 'bg-stone-300')}
       >
         <span
           className={cn(
-            'absolute left-0.5 top-0.5 h-3.5 w-3.5 rounded-full shadow-sm transition-transform duration-150',
+            'absolute left-0.5 top-0.5 h-3.5 w-3.5 rounded-sm shadow-sm transition-transform duration-150',
             checked ? 'translate-x-3.5 bg-surface' : 'bg-white',
           )}
         />
@@ -780,7 +780,7 @@ export function TaskCheck({
       title={done ? 'Reabrir tarefa' : 'Concluir tarefa'}
       aria-pressed={done}
       className={cn(
-        'group/check relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors before:absolute before:-inset-2.5 before:content-[""]',
+        'group/check relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-sm border-[1.5px] transition-colors before:absolute before:-inset-2.5 before:content-[""]',
         done
           ? 'border-success-solid bg-success-solid text-surface'
           : cn(overdue ? 'border-danger-solid' : 'border-stone-400', 'text-stone-700 hover:border-stone-700 hover:bg-stone-100'),
@@ -892,7 +892,7 @@ export function Sheet({ onClose, title, children }: { onClose: () => void; title
         tabIndex={-1}
         className="pb-safe relative max-h-[88vh] w-full overflow-y-auto rounded-t-2xl bg-surface px-3 pt-2 shadow-lg outline-none animate-slide-up focus-visible:shadow-lg"
       >
-        <div className="mx-auto mb-2 h-1 w-9 rounded-full bg-stone-200" aria-hidden />
+        <div className="mx-auto mb-2 h-1 w-9 rounded-sm bg-stone-200" aria-hidden />
         {title && <div className="px-3 pb-2 pt-1 font-display text-h3 text-ink">{title}</div>}
         {children}
       </div>
@@ -947,7 +947,7 @@ export function ConfirmDialog({
     >
       <div className="flex gap-3">
         {danger && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-danger-bg text-danger-fg">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[2px] bg-danger-bg text-danger-fg">
             <AlertTriangle className="h-[18px] w-[18px]" strokeWidth={1.6} />
           </div>
         )}
@@ -1023,7 +1023,7 @@ export function Popover({
         createPortal(
           <div
             ref={panelRef}
-            className={cn('fixed z-[70] min-w-[12rem] rounded-[12px] border border-line bg-surface p-1 shadow-md animate-fade-in', className)}
+            className={cn('fixed z-[70] min-w-[12rem] rounded-[2px] border border-line bg-surface p-1 shadow-md animate-fade-in', className)}
             style={place ? { top: place.top, left: place.left } : { top: 0, left: 0, visibility: 'hidden' }}
           >
             {children(() => setOpen(false))}
@@ -1098,7 +1098,7 @@ export function Avatar({
   if (!user) {
     return (
       <span
-        className={cn('inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-stone-300 bg-stone-50 font-semibold text-faint', dims, ringCls, className)}
+        className={cn('inline-flex shrink-0 items-center justify-center rounded-sm border border-dashed border-stone-300 bg-stone-50 font-semibold text-faint', dims, ringCls, className)}
         style={style}
         title="Sem responsável"
       >
@@ -1110,7 +1110,7 @@ export function Avatar({
   return (
     <span
       title={user.name}
-      className={cn('inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold leading-none', dims, ringCls, className)}
+      className={cn('inline-flex shrink-0 select-none items-center justify-center rounded-sm font-semibold leading-none', dims, ringCls, className)}
       style={{
         ...style,
         backgroundColor: tone.bg,
@@ -1146,7 +1146,7 @@ export function AvatarStack({
       ))}
       {rest > 0 && (
         <span
-          className={cn('inline-flex items-center justify-center rounded-full bg-stone-100 font-semibold text-stone-700 ring-2', ring)}
+          className={cn('inline-flex items-center justify-center rounded-sm bg-stone-100 font-semibold text-stone-700 ring-2', ring)}
           style={{ width: px, height: px, fontSize: Math.round(px * 0.4) }}
         >
           +{rest}
@@ -1162,7 +1162,7 @@ export function Dot({ className, style, hollow }: { className?: string; style?: 
   return (
     <span
       aria-hidden
-      className={cn('inline-block h-1.5 w-1.5 shrink-0 rounded-full', hollow && 'border border-stone-500', className)}
+      className={cn('inline-block h-1.5 w-1.5 shrink-0 rounded-sm', hollow && 'border border-stone-500', className)}
       style={style}
     />
   );
@@ -1195,7 +1195,7 @@ export function Badge({
         className,
       )}
     >
-      {dot && <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', typeof dot === 'string' ? dot : TONE_DOT[tone ?? 'neutral'])} />}
+      {dot && <span className={cn('h-1.5 w-1.5 shrink-0 rounded-sm', typeof dot === 'string' ? dot : TONE_DOT[tone ?? 'neutral'])} />}
       {children}
     </span>
   );
@@ -1209,7 +1209,7 @@ function StyleBadge({ style, className }: { style: StatusStyle; className?: stri
       ) : style.icon === 'pause' ? (
         <Pause strokeWidth={2} />
       ) : (
-        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', style.dot)} />
+        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-sm', style.dot)} />
       )}
       {style.label}
     </Badge>
@@ -1225,7 +1225,7 @@ export function StatusBadge(
 }
 
 export function ColorDot({ color, className }: { color: string; className?: string }) {
-  return <span className={cn('inline-block h-2 w-2 shrink-0 rounded-full', className)} style={{ backgroundColor: color }} />;
+  return <span className={cn('inline-block h-2 w-2 shrink-0 rounded-sm', className)} style={{ backgroundColor: color }} />;
 }
 
 /**
@@ -1272,9 +1272,9 @@ export function DueBadge({
 
 export function ProgressBar({ value, className, color }: { value: number; className?: string; color?: string }) {
   return (
-    <div className={cn('h-1 w-full overflow-hidden rounded-full bg-stone-100', className)}>
+    <div className={cn('h-1 w-full overflow-hidden rounded-sm bg-stone-100', className)}>
       <div
-        className="h-full rounded-full bg-ink transition-[width] duration-500"
+        className="h-full rounded-sm bg-ink transition-[width] duration-500"
         style={{ width: `${Math.min(100, Math.max(0, value))}%`, backgroundColor: color }}
       />
     </div>
@@ -1309,7 +1309,7 @@ export function EmptyState({
   return (
     <div className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
       {icon && (
-        <div className={cn('mb-3 flex h-10 w-10 items-center justify-center rounded-[12px] [&_svg]:h-5 [&_svg]:w-5', EMPTY_TONE[tone])}>
+        <div className={cn('mb-3 flex h-10 w-10 items-center justify-center rounded-[2px] [&_svg]:h-5 [&_svg]:w-5', EMPTY_TONE[tone])}>
           {icon}
         </div>
       )}
@@ -1466,7 +1466,7 @@ export function SearchField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={label ?? placeholder}
-        className="h-9 w-full rounded-[9px] bg-ink/[0.04] pl-9 pr-8 text-body text-ink outline-none transition-colors placeholder:text-faint hover:bg-ink/[0.06] focus:bg-surface focus:shadow-[0_0_0_1px_rgb(var(--accent)),0_0_0_3px_rgb(var(--accent)/0.22)]"
+        className="h-9 w-full rounded-[2px] bg-ink/[0.04] pl-9 pr-8 text-body text-ink outline-none transition-colors placeholder:text-faint hover:bg-ink/[0.06] focus:bg-surface focus:shadow-[0_0_0_1px_rgb(var(--accent)),0_0_0_3px_rgb(var(--accent)/0.22)]"
       />
       {value && (
         <button
@@ -1508,7 +1508,7 @@ export function FilterPick({
         searchable={options.length > 10}
         renderValue={(o) => (value && o ? <span className="truncate font-medium text-ink">{o.label}</span> : <span className="text-muted">{label}</span>)}
         className={cn(
-          'h-8 w-auto max-w-[220px] gap-1 rounded-[9px] border-transparent bg-transparent px-2.5 text-[13px] shadow-none hover:bg-ink/5',
+          'h-8 w-auto max-w-[220px] gap-1 rounded-[2px] border-transparent bg-transparent px-2.5 text-[13px] shadow-none hover:bg-ink/5',
           value && 'bg-ink/[0.05]',
         )}
       />
@@ -1607,7 +1607,7 @@ export function Tabs<T extends string>({
               size === 'sm' ? 'pb-[3px] text-[13px]' : 'py-3 text-[13.5px] sm:text-body',
               bordered && '-mb-px',
               active
-                ? cn('font-semibold text-ink', underline === 2 ? 'shadow-[inset_0_-2px_0_rgb(var(--accent))]' : 'shadow-[inset_0_-1.5px_0_rgb(var(--accent))]')
+                ? cn('font-semibold text-ink', underline === 2 ? 'shadow-[inset_0_-2px_0_rgb(var(--ink))]' : 'shadow-[inset_0_-1.5px_0_rgb(var(--ink))]')
                 : 'text-muted hover:text-ink',
             )}
           >
@@ -1641,7 +1641,7 @@ export function Segmented<T extends string>({
           aria-checked={value === o.id}
           onClick={() => onChange(o.id)}
           className={cn(
-            'inline-flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[13px] transition-colors [&_svg]:h-3.5 [&_svg]:w-3.5',
+            'inline-flex h-7 items-center gap-1.5 rounded-[2px] px-2.5 text-[13px] transition-colors [&_svg]:h-3.5 [&_svg]:w-3.5',
             value === o.id ? 'bg-surface font-medium text-ink shadow-[0_1px_2px_rgb(18_17_16/0.08)]' : 'text-muted hover:text-ink',
           )}
         >
@@ -1700,7 +1700,7 @@ export function RowAction({ label, onClick, children }: { label: string; onClick
         e.stopPropagation();
         onClick();
       }}
-      className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-[7px] border border-line bg-surface text-stone-600 transition-colors hover:text-ink [&_svg]:h-3.5 [&_svg]:w-3.5"
+      className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-[2px] border border-line bg-surface text-stone-600 transition-colors hover:text-ink [&_svg]:h-3.5 [&_svg]:w-3.5"
     >
       {children}
     </button>
@@ -1713,7 +1713,7 @@ export function SkeletonRows({ rows = 4, className }: { rows?: number; className
     <div className={cn('divide-y divide-hairline-surface', className)} aria-busy="true" aria-label="Carregando">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-4 px-6 py-[15px]">
-          <span className="h-1.5 w-1.5 rounded-full bg-stone-200" />
+          <span className="h-1.5 w-1.5 rounded-sm bg-stone-200" />
           <div className="flex-1 space-y-2">
             <div className="skeleton h-3 rounded-sm" style={{ width: `${55 - ((i * 13) % 25)}%` }} />
             <div className="skeleton h-2.5 rounded-sm bg-stone-50" style={{ width: `${35 - ((i * 7) % 15)}%` }} />
@@ -1766,9 +1766,9 @@ export function BarRow({
           {suffix && <span className="ml-1 font-normal text-muted">{suffix}</span>}
         </span>
       </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-stone-100">
+      <div className="h-1 w-full overflow-hidden rounded-sm bg-stone-100">
         <div
-          className="h-full rounded-full transition-[width] duration-500"
+          className="h-full rounded-sm transition-[width] duration-500"
           style={{ width: `${Math.max(pct, value > 0 ? 2 : 0)}%`, backgroundColor: color }}
         />
       </div>

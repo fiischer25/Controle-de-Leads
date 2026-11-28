@@ -192,7 +192,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
       <div className="px-6 pb-4 pt-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2 text-[12.5px] text-faint">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: stageColor(stage, stages) }} aria-hidden />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-sm" style={{ backgroundColor: stageColor(stage, stages) }} aria-hidden />
             <span className="truncate text-stone-700">{stage?.name}</span>
             <span className="shrink-0">· há {daysInStage} {daysInStage === 1 ? 'dia' : 'dias'}</span>
           </div>
@@ -248,7 +248,7 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () =>
                 options={stages.map((s) => ({
                   value: s.id,
                   label: s.name,
-                  icon: <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: stageColor(s, stages) }} />,
+                  icon: <span className="h-1.5 w-1.5 shrink-0 rounded-sm" style={{ backgroundColor: stageColor(s, stages) }} />,
                 }))}
               />
             </div>

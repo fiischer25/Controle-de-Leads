@@ -51,7 +51,7 @@ export function MonthPicker({
               }}
               aria-label={`Escolher o mês: ${monthLabel(value)}`}
               data-month-picker={value}
-              className="flex min-w-[170px] items-center justify-center gap-2 rounded-[8px] px-2 py-1 font-display text-[15px] font-semibold text-ink transition-colors hover:bg-ink/[0.05]"
+              className="flex min-w-[170px] items-center justify-center gap-2 rounded-[2px] px-2 py-1 font-display text-[15px] font-semibold text-ink transition-colors hover:bg-ink/[0.05]"
             >
               <CalendarDays className="h-4 w-4 shrink-0 text-faint" strokeWidth={1.6} aria-hidden />
               {monthLabel(value)}
@@ -86,13 +86,13 @@ export function MonthPicker({
                         onChange(key);
                       }}
                       className={cn(
-                        'relative flex h-9 items-center justify-center rounded-[8px] text-[13px] transition-colors',
+                        'relative flex h-9 items-center justify-center rounded-[2px] text-[13px] transition-colors',
                         selected ? 'bg-ink font-medium text-surface' : key === current ? 'font-medium text-ink ring-1 ring-line-strong hover:bg-canvas' : 'text-stone-700 hover:bg-canvas',
                       )}
                     >
                       {name.slice(0, 3)}
                       {marked?.has(key) && (
-                        <span className={cn('absolute bottom-1 h-1 w-1 rounded-full', selected ? 'bg-surface' : 'bg-accent')} aria-hidden />
+                        <span className={cn('absolute bottom-1 h-1 w-1 rounded-sm', selected ? 'bg-surface' : 'bg-accent')} aria-hidden />
                       )}
                     </button>
                   );
@@ -105,7 +105,7 @@ export function MonthPicker({
                     close();
                     onChange(current);
                   }}
-                  className="mt-2 w-full rounded-[8px] py-1.5 text-[12.5px] text-muted hover:bg-canvas hover:text-ink"
+                  className="mt-2 w-full rounded-[2px] py-1.5 text-[12.5px] text-muted hover:bg-canvas hover:text-ink"
                 >
                   Ir para o mês atual
                 </button>

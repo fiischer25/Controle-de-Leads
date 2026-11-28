@@ -91,7 +91,7 @@ export function FeePlanModal({ project, onClose }: { project: Project; onClose: 
       }
     >
       {existing.length > 0 && (
-        <p className="mb-4 rounded-[10px] bg-warning-bg px-3 py-2 text-[13px] text-warning-fg">
+        <p className="mb-4 rounded-[2px] bg-warning-bg px-3 py-2 text-[13px] text-warning-fg">
           Este projeto já tem {existing.length} {existing.length === 1 ? 'parcela lançada' : 'parcelas lançadas'} ({formatMoney(existingTotal)}). As novas
           serão somadas; para refazer o plano, exclua as antigas antes.
         </p>

@@ -41,7 +41,7 @@ export function ContractFields({ c, autoFocus = false, showLaunch = true }: { c:
       </div>
 
       {showLaunch && (
-        <div className="mt-5 rounded-[12px] bg-canvas px-4 py-3">
+        <div className="mt-5 rounded-[2px] bg-canvas px-4 py-3">
           {c.received > 0 ? (
             <p className="text-[13px] text-muted">
               {c.received} de {c.launched.length} parcelas já foram recebidas, então as parcelas no Financeiro não são alteradas por aqui: ajuste as

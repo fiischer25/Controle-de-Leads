@@ -87,7 +87,7 @@ export function SaveAsTemplateModal({ project, tasks, onClose }: { project: Proj
         <Checkbox checked={keepAssignees} onChange={setKeepAssignees} label="Manter quem está à frente de cada tarefa" />
         <p className="mt-1 pl-6 text-[12.5px] text-faint">Desmarcado, as tarefas ficam com o responsável de cada projeto novo.</p>
       </div>
-      <div className="mt-5 rounded-[12px] bg-canvas px-4 py-3 text-[13px] text-muted">
+      <div className="mt-5 rounded-[2px] bg-canvas px-4 py-3 text-[13px] text-muted">
         Etapas, ordem, checklist, observações, prioridade e horas estimadas são copiados. Datas e duração não vão para o modelo:
         em cada projeto novo elas são definidas por quem cuida dele.
         {mode === 'replace' && current > 0 && (

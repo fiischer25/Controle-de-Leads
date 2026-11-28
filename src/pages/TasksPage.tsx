@@ -287,7 +287,7 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
                 aria-pressed={active}
                 onClick={() => setFocus(active ? '' : id)}
                 className={cn(
-                  'min-w-[124px] shrink-0 rounded-[14px] border px-4 py-3 text-left transition-colors sm:min-w-0',
+                  'min-w-[124px] shrink-0 rounded-[2px] border px-4 py-3 text-left transition-colors sm:min-w-0',
                   active ? 'border-ink bg-surface shadow-card' : 'border-line bg-surface hover:border-stone-300',
                   n === 0 && !active && 'opacity-60',
                 )}
@@ -319,7 +319,7 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
         {view === 'board' ? (
           <TaskBoard tasks={base} onOpen={openTask} />
         ) : base.length === 0 ? (
-          <div className="rounded-[16px] border border-line bg-surface shadow-card">
+          <div className="rounded-[2px] border border-line bg-surface shadow-card">
             <EmptyState
               tone="success"
               icon={<CheckCircle2 strokeWidth={1.6} />}
@@ -336,7 +336,7 @@ function TaskList({ tabs }: { tabs: ReactNode }) {
             ) : view === 'projeto' ? (
               <TasksByProject tasks={visibleOpen} onOpen={openTask} />
             ) : (
-              <div className="overflow-hidden rounded-[16px] border border-line bg-surface pb-1.5 shadow-card">
+              <div className="overflow-hidden rounded-[2px] border border-line bg-surface pb-1.5 shadow-card">
                 {sections
                   .filter((s) => s.tasks.length > 0)
                   .map((s) => (
@@ -425,7 +425,7 @@ function TaskBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string) => v
               className="flex w-[272px] shrink-0 flex-col"
             >
               <header className="flex items-center gap-2 border-b border-hairline pb-3">
-                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', style.dot)} aria-hidden />
+                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-sm', style.dot)} aria-hidden />
                 <h2 className="text-[13.5px] font-medium text-ink">{style.label}</h2>
                 <span className="text-[13px] tabular text-faint">{items.length}</span>
               </header>

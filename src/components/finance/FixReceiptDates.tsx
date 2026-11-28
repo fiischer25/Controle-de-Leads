@@ -116,7 +116,7 @@ export function FixReceiptDates({ projectId }: { projectId?: string } = {}) {
     <>
       <section
         aria-label="Parcelas de meses passados para acertar"
-        className="mb-6 flex flex-col gap-3 rounded-[14px] border border-line bg-warning-bg px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+        className="mb-6 flex flex-col gap-3 rounded-[2px] border border-line bg-warning-bg px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
       >
         <p className="flex items-start gap-2.5 text-[13.5px] text-ink">
           <CalendarCheck className="mt-0.5 h-4 w-4 shrink-0 text-warning-fg" strokeWidth={1.8} />

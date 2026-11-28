@@ -40,7 +40,7 @@ export function MemberPicker({
               type="button"
               onClick={() => onChange(on ? value.filter((x) => x !== u.id) : [...value, u.id])}
               className={cn(
-                'flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors',
+                'flex items-center gap-2 rounded-sm border py-1 pl-1 pr-3 text-sm transition-colors',
                 on ? 'border-brand-300 bg-brand-50 text-brand-900' : 'border-line bg-surface text-stone-600 hover:border-stone-300',
               )}
               aria-pressed={on}
