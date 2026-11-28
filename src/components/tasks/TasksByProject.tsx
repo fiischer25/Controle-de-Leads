@@ -24,7 +24,7 @@ function Chip({ tone, children }: { tone: 'danger' | 'warning' | 'info' | 'neutr
   return (
     <span
       className={cn(
-        'inline-flex h-6 items-center rounded-full px-2.5 text-[12px] font-medium tabular',
+        'inline-flex h-6 items-center rounded-sm px-2.5 text-[12px] font-medium tabular',
         tone === 'danger' && 'bg-danger-bg text-danger-fg',
         tone === 'warning' && 'bg-warning-bg text-warning-fg',
         tone === 'info' && 'bg-info-bg text-info-fg',
@@ -120,14 +120,14 @@ export function TasksByProject({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: 
         const p = g.summary?.project;
         const name = p ? p.name : 'Tarefas avulsas';
         return (
-          <section key={key} aria-label={name} data-task-project={key} className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
+          <section key={key} aria-label={name} data-task-project={key} className="overflow-hidden rounded-[2px] border border-line bg-surface shadow-card">
             <header className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 md:px-6', open && 'border-b border-hairline-surface')}>
               <button
                 type="button"
                 onClick={() => toggle(key)}
                 aria-expanded={open}
                 aria-label={open ? `Recolher ${name}` : `Expandir ${name}`}
-                className="-ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-faint hover:bg-ink/5 hover:text-ink"
+                className="-ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-faint hover:bg-ink/5 hover:text-ink"
               >
                 <ChevronDown className={cn('h-4 w-4 transition-transform', !open && '-rotate-90')} />
               </button>
@@ -158,9 +158,9 @@ export function TasksByProject({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: 
                 {g.summary && (
                   // Evolução do projeto até 100% (todas as tarefas, não só as desta lista)
                   <div className="mt-2 flex max-w-[420px] items-center gap-2.5" title={`Projeto ${g.summary.progress}% concluído`} data-project-progress>
-                    <span className="h-2 flex-1 overflow-hidden rounded-full bg-stone-200">
+                    <span className="h-2 flex-1 overflow-hidden rounded-sm bg-stone-200">
                       <span
-                        className={cn('block h-full rounded-full', g.summary.progress >= 100 ? 'bg-success-solid' : 'bg-ink/75')}
+                        className={cn('block h-full rounded-sm', g.summary.progress >= 100 ? 'bg-success-solid' : 'bg-ink/75')}
                         style={{ width: `${Math.min(100, g.summary.progress)}%` }}
                       />
                     </span>

@@ -50,7 +50,7 @@ function SuggestedCategories() {
   };
 
   return (
-    <section aria-label="Categorias sugeridas" className="mb-10 rounded-[16px] border border-line bg-surface p-5 shadow-card">
+    <section aria-label="Categorias sugeridas" className="mb-10 rounded-[2px] border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="font-display text-[15.5px] font-semibold text-ink">Categorias sugeridas para o escritório</h2>
@@ -68,8 +68,8 @@ function SuggestedCategories() {
             <div className="mb-2 text-[12px] font-medium uppercase tracking-[0.06em] text-faint">{kind === 'receita' ? 'Receitas' : 'Despesas'}</div>
             <div className="flex flex-wrap gap-1.5">
               {items.map(([name, , color]) => (
-                <span key={name} className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[12.5px] text-stone-700">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} aria-hidden />
+                <span key={name} className="inline-flex items-center gap-1.5 rounded-sm border border-line px-2.5 py-1 text-[12.5px] text-stone-700">
+                  <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: color }} aria-hidden />
                   {name}
                 </span>
               ))}
@@ -120,7 +120,7 @@ function CategoryColumn({ kind, title }: { kind: FinanceCategory['kind']; title:
           const n = used(c.id);
           return (
             <li key={c.id} className={cn('flex min-h-11 items-center gap-3 border-t border-hairline py-1.5', !c.active && 'opacity-55')}>
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: c.color }} aria-hidden />
+              <span className="h-2 w-2 shrink-0 rounded-sm" style={{ backgroundColor: c.color }} aria-hidden />
               {editing?.id === c.id ? (
                 <Input
                   value={editing.name}

@@ -39,9 +39,9 @@ export function KpiCard({
         {value}
       </FitText>
       {progress && (
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-stone-100" aria-hidden>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-sm bg-stone-100" aria-hidden>
           <div
-            className={cn('h-full rounded-full', progress.tone === 'success' ? 'bg-success-solid' : progress.tone === 'danger' ? 'bg-danger-solid' : 'bg-stone-500')}
+            className={cn('h-full rounded-sm', progress.tone === 'success' ? 'bg-success-solid' : progress.tone === 'danger' ? 'bg-danger-solid' : 'bg-stone-500')}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -107,7 +107,7 @@ export function CashFlowChart({ months, onSelect }: { months: CashMonth[]; onSel
                     key={k}
                     title={`${k === 'in' ? inLabel : outLabel}${m.forecast ? ' (previsto)' : ''} · ${m.label}: ${formatMoney(m[k])}`}
                     className={cn(
-                      'w-1/3 max-w-[18px] rounded-t-[3px]',
+                      'w-1/3 max-w-[18px] rounded-t-[2px]',
                       k === 'in' ? 'bg-success-solid' : 'bg-danger-solid',
                       m.forecast && 'opacity-40 outline-dashed outline-1 outline-offset-0',
                     )}
@@ -144,7 +144,7 @@ export function ReceivablesByMonth({
   const max = Math.max(1, ...months.map((m) => m.total));
   if (months.length === 0) return <p className="border-t border-hairline py-4 text-[13px] text-faint">Nenhuma receita em aberto nos próximos 12 meses.</p>;
   return (
-    <div className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
+    <div className="overflow-hidden rounded-[2px] border border-line bg-surface shadow-card">
       <div className="grid grid-cols-[minmax(0,1fr)_90px_140px_minmax(0,1.2fr)_90px] gap-4 border-b border-line bg-subtle px-4 py-2.5 text-[12px] font-medium text-faint">
         <span>Mês</span>
         <span className="text-right">Parcelas</span>
@@ -168,8 +168,8 @@ export function ReceivablesByMonth({
               </span>
               <span className="text-right text-[13.5px] tabular text-muted">{m.items.length}</span>
               <span className="text-right text-[14px] font-semibold tabular text-success-fg">{formatMoney(m.total)}</span>
-              <span className="h-2 overflow-hidden rounded-full bg-stone-100" aria-hidden>
-                <span className="block h-full rounded-full bg-success-solid/70" style={{ width: `${(m.total / max) * 100}%` }} />
+              <span className="h-2 overflow-hidden rounded-sm bg-stone-100" aria-hidden>
+                <span className="block h-full rounded-sm bg-success-solid/70" style={{ width: `${(m.total / max) * 100}%` }} />
               </span>
               <span className="text-right" onClick={(e) => e.stopPropagation()}>
                 <ActionLink to={`/financeiro?aba=lancamentos&mes=${m.key}`} muted>

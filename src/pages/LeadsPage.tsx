@@ -307,7 +307,7 @@ export default function LeadsPage() {
                     key={stage.id}
                     aria-label={stage.name}
                     className={cn(
-                      'group/col flex w-[284px] shrink-0 flex-col rounded-[16px] p-3',
+                      'group/col flex w-[284px] shrink-0 flex-col rounded-[2px] p-3',
                       stage.kind === 'won' ? 'bg-success-bg/70' : stage.kind === 'lost' ? 'bg-ink/[0.035]' : 'bg-ink/[0.025]',
                     )}
                     onDragOver={(e) => {
@@ -331,7 +331,7 @@ export default function LeadsPage() {
                           ) : stage.kind === 'lost' ? (
                             <XCircle className="h-3.5 w-3.5 shrink-0 text-stone-500" strokeWidth={1.8} aria-hidden />
                           ) : (
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: stageColor(stage, stages) }} aria-hidden />
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-sm" style={{ backgroundColor: stageColor(stage, stages) }} aria-hidden />
                           )}
                           <h2 className={cn('truncate text-[13.5px] font-medium', stage.kind === 'won' ? 'text-success-fg' : 'text-ink')}>{stage.name}</h2>
                           <span className="text-[13px] tabular text-faint">{items.length}</span>
@@ -553,7 +553,7 @@ function LeadCard({
       tabIndex={0}
       aria-label={lead.name}
       className={cn(
-        'group cursor-pointer rounded-[12px] border border-line bg-surface p-3.5 shadow-xs transition-[border-color,box-shadow,opacity] duration-150 hover:border-stone-300 hover:shadow-card',
+        'group cursor-pointer rounded-[2px] border border-line bg-surface p-3.5 shadow-xs transition-[border-color,box-shadow,opacity] duration-150 hover:border-stone-300 hover:shadow-card',
         dragging && 'opacity-40',
       )}
     >
@@ -692,7 +692,7 @@ function LeadList({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => vo
                   </span>
                 </span>
                 <span className="hidden min-w-0 items-center gap-2 text-[13px] text-stone-700 md:flex">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: stageColor(stage, db.lead_stages) }} aria-hidden />
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-sm" style={{ backgroundColor: stageColor(stage, db.lead_stages) }} aria-hidden />
                   <span className="truncate">{stage?.name}</span>
                 </span>
                 <span className="hidden truncate text-[13px] text-muted md:block">{l.source_id ? maps.sources[l.source_id]?.name : '—'}</span>

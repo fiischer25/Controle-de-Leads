@@ -166,8 +166,8 @@ export default function TeamPage() {
                     <span className="tabular text-ink">{formatMinutes(st?.week ?? 0)}</span>
                     <span className="text-[12px] text-faint">{formatMinutes(st?.month ?? 0)} no mês</span>
                   </div>
-                  <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-hairline">
-                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.min(100, ((st?.week ?? 0) / 60 / 40) * 100)}%` }} />
+                  <div className="mt-2 h-0.5 overflow-hidden rounded-sm bg-hairline">
+                    <div className="h-full rounded-sm bg-brand-500" style={{ width: `${Math.min(100, ((st?.week ?? 0) / 60 / 40) * 100)}%` }} />
                   </div>
                 </div>
                 <div className="hidden justify-end md:flex" onClick={(e) => e.stopPropagation()}>

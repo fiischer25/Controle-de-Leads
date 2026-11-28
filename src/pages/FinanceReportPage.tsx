@@ -247,7 +247,7 @@ export default function FinanceReportPage() {
 
 function Box({ label, value, sub, tone }: { label: string; value: number; sub?: string; tone?: string }) {
   return (
-    <div className="min-w-0 rounded-[8px] border border-stone-200 px-3 py-2.5">
+    <div className="min-w-0 rounded-[2px] border border-stone-200 px-3 py-2.5">
       <div className="text-[10.5px] uppercase tracking-[0.06em] text-stone-500">{label}</div>
       <FitText min={11} className={cn('mt-1 text-[15px] font-semibold tabular', tone)}>
         {formatMoney(value)}

@@ -137,7 +137,7 @@ export function FinanceBilling() {
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
       <div className="space-y-8">
         {/* Configuração */}
-        <section aria-labelledby="cobranca-config" className="rounded-[16px] border border-line bg-surface p-5 shadow-card md:p-6">
+        <section aria-labelledby="cobranca-config" className="rounded-[2px] border border-line bg-surface p-5 shadow-card md:p-6">
           <SectionHeader id="cobranca-config" title="Lembretes de cobrança no WhatsApp" />
           <p className="-mt-2 text-[13px] leading-relaxed text-muted">
             O cliente recebe um lembrete da parcela em aberto antes, no dia e depois do vencimento, só em dias úteis. Os lembretes param quando a
@@ -241,7 +241,7 @@ export function FinanceBilling() {
           )}
         </section>
 
-        <section aria-labelledby="cobranca-ativar" className="rounded-[16px] border border-line bg-surface p-5 shadow-card md:p-6">
+        <section aria-labelledby="cobranca-ativar" className="rounded-[2px] border border-line bg-surface p-5 shadow-card md:p-6">
           <SectionHeader id="cobranca-ativar" title="Como ativar os lembretes automáticos" />
           <ol>
             <Step n={1} title="Banco de dados">

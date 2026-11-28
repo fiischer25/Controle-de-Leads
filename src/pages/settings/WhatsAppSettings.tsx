@@ -46,7 +46,7 @@ export function CopyField({ label, value }: { label: string; value: string }) {
 export function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
     <li className="flex gap-4">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-[11px] font-medium text-stone-500">{n}</span>
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border border-line text-[11px] font-medium text-stone-500">{n}</span>
       <div className="min-w-0 flex-1 pb-5">
         <div className="text-sm font-medium text-ink">{title}</div>
         <div className="mt-1 space-y-2 text-sm leading-relaxed text-stone-500">{children}</div>
@@ -69,7 +69,7 @@ export function WhatsAppSettings() {
       <div className="space-y-5">
         <Card className="p-6">
           <div className="flex items-start gap-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-surface">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-ink text-surface">
               <Sparkles className="h-5 w-5" strokeWidth={1.6} />
             </span>
             <div>

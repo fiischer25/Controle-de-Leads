@@ -40,7 +40,7 @@ export function ProjectStatusDot({ status, className }: { status: ProjectStatus;
       </span>
     );
   }
-  return <span role="img" aria-label={label} title={label} data-project-dot={status} className={cn('inline-block h-2.5 w-2.5 shrink-0 rounded-full', DOT[status], className)} />;
+  return <span role="img" aria-label={label} title={label} data-project-dot={status} className={cn('inline-block h-2.5 w-2.5 shrink-0 rounded-sm', DOT[status], className)} />;
 }
 
 const stop = (e: MouseEvent) => e.stopPropagation();
@@ -55,7 +55,7 @@ function WaitChip({ project, small }: { project: Project; small?: boolean }) {
       data-wait-days={days}
       title={`Com o cliente analisando ${w.phase} ${sinceLabel(days)}`}
       className={cn(
-        'shrink-0 whitespace-nowrap rounded-full px-1.5 tabular',
+        'shrink-0 whitespace-nowrap rounded-sm px-1.5 tabular',
         small ? 'text-[11px]' : 'text-[11.5px]',
         days > 7 ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg',
       )}
@@ -114,7 +114,7 @@ export function ProjectStagePicker({
             aria-label={`Etapa de ${project.name}: ${stage.label}`}
             data-project-stage={stage.label}
             data-stage-auto={stage.auto ? 'sim' : 'nao'}
-            className="flex max-w-full items-center gap-2 rounded-[8px] py-1 pl-1 pr-1.5 text-left text-[12.5px] transition-colors hover:bg-ink/[0.05]"
+            className="flex max-w-full items-center gap-2 rounded-[2px] py-1 pl-1 pr-1.5 text-left text-[12.5px] transition-colors hover:bg-ink/[0.05]"
           >
             <ProjectStatusDot status={project.status} className="ml-0.5" />
             {special && <special.Icon className={cn('h-3.5 w-3.5 shrink-0', special.text)} strokeWidth={1.8} aria-hidden />}
@@ -195,7 +195,7 @@ export function ProjectStageTag({ project, rail, fallback }: { project: Project;
   const stage = macroStage(project, rail, fallback);
   const special = specialOf(stage.label);
   return (
-    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-ink/[0.04] px-2 py-0.5 text-[12px]" data-project-stage={stage.label}>
+    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-sm bg-ink/[0.04] px-2 py-0.5 text-[12px]" data-project-stage={stage.label}>
       <ProjectStatusDot status={project.status} />
       {special && <special.Icon className={cn('h-3 w-3 shrink-0', special.text)} strokeWidth={1.8} aria-hidden />}
       <span className={cn('min-w-0 truncate', special ? cn('font-medium', special.text) : 'text-stone-700')} title={stage.label}>

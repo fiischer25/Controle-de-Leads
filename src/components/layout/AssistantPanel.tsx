@@ -94,7 +94,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
     <Drawer onClose={onClose} width="max-w-md">
       <div className="flex items-center justify-between px-6 pb-3 pt-5">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-surface">
+          <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-ink text-surface">
             <Sparkles className="h-4 w-4" strokeWidth={1.8} />
           </span>
           <div>
@@ -147,7 +147,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
         {busy && (
           <div className="flex gap-1 px-2 py-3">
             {[0, 1, 2].map((i) => (
-              <span key={i} className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-300" style={{ animationDelay: `${i * 120}ms` }} />
+              <span key={i} className="h-1.5 w-1.5 animate-bounce rounded-sm bg-stone-300" style={{ animationDelay: `${i * 120}ms` }} />
             ))}
           </div>
         )}

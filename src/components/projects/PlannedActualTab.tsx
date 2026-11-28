@@ -64,7 +64,7 @@ export function PlannedActualTab({ project }: { project: Project }) {
 
   if (!pricing) {
     return (
-      <div className="rounded-[16px] border border-line bg-surface shadow-card">
+      <div className="rounded-[2px] border border-line bg-surface shadow-card">
         <EmptyState
           icon={<Calculator strokeWidth={1.6} />}
           title="Este projeto ainda não tem precificação"
@@ -135,7 +135,7 @@ function Comparison({ project, pricing, picker, missingName }: { project: Projec
 
       {started && (
         <p
-          className={cn('-mt-4 rounded-[12px] px-4 py-3 text-[13.5px]', over ? 'bg-danger-bg text-danger-fg' : 'bg-success-bg text-success-fg')}
+          className={cn('-mt-4 rounded-[2px] px-4 py-3 text-[13.5px]', over ? 'bg-danger-bg text-danger-fg' : 'bg-success-bg text-success-fg')}
           data-planned-summary
         >
           {over
@@ -175,9 +175,9 @@ function Comparison({ project, pricing, picker, missingName }: { project: Projec
                 <Badge tone={st.tone} dot className="justify-self-end md:hidden">
                   {st.label}
                 </Badge>
-                <div className="relative col-span-2 h-2.5 rounded-full bg-stone-100 md:col-span-1" aria-hidden>
-                  <span className="absolute inset-y-0 left-0 rounded-full bg-stone-300" style={{ width: `${(s.plannedHours / max) * 100}%` }} />
-                  <span className={cn('absolute inset-y-[2px] left-0 rounded-full', bar)} style={{ width: `${(s.actualHours / max) * 100}%` }} />
+                <div className="relative col-span-2 h-2.5 rounded-sm bg-stone-100 md:col-span-1" aria-hidden>
+                  <span className="absolute inset-y-0 left-0 rounded-sm bg-stone-300" style={{ width: `${(s.plannedHours / max) * 100}%` }} />
+                  <span className={cn('absolute inset-y-[2px] left-0 rounded-sm', bar)} style={{ width: `${(s.actualHours / max) * 100}%` }} />
                 </div>
                 <span className="hidden text-right tabular text-muted md:block">{s.plannedHours ? hours(s.plannedHours) : '—'}</span>
                 <span className="hidden text-right tabular text-ink md:block">{hours(s.actualHours)}</span>

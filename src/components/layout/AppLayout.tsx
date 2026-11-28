@@ -182,7 +182,7 @@ export function AppLayout() {
           <button
             type="button"
             onClick={() => setAssistantOpen(true)}
-            className="inline-flex h-[34px] items-center gap-2 rounded-[9px] px-3 text-body font-medium text-stone-800 transition-colors hover:bg-ink/5 hover:text-ink"
+            className="inline-flex h-[34px] items-center gap-2 rounded-[2px] px-3 text-body font-medium text-stone-800 transition-colors hover:bg-ink/5 hover:text-ink"
           >
             <Sparkles className={ICON} strokeWidth={1.6} />
             Assistente
@@ -258,7 +258,7 @@ function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => vo
         type="button"
         onClick={onSearch}
         title="Buscar (⌘K)"
-        className="flex h-[34px] items-center gap-2.5 rounded-[9px] bg-ink/[0.04] px-2.5 text-left text-[13px] text-faint transition-colors hover:bg-ink/[0.06] hover:text-muted max-xl:justify-center"
+        className="flex h-[34px] items-center gap-2.5 rounded-[2px] bg-ink/[0.04] px-2.5 text-left text-[13px] text-faint transition-colors hover:bg-ink/[0.06] hover:text-muted max-xl:justify-center"
       >
         <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
         <span className="hidden flex-1 xl:inline">Buscar</span>
@@ -277,9 +277,9 @@ function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => vo
                 title={n.label}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-body transition-colors max-xl:justify-center',
+                    'relative flex h-9 items-center gap-3 rounded-[2px] px-2.5 text-body transition-colors max-xl:justify-center',
                     isActive
-                      ? 'bg-brand-100 font-semibold text-ink [&_svg]:text-brand-600'
+                      ? 'bg-stone-100 font-semibold text-ink shadow-[inset_2px_0_0_rgb(var(--ink))] [&_svg]:text-ink'
                       : 'text-muted hover:bg-stone-100 hover:text-ink',
                   )
                 }
@@ -288,12 +288,12 @@ function Sidebar({ groups, onSearch }: { groups: NavItem[][]; onSearch: () => vo
                 <span className="hidden flex-1 truncate xl:inline">{n.label}</span>
                 {n.dot && (
                   <span
-                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning-solid max-xl:absolute max-xl:right-2 max-xl:top-2"
+                    className="h-1.5 w-1.5 shrink-0 rounded-sm bg-warning-solid max-xl:absolute max-xl:right-2 max-xl:top-2"
                     title="Há retornos pendentes"
                   />
                 )}
                 {!!n.count && (
-                  <span className="hidden min-w-[20px] rounded-full bg-stone-100 px-1.5 text-center text-[11px] font-medium leading-5 tabular text-muted xl:inline">
+                  <span className="hidden min-w-[20px] rounded-sm bg-stone-100 px-1.5 text-center text-[11px] font-medium leading-5 tabular text-muted xl:inline">
                     {n.count}
                   </span>
                 )}
@@ -320,8 +320,8 @@ function TimerPill() {
   const [, setParams] = useSearchParams();
   if (!timer) return <StartTimerMenu />;
   return (
-    <div className="flex h-[34px] min-w-0 items-center gap-2.5 rounded-full bg-surface pl-3 pr-1 shadow-[0_0_0_1px_rgb(var(--line))]">
-      <span className="h-[7px] w-[7px] shrink-0 animate-timer-dot rounded-full bg-danger-solid" aria-hidden />
+    <div className="flex h-[34px] min-w-0 items-center gap-2.5 rounded-sm bg-surface pl-3 pr-1 shadow-[0_0_0_1px_rgb(var(--line))]">
+      <span className="h-[7px] w-[7px] shrink-0 animate-timer-dot rounded-sm bg-danger-solid" aria-hidden />
       <span className="font-mono text-[12.5px] tabular text-ink" aria-label="Tempo decorrido">{timer.elapsed}</span>
       <button
         type="button"
@@ -336,7 +336,7 @@ function TimerPill() {
         onClick={() => stopTimer().then(() => toast.success('Tempo lançado na tarefa.')).catch(toast.error)}
         aria-label="Parar cronômetro"
         title="Parar cronômetro"
-        className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-stone-100 text-ink transition-colors hover:bg-stone-200"
+        className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-sm bg-stone-100 text-ink transition-colors hover:bg-stone-200"
       >
         <Square className="h-[11px] w-[11px] fill-current" strokeWidth={0} />
       </button>
@@ -368,7 +368,7 @@ function StartTimerMenu() {
         <button
           type="button"
           onClick={toggle}
-          className="inline-flex h-[34px] items-center gap-2 rounded-full px-3 text-[13px] text-muted transition-colors hover:bg-ink/5 hover:text-ink"
+          className="inline-flex h-[34px] items-center gap-2 rounded-sm px-3 text-[13px] text-muted transition-colors hover:bg-ink/5 hover:text-ink"
         >
           <Play className="h-3.5 w-3.5" strokeWidth={1.8} />
           Iniciar cronômetro
@@ -425,7 +425,7 @@ function MobileAppBar({ title, onSearch, isHome }: { title: string; onSearch: ()
       </div>
       {compact && timer && (
         <span className="mr-1 inline-flex items-center gap-1.5 font-mono text-xs tabular text-ink">
-          <span className="h-1.5 w-1.5 animate-timer-dot rounded-full bg-danger-solid" aria-hidden />
+          <span className="h-1.5 w-1.5 animate-timer-dot rounded-sm bg-danger-solid" aria-hidden />
           {timer.elapsed}
         </span>
       )}
@@ -475,7 +475,7 @@ function BottomNav({ onCreate, onMore }: { onCreate: () => void; onMore: () => v
           type="button"
           onClick={onCreate}
           aria-label="Criar"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-ink text-surface shadow-md transition-transform active:scale-95"
+          className="flex h-12 w-12 items-center justify-center rounded-sm bg-ink text-surface shadow-md transition-transform active:scale-95"
         >
           <Plus className="h-[22px] w-[22px]" strokeWidth={1.8} />
         </button>
@@ -493,7 +493,7 @@ function BottomNav({ onCreate, onMore }: { onCreate: () => void; onMore: () => v
 }
 
 function SheetItem({ icon, label, onClick, to }: { icon: ReactNode; label: string; onClick?: () => void; to?: string }) {
-  const cls = 'flex h-12 w-full items-center gap-3.5 rounded-[12px] px-3 text-left text-[15px] text-ink transition-colors hover:bg-canvas [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-muted';
+  const cls = 'flex h-12 w-full items-center gap-3.5 rounded-[2px] px-3 text-left text-[15px] text-ink transition-colors hover:bg-canvas [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-muted';
   if (to) {
     return (
       <NavLink to={to} className={cls}>
@@ -570,13 +570,13 @@ function NotificationsMenu({ touch }: { touch?: boolean }) {
           onClick={toggle}
           className={cn(
             'relative inline-flex items-center justify-center text-stone-700 transition-colors hover:bg-ink/5 hover:text-ink',
-            touch ? 'h-11 w-11 rounded-[12px]' : 'h-[34px] w-[34px] rounded-[9px]',
+            touch ? 'h-11 w-11 rounded-[2px]' : 'h-[34px] w-[34px] rounded-[2px]',
           )}
           aria-label={unread.length ? `Notificações (${unread.length} não lidas)` : 'Notificações'}
           title="Notificações"
         >
           <Bell className={touch ? 'h-5 w-5' : ICON} strokeWidth={1.6} />
-          {unread.length > 0 && <span className={cn('absolute h-1.5 w-1.5 rounded-full bg-danger-solid', touch ? 'right-3 top-3' : 'right-2 top-2')} />}
+          {unread.length > 0 && <span className={cn('absolute h-1.5 w-1.5 rounded-sm bg-danger-solid', touch ? 'right-3 top-3' : 'right-2 top-2')} />}
         </button>
       )}
     >
@@ -607,7 +607,7 @@ function NotificationsMenu({ touch }: { touch?: boolean }) {
                   close();
                 }}
               >
-                <span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', n.read ? 'bg-transparent' : 'bg-danger-solid')} />
+                <span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-sm', n.read ? 'bg-transparent' : 'bg-danger-solid')} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-body font-medium text-ink">{n.title}</span>
                   {n.body && <span className="block text-xs text-muted">{n.body}</span>}
@@ -637,7 +637,7 @@ function UserMenu() {
         <button
           type="button"
           onClick={toggle}
-          className="flex w-full items-center gap-2.5 rounded-[9px] p-1 text-left transition-colors hover:bg-ink/5 max-xl:justify-center xl:px-1.5"
+          className="flex w-full items-center gap-2.5 rounded-[2px] p-1 text-left transition-colors hover:bg-ink/5 max-xl:justify-center xl:px-1.5"
           title={me.name}
         >
           <Avatar user={me} size={28} />

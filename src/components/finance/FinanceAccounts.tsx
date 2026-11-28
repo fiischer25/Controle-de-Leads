@@ -39,11 +39,11 @@ export function FinanceAccounts({ onImport }: { onImport: (accountId?: string) =
               <button
                 type="button"
                 onClick={() => setEditing(a)}
-                className={cn('w-full rounded-[16px] border border-line bg-surface p-5 text-left shadow-card transition-shadow hover:shadow-md', !a.active && 'opacity-60')}
+                className={cn('w-full rounded-[2px] border border-line bg-surface p-5 text-left shadow-card transition-shadow hover:shadow-md', !a.active && 'opacity-60')}
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: a.color }} aria-hidden />
+                    <span className="h-2 w-2 shrink-0 rounded-sm" style={{ backgroundColor: a.color }} aria-hidden />
                     <span className="truncate text-[14px] font-medium text-ink">{a.name}</span>
                   </span>
                   {!a.active && <Badge>Arquivada</Badge>}
@@ -136,7 +136,7 @@ function AccountModal({ account, usedCount, onClose }: { account?: FinanceAccoun
                 type="button"
                 onClick={() => setV({ ...v, color: c })}
                 aria-label={`Cor ${c}`}
-                className={cn('h-6 w-6 rounded-full ring-offset-2 ring-offset-surface', v.color === c && 'ring-2 ring-ink')}
+                className={cn('h-6 w-6 rounded-sm ring-offset-2 ring-offset-surface', v.color === c && 'ring-2 ring-ink')}
                 style={{ backgroundColor: c }}
               />
             ))}

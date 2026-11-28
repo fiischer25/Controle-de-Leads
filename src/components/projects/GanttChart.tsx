@@ -116,7 +116,7 @@ export function GanttChart({
                         <button
                           onClick={() => onOpen(tk.id)}
                           title={`${tk.title}\n${formatDate(s)} → ${formatDate(e)} · ${TASK_STATUS[tk.status].label}`}
-                          className={cn('absolute top-2 h-5 rounded-[4px] transition-all hover:brightness-110', late && 'ring-2 ring-danger-solid ring-offset-1')}
+                          className={cn('absolute top-2 h-5 rounded-[2px] transition-all hover:brightness-110', late && 'ring-2 ring-danger-solid ring-offset-1')}
                           style={{ left: x(s) + 1, width: Math.max(DAY - 2, (diffDays(s, e) + 1) * DAY - 2), backgroundColor: TASK_STATUS_STYLE[tk.status].color }}
                         >
                           {DAY >= 14 && (diffDays(s, e) + 1) * DAY > 60 && (

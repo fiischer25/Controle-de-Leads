@@ -99,7 +99,7 @@ export function FilesSection({
         <button
           type="button"
           onClick={() => input.current?.click()}
-          className="flex w-full items-center gap-2 rounded-[10px] border border-dashed border-line-strong px-3 py-3 text-left text-[13px] text-faint hover:border-stone-300 hover:text-muted"
+          className="flex w-full items-center gap-2 rounded-[2px] border border-dashed border-line-strong px-3 py-3 text-left text-[13px] text-faint hover:border-stone-300 hover:text-muted"
         >
           <Paperclip className="h-4 w-4 shrink-0" strokeWidth={1.6} />
           {empty}
@@ -110,8 +110,8 @@ export function FilesSection({
             const who = f.uploaded_by ? maps.profiles[f.uploaded_by]?.name.split(' ')[0] : null;
             const image = f.type.startsWith('image/');
             return (
-              <li key={f.id} className="group flex items-center gap-2.5 rounded-[10px] px-2 py-1.5 hover:bg-ink/[0.03]">
-                <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px]', image ? 'bg-stone-100 text-stone-600' : 'bg-danger-bg text-danger-fg')}>
+              <li key={f.id} className="group flex items-center gap-2.5 rounded-[2px] px-2 py-1.5 hover:bg-ink/[0.03]">
+                <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-[2px]', image ? 'bg-stone-100 text-stone-600' : 'bg-danger-bg text-danger-fg')}>
                   {image ? <ImageIcon className="h-4 w-4" strokeWidth={1.6} /> : <FileText className="h-4 w-4" strokeWidth={1.6} />}
                 </span>
                 <button type="button" onClick={() => openTeamFile(f).catch(toast.error)} className="min-w-0 flex-1 text-left">

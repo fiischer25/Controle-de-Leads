@@ -221,8 +221,8 @@ export function TeamSection({ team }: { team: TeamRow[] }) {
                 </span>
                 <span className="shrink-0 text-[13px] tabular text-muted">{formatHours(m.minutes)}</span>
               </div>
-              <div className="mt-3 h-0.5 overflow-hidden rounded-full bg-hairline">
-                <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.min(100, (m.minutes / 60 / WEEK_HOURS) * 100)}%` }} />
+              <div className="mt-3 h-0.5 overflow-hidden rounded-sm bg-hairline">
+                <div className="h-full rounded-sm bg-brand-500" style={{ width: `${Math.min(100, (m.minutes / 60 / WEEK_HOURS) * 100)}%` }} />
               </div>
               <div className="mt-2 text-xs text-faint">
                 {m.open} {m.open === 1 ? 'aberta' : 'abertas'}
@@ -277,7 +277,7 @@ export function FunnelSection({ rows, total, conversion }: { rows: FunnelRow[]; 
           {rows.map((r) => (
             <li key={r.stage.id} className="grid grid-cols-[minmax(0,1fr)_24px_auto] items-baseline gap-3">
               <span className="flex min-w-0 items-center gap-2 text-[13px] text-stone-700">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} aria-hidden />
+                <span className="h-1.5 w-1.5 shrink-0 rounded-sm" style={{ backgroundColor: r.color }} aria-hidden />
                 <span className="truncate">{r.stage.name}</span>
               </span>
               <span className="text-right text-[13px] tabular text-ink">{r.count}</span>

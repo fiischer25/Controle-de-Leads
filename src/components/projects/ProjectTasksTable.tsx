@@ -108,7 +108,7 @@ export function ProjectTasksTable({
   const dateCls = (task: Task) => (task.status !== 'done' && task.due_date && task.due_date < t ? 'text-danger-fg' : 'text-stone-600');
 
   return (
-    <div className={cn('overflow-hidden bg-surface', !bare && 'rounded-[16px] border border-line shadow-card')}>
+    <div className={cn('overflow-hidden bg-surface', !bare && 'rounded-[2px] border border-line shadow-card')}>
       <div className={cn(cols, 'border-b border-line/70 bg-stone-50 px-3 py-2 text-[11.5px] font-medium text-stone-500')}>
         <span>Nº</span>
         <span>Etapas / tarefas</span>
@@ -148,7 +148,7 @@ export function ProjectTasksTable({
                 >
                   {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </button>
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: phaseColor(pi) }} aria-hidden />
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: phaseColor(pi) }} aria-hidden />
                 <span className="truncate text-[13.5px] font-semibold text-ink" title={phase}>
                   {phase}
                 </span>
@@ -471,7 +471,7 @@ function PhaseWaitChip({ phase, wait }: { phase: string; wait: PhaseWait }) {
       data-wait-days={wait.days}
       title={wait.open && wait.times > 1 ? `${text} · ${waitDaysLabel(wait.days)} no total nesta etapa` : text}
       className={cn(
-        'inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] tabular',
+        'inline-flex max-w-full items-center gap-1 rounded-sm px-2 py-0.5 text-[11.5px] tabular',
         wait.open ? 'bg-warning-bg font-medium text-warning-fg' : 'bg-ink/[0.05] text-stone-600',
       )}
     >

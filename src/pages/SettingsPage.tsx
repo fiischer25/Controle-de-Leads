@@ -120,7 +120,7 @@ function ProjectTypesSettings() {
             return (
               <li key={t.id} className={cn('group flex items-center gap-2 border-b border-line/70 px-3 py-2.5 sm:border-r', selected?.id === t.id ? 'bg-brand-50/60' : 'hover:bg-stone-50')}>
                 <button className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setSelectedId(t.id)}>
-                  <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
+                  <span className="h-8 w-1.5 shrink-0 rounded-sm" style={{ backgroundColor: t.color }} />
                   <span className="min-w-0">
                     <span className={cn('block truncate text-sm font-medium', !t.active && 'text-stone-400 line-through')}>{t.name}</span>
                     <span className="text-xs text-stone-500">{count} tarefas-modelo</span>
@@ -146,7 +146,7 @@ function ProjectTypesSettings() {
               <Field label="Cor">
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {SWATCHES.slice(0, 8).map((c) => (
-                    <button key={c} onClick={() => patch('project_types', selected.id, { color: c }).catch(toast.error)} className={cn('h-7 w-7 rounded-full ring-offset-2', selected.color === c && 'ring-2 ring-stone-900')} style={{ backgroundColor: c }} aria-label={`Cor ${c}`} />
+                    <button key={c} onClick={() => patch('project_types', selected.id, { color: c }).catch(toast.error)} className={cn('h-7 w-7 rounded-sm ring-offset-2', selected.color === c && 'ring-2 ring-stone-900')} style={{ backgroundColor: c }} aria-label={`Cor ${c}`} />
                   ))}
                 </div>
               </Field>
@@ -228,7 +228,7 @@ function StagesSettings() {
           const onlyOfKind = fixed && stages.filter((x) => x.kind === s.kind).length === 1;
           return (
             <li key={s.id} className="grid grid-cols-[auto_1fr_170px_auto] items-center gap-3 px-5 py-2.5">
-              <span className="ml-1 h-2 w-2 rounded-full" style={{ backgroundColor: stageColor(s, stages) }} title="A cor segue a ordem do funil" aria-hidden />
+              <span className="ml-1 h-2 w-2 rounded-sm" style={{ backgroundColor: stageColor(s, stages) }} title="A cor segue a ordem do funil" aria-hidden />
               <div>
                 <input key={s.name} defaultValue={s.name} onBlur={(e) => e.target.value.trim() && e.target.value !== s.name && patch('lead_stages', s.id, { name: e.target.value.trim() }).catch(toast.error)} className="w-full rounded-xs bg-transparent px-2 py-1 text-sm font-medium outline-none hover:bg-stone-50 focus:ring-2 focus:ring-brand-500/20" aria-label="Nome" />
                 <div className="px-2 text-xs text-stone-500">{count} oportunidade{count !== 1 ? 's' : ''}</div>

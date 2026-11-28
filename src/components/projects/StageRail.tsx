@@ -4,14 +4,14 @@ import { cn, deadlineState, diffDays, formatDateShort, today, weekdayDate } from
 /** Trilho de etapas: concluídas em grafite, atual em bronze, futuras em cinza (2px). */
 export function StageRail({ phases, current, className, thick = false }: { phases: string[]; current: number; className?: string; thick?: boolean }) {
   const h = thick ? 'h-1.5' : 'h-0.5';
-  if (phases.length === 0) return <div className={cn(h, 'rounded-full bg-line-strong', className)} />;
+  if (phases.length === 0) return <div className={cn(h, 'rounded-sm bg-line-strong', className)} />;
   return (
     <div className={cn('flex gap-[3px]', className)} aria-hidden>
       {phases.map((p, i) => (
         <span
           key={p}
           title={p}
-          className={cn(h, 'flex-1 rounded-full')}
+          className={cn(h, 'flex-1 rounded-sm')}
           style={{ backgroundColor: i < current ? CSS_COLOR.stone(800) : i === current ? CSS_COLOR.accent : CSS_COLOR.lineStrong }}
         />
       ))}

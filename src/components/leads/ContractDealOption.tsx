@@ -16,7 +16,7 @@ export function ContractDealOption({
   hint?: string;
 }) {
   return (
-    <div className="mt-3 rounded-[12px] border border-line bg-surface px-4 py-3">
+    <div className="mt-3 rounded-[2px] border border-line bg-surface px-4 py-3">
       <Checkbox
         checked={checked}
         onChange={onChange}

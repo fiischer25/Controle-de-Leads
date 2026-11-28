@@ -44,7 +44,7 @@ export function FinanceSnapshot({ variant }: { variant: 'office' | 'personal' })
             key={c.label}
             to="/financeiro?aba=lancamentos"
             className={cn(
-              'rounded-full border px-3 py-1.5 hover:brightness-95',
+              'rounded-sm border px-3 py-1.5 hover:brightness-95',
               c.tone === 'success'
                 ? 'border-success-line bg-success-bg text-success-fg'
                 : c.tone === 'danger'

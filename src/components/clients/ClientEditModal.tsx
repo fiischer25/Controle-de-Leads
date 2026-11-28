@@ -136,7 +136,7 @@ export function ClientEditModal({ client, initialTab = 'dados', onClose }: { cli
       {tab === 'contrato' && (
         <>
           {!lead && (
-            <p className="mb-4 rounded-[12px] bg-canvas px-4 py-3 text-[13px] text-muted">
+            <p className="mb-4 rounded-[2px] bg-canvas px-4 py-3 text-[13px] text-muted">
               Este cliente foi cadastrado sem oportunidade. Ao salvar o contrato, o sistema registra uma oportunidade já ganha para ele, e o
               valor entra nos relatórios e no Financeiro.
             </p>

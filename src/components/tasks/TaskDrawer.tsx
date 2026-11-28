@@ -121,7 +121,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string; onClose: () =>
                 task.status === s ? cn('border-transparent', TASK_STATUS[s].badge) : 'border-line text-muted hover:bg-subtle hover:text-ink',
               )}
             >
-              <span className={cn('h-1.5 w-1.5 rounded-full', TASK_STATUS[s].dot)} />
+              <span className={cn('h-1.5 w-1.5 rounded-sm', TASK_STATUS[s].dot)} />
               {TASK_STATUS[s].label}
             </button>
           ))}

@@ -54,7 +54,7 @@ function PricingList() {
         }
       />
       {list.length === 0 ? (
-        <div className="rounded-[16px] border border-line bg-surface shadow-card">
+        <div className="rounded-[2px] border border-line bg-surface shadow-card">
           <EmptyState
             icon={<Calculator strokeWidth={1.6} />}
             title="Nenhuma precificação ainda"
@@ -64,7 +64,7 @@ function PricingList() {
           />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[16px] border border-line bg-surface shadow-card">
+        <div className="overflow-hidden rounded-[2px] border border-line bg-surface shadow-card">
           <div className={cn('hidden gap-x-4 border-b border-line px-5 py-2.5 text-[12px] font-medium text-faint md:grid', LIST_COLS)}>
             <span>Precificação</span>
             <span>Oportunidade</span>
@@ -511,7 +511,7 @@ function PricingEditor({ id }: { id: string }) {
               typeName={draft.project_type_id ? maps.types[draft.project_type_id]?.name : undefined}
               onUse={(days) => setData({ stages: draft.data.stages.map((x) => (days[x.id] != null ? { ...x, days: days[x.id] } : x)) })}
             />
-            <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 rounded-[12px] bg-canvas px-4 py-3">
+            <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 rounded-[2px] bg-canvas px-4 py-3">
               <Field label="Horas por dia" className="w-32">
                 <NumberInput
                   value={draft.data.hours_per_day ?? DEFAULT_HOURS_PER_DAY}
@@ -596,7 +596,7 @@ function PricingEditor({ id }: { id: string }) {
                       }
                       onClick={() => upd({ labor: !labor })}
                       className={cn(
-                        'h-7 whitespace-nowrap rounded-full border px-2.5 text-[12px] transition-colors',
+                        'h-7 whitespace-nowrap rounded-sm border px-2.5 text-[12px] transition-colors',
                         labor ? 'border-transparent bg-stone-100 text-stone-700' : 'border-dashed border-line text-faint hover:text-ink',
                       )}
                       data-labor={labor ? (out ? 'fora' : 'dentro') : undefined}
@@ -621,7 +621,7 @@ function PricingEditor({ id }: { id: string }) {
                 As etapas ainda não usam o custo da equipe: os salários entram no custo do dia.
               </p>
             )}
-            <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 rounded-[12px] bg-canvas px-4 py-3">
+            <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 rounded-[2px] bg-canvas px-4 py-3">
               <Field label="Dias úteis por mês" className="w-32">
                 <NumberInput value={draft.data.work_days} label="Dias úteis por mês" onChange={(work_days) => setData({ work_days })} />
               </Field>
@@ -773,7 +773,7 @@ function StageHistoryHint({
   // Meio dia de precisão
   const daysFor = (h: StageHistory) => Math.max(0.5, Math.round(h.daysPerM2 * (area ?? 0) * 2) / 2);
   return (
-    <div className="mt-4 rounded-[12px] border border-line px-4 py-3 text-[12.5px]" data-stage-history>
+    <div className="mt-4 rounded-[2px] border border-line px-4 py-3 text-[12.5px]" data-stage-history>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <span className="font-medium text-ink">
           Histórico de {projects} {projects === 1 ? 'projeto' : 'projetos'}
@@ -832,7 +832,7 @@ function Summary({
   return (
     <aside className="space-y-4 lg:sticky lg:top-6" aria-label="Resumo da precificação">
       {pk && (
-        <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card" data-packages>
+        <div className="rounded-[2px] border border-line bg-surface p-5 shadow-card" data-packages>
           <div className="text-[13.5px] font-semibold text-ink">Pacotes</div>
           <div className="mt-3 grid grid-cols-2 gap-3">
             {(
@@ -841,7 +841,7 @@ function Summary({
                 ['premium', 'Premium', 'arquitetura + interiores', pk.premium],
               ] as const
             ).map(([id, label, sub, res]) => (
-              <div key={id} className={cn('rounded-[12px] border px-3 py-2.5', pkg === id ? 'border-ink' : 'border-line')} data-package={id}>
+              <div key={id} className={cn('rounded-[2px] border px-3 py-2.5', pkg === id ? 'border-ink' : 'border-line')} data-package={id}>
                 <div className="text-[12.5px] font-semibold text-ink">{label}</div>
                 <div className="text-[11.5px] text-faint">{sub}</div>
                 <div className="mt-1.5 font-display text-[18px] font-semibold leading-6 tabular text-ink" data-package-price>
@@ -862,7 +862,7 @@ function Summary({
           )}
         </div>
       )}
-      <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card">
+      <div className="rounded-[2px] border border-line bg-surface p-5 shadow-card">
         <div className="text-[12.5px] font-medium text-muted">{pk ? 'Premium pelos dias (arquitetura + interiores)' : 'Preço sugerido pelos dias'}</div>
         <div className="mt-1 font-display text-[30px] font-semibold leading-9 tabular text-ink" data-suggested>
           {r.suggested != null ? formatMoney(r.suggested) : '—'}
@@ -884,7 +884,7 @@ function Summary({
 
         {price > 0 && (
           <div className="mt-4">
-            <div className="flex h-2.5 overflow-hidden rounded-full bg-stone-100" aria-hidden>
+            <div className="flex h-2.5 overflow-hidden rounded-sm bg-stone-100" aria-hidden>
               {parts.map((p) => (
                 <span key={p.label} className={p.color} style={{ width: `${Math.max(0, (p.value / price) * 100)}%` }} />
               ))}
@@ -893,7 +893,7 @@ function Summary({
               {parts.map((p) => (
                 <li key={p.label} className="flex items-center justify-between gap-3">
                   <span className="flex items-center gap-2 text-muted">
-                    <span className={cn('h-2 w-2 rounded-full', p.color)} aria-hidden />
+                    <span className={cn('h-2 w-2 rounded-sm', p.color)} aria-hidden />
                     {p.label}
                   </span>
                   <span className="tabular text-ink">
@@ -906,7 +906,7 @@ function Summary({
         )}
       </div>
 
-      <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card" data-m2-compare>
+      <div className="rounded-[2px] border border-line bg-surface p-5 shadow-card" data-m2-compare>
         <div className="text-[13.5px] font-semibold text-ink">Comparação com o m²</div>
         {r.refPrice != null && r.price != null ? (
           <>
@@ -924,7 +924,7 @@ function Summary({
             </div>
             <p
               className={cn(
-                'mt-3 rounded-[10px] px-3 py-2 text-[12.5px]',
+                'mt-3 rounded-[2px] px-3 py-2 text-[12.5px]',
                 Math.abs(r.diffPct ?? 0) < 5 ? 'bg-success-bg text-success-fg' : (r.diff ?? 0) > 0 ? 'bg-warning-bg text-warning-fg' : 'bg-info-bg text-info-fg',
               )}
             >
@@ -940,7 +940,7 @@ function Summary({
         )}
       </div>
 
-      <div className="rounded-[16px] border border-line bg-surface p-5 shadow-card">
+      <div className="rounded-[2px] border border-line bg-surface p-5 shadow-card">
         {pk && (
           <div className="mb-4 border-b border-hairline-surface pb-4">
             <Field label="Proposta do Basic (só arquitetura)" hint={pricing.data.final_price_basic ? undefined : 'Vazio: usa o preço sugerido do Basic.'}>
@@ -994,7 +994,7 @@ function Summary({
                   role="radio"
                   aria-checked={pkg === id}
                   onClick={() => onPackage(id)}
-                  className={cn('rounded-[5px] px-3 py-1 text-[13px] transition-colors', pkg === id ? 'bg-surface font-medium text-ink shadow-sm' : 'text-muted hover:text-ink')}
+                  className={cn('rounded-[2px] px-3 py-1 text-[13px] transition-colors', pkg === id ? 'bg-surface font-medium text-ink shadow-sm' : 'text-muted hover:text-ink')}
                 >
                   {label}
                 </button>
@@ -1003,7 +1003,7 @@ function Summary({
           </div>
         )}
         {leadName && chosen != null && (
-          <p className="mt-4 rounded-[10px] bg-canvas px-3 py-2 text-[12.5px] text-muted" data-lead-sync>
+          <p className="mt-4 rounded-[2px] bg-canvas px-3 py-2 text-[12.5px] text-muted" data-lead-sync>
             Ao salvar, <b className="font-semibold text-ink">{formatMoney(chosen)}</b>
             {pk ? ` (${pkg === 'basic' ? 'Basic' : 'Premium'})` : ''} vai como valor da proposta de <b className="font-semibold text-ink">{leadName}</b>.
           </p>
@@ -1025,7 +1025,7 @@ function Stat({ label, value, strong, tone }: { label: string; value: string; st
 // ---------------------------------------------------------------- Peças do formulário
 function Section({ id, title, aside, children }: { id: string; title: string; aside?: ReactNode; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className="rounded-[16px] border border-line bg-surface p-5 shadow-card md:p-6">
+    <section aria-labelledby={id} className="rounded-[2px] border border-line bg-surface p-5 shadow-card md:p-6">
       <SectionHeader id={id} title={title} aside={aside} />
       {children}
     </section>

@@ -82,11 +82,11 @@ export function EntryList({
                   )}
                 </span>
                 <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-faint">
-                  {category && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} aria-hidden />}
+                  {category && <span className="h-1.5 w-1.5 shrink-0 rounded-sm" style={{ backgroundColor: category.color }} aria-hidden />}
                   <span className="truncate">{sub.join(' · ')}</span>
                   {counter && <span className="shrink-0 tabular">· {counter}</span>}
                   {e.reference_month && e.reference_month !== monthKey(e.paid_at ?? e.due_date) && (
-                    <span className="shrink-0 rounded-full bg-ink/[0.05] px-1.5 text-[11.5px] text-muted" data-entry-ref={e.reference_month} title={`Referente a ${refLabel(e.reference_month)}`}>
+                    <span className="shrink-0 rounded-sm bg-ink/[0.05] px-1.5 text-[11.5px] text-muted" data-entry-ref={e.reference_month} title={`Referente a ${refLabel(e.reference_month)}`}>
                       ref. {refLabel(e.reference_month)}
                     </span>
                   )}
@@ -116,7 +116,7 @@ export function EntryList({
                   <button
                     type="button"
                     onClick={() => settle(e)}
-                    className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[12.5px] font-medium text-accent-fg transition-colors hover:bg-ink/5"
+                    className="inline-flex h-7 items-center gap-1 rounded-sm px-2.5 text-[12.5px] font-medium text-accent-fg transition-colors hover:bg-ink/5"
                     title={`Registrar ${e.kind === 'receita' ? 'recebimento' : 'pagamento'} em ${formatDateShort(settledDate(e.due_date, today()))}`}
                   >
                     <Check className="h-3.5 w-3.5" strokeWidth={2} />

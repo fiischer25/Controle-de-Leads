@@ -254,7 +254,7 @@ export default function ProjectsPage() {
                   aria-label={`Ver em ${label.toLowerCase()}`}
                   title={label}
                   onClick={() => setView(id)}
-                  className={cn('flex h-7 w-8 items-center justify-center rounded-[5px] transition-colors', view === id ? 'bg-surface text-ink shadow-sm' : 'text-faint hover:text-ink')}
+                  className={cn('flex h-7 w-8 items-center justify-center rounded-[2px] transition-colors', view === id ? 'bg-surface text-ink shadow-sm' : 'text-faint hover:text-ink')}
                 >
                   {icon}
                 </button>
@@ -306,7 +306,7 @@ export default function ProjectsPage() {
                     <Link
                       to={`/projetos/${p.id}`}
                       className={cn(
-                        'block rounded-[16px] border px-4 py-4 shadow-card transition-colors hover:border-stone-300 md:px-6',
+                        'block rounded-[2px] border px-4 py-4 shadow-card transition-colors hover:border-stone-300 md:px-6',
                         obra ? 'bg-sand-100' : 'bg-surface',
                         delivery?.late ? 'border-danger-fg/40' : delivery ? 'border-warning-fg/40' : obra ? 'border-sand-200' : 'border-line',
                       )}

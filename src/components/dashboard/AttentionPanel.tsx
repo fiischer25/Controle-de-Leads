@@ -129,7 +129,7 @@ function AttentionQueue({
 
   if (items.length === 0) {
     return (
-      <div className="rounded-[16px] border border-line bg-surface shadow-card">
+      <div className="rounded-[2px] border border-line bg-surface shadow-card">
         <EmptyState
           tone="success"
           icon={<CheckCircle2 strokeWidth={1.6} />}
@@ -143,7 +143,7 @@ function AttentionQueue({
   }
 
   return (
-    <div className="overflow-hidden rounded-[16px] border border-line bg-surface pb-1.5 shadow-card">
+    <div className="overflow-hidden rounded-[2px] border border-line bg-surface pb-1.5 shadow-card">
       {GROUP_ORDER.map((group) => {
         const list = items.filter((i) => i.group === group);
         if (list.length === 0) return null;
@@ -308,7 +308,7 @@ function QueueRow({
           offset === null && 'transition-transform duration-200',
         )}
       >
-        <span className={cn('h-1.5 w-1.5 rounded-full', DOT_COLOR[item.dot])} aria-hidden />
+        <span className={cn('h-1.5 w-1.5 rounded-sm', DOT_COLOR[item.dot])} aria-hidden />
         <div className="min-w-0">
           <button
             type="button"
@@ -329,14 +329,14 @@ function QueueRow({
               href={`tel:${digitsOnly(item.phone!)}`}
               onClick={(e) => e.stopPropagation()}
               aria-label={`Ligar para ${item.title}`}
-              className="flex h-11 w-11 items-center justify-center rounded-[12px] text-stone-700 hover:bg-ink/5 md:hidden"
+              className="flex h-11 w-11 items-center justify-center rounded-[2px] text-stone-700 hover:bg-ink/5 md:hidden"
             >
               <Phone className="h-[18px] w-[18px]" strokeWidth={1.6} />
             </a>
           )}
           <IconButton
             label="Mais ações"
-            className="h-11 w-10 rounded-[12px] md:hidden"
+            className="h-11 w-10 rounded-[2px] md:hidden"
             onClick={(e) => {
               e.stopPropagation();
               onMenu();
@@ -373,7 +373,7 @@ function RowMenu({
     close();
     fn(item);
   };
-  const row = 'flex h-12 w-full items-center gap-3.5 rounded-[12px] px-3 text-left text-[15px] text-ink hover:bg-canvas [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-muted';
+  const row = 'flex h-12 w-full items-center gap-3.5 rounded-[2px] px-3 text-left text-[15px] text-ink hover:bg-canvas [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-muted';
   return (
     <div className="pb-2">
       <p className="px-3 pb-2 text-[13px] text-faint">{item.context}</p>

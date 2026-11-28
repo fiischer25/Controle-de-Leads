@@ -116,7 +116,7 @@ export function DailyAlertsSettings() {
       <div className="space-y-5">
         <Card className="p-6">
           <div className="flex items-start gap-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-surface">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-ink text-surface">
               <BellRing className="h-5 w-5" strokeWidth={1.6} />
             </span>
             <div className="min-w-0 flex-1">
