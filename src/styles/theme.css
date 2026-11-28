@@ -1,6 +1,6 @@
 /* AIROS · extensões dos tokens do design system (src/styles/tokens.css).
-   - "stone" = cinzas frios; "brand" = cor de destaque (índigo); "sand" = tons quentes usados
-     só para Obra (linha em marrom claro).
+   - "stone" = neutros da marca (céu e concreto); "brand" = madeira nobre com mármore nos
+     tons claros (destaques); "sand" = tons quentes usados só para Obra (linha em marrom claro).
    - A escala "stone" e a "brand" viram variáveis para o modo escuro funcionar em todas
      as telas que ainda usam a escala diretamente. Os valores do tema claro são
      exatamente os do handoff; no escuro a escala neutra é invertida.
@@ -8,28 +8,28 @@
 :root {
   color-scheme: light;
 
-  --stone-50: 249 250 251;  /* #f9fafb */
-  --stone-100: 242 244 247;  /* #f2f4f7 */
-  --stone-200: 234 236 240;  /* #eaecf0 */
-  --stone-300: 208 213 221;  /* #d0d5dd */
-  --stone-400: 152 162 179;  /* #98a2b3 */
-  --stone-500: 102 112 133;  /* #667085 */
-  --stone-600: 71 84 103;  /* #475467 */
-  --stone-700: 52 64 84;  /* #344054 */
-  --stone-800: 29 41 57;  /* #1d2939 */
-  --stone-900: 16 24 40;  /* #101828 */
-  --stone-950: 12 17 29;  /* #0c111d */
+  --stone-50: 249 250 250;  /* #f9fafa */
+  --stone-100: 241 243 243;  /* #f1f3f3 */
+  --stone-200: 227 230 230;  /* #e3e6e6 */
+  --stone-300: 197 203 203;  /* #c5cbcb */
+  --stone-400: 157 164 163;  /* #9da4a3 */
+  --stone-500: 118 123 121;  /* #767b79 */
+  --stone-600: 94 97 92;  /* #5e615c */
+  --stone-700: 80 80 73;  /* #505049 */
+  --stone-800: 53 53 45;  /* #35352d */
+  --stone-900: 35 35 35;  /* #232323 */
+  --stone-950: 17 17 17;  /* #111111 */
 
-  --brand-50: 238 242 255;  /* #eef2ff */
-  --brand-100: 224 231 255;  /* #e0e7ff */
-  --brand-200: 199 210 254;  /* #c7d2fe */
-  --brand-300: 165 180 252;  /* #a5b4fc */
-  --brand-400: 129 140 248;  /* #818cf8 */
-  --brand-500: 99 102 241;  /* #6366f1 */
-  --brand-600: 79 70 229;  /* #4f46e5 */
-  --brand-700: 67 56 202;  /* #4338ca */
-  --brand-800: 55 48 163;  /* #3730a3 */
-  --brand-900: 49 46 129;  /* #312e81 */
+  --brand-50: 251 247 244;  /* #fbf7f4 */
+  --brand-100: 244 237 231;  /* #f4ede7 */
+  --brand-200: 230 218 207;  /* #e6dacf */
+  --brand-300: 205 182 164;  /* #cdb6a4 */
+  --brand-400: 165 122 97;  /* #a57a61 */
+  --brand-500: 122 60 28;  /* #7a3c1c */
+  --brand-600: 70 22 2;  /* #461602 */
+  --brand-700: 58 18 2;  /* #3a1202 */
+  --brand-800: 47 11 0;  /* #2f0b00 */
+  --brand-900: 32 7 0;  /* #200700 */
 
   --sand-50: 248 246 243;  /* #f8f6f3 */
   --sand-100: 239 235 228;  /* #efebe4 */
@@ -42,36 +42,36 @@
   --sand-800: 74 63 50;  /* #4a3f32 */
   --sand-900: 58 49 40;  /* #3a3128 */
 
-  --hairline: 228 231 236;          /* #e4e7ec — divisórias sobre o canvas */
-  --hairline-surface: 238 240 244;  /* #eef0f4 — divisórias dentro da superfície */
-  --overlay: 16 24 40;
+  --hairline: 227 230 230;          /* #e3e6e6 — divisórias sobre o canvas */
+  --hairline-surface: 238 240 240;  /* #eef0f0 — divisórias dentro da superfície */
+  --overlay: 35 35 35;
 }
 
 .dark {
   color-scheme: dark;
 
-  --stone-50: 29 35 48;  /* #1d2330 */
-  --stone-100: 34 41 55;  /* #222937 */
-  --stone-200: 44 51 65;  /* #2c3341 */
-  --stone-300: 61 70 87;  /* #3d4657 */
-  --stone-400: 94 104 122;  /* #5e687a */
-  --stone-500: 125 135 153;  /* #7d8799 */
-  --stone-600: 167 176 191;  /* #a7b0bf */
-  --stone-700: 196 202 213;  /* #c4cad5 */
-  --stone-800: 220 224 231;  /* #dce0e7 */
-  --stone-900: 234 236 240;  /* #eaecf0 */
-  --stone-950: 240 242 246;  /* #f0f2f6 */
+  --stone-50: 35 35 35;  /* #232323 */
+  --stone-100: 42 42 40;  /* #2a2a28 */
+  --stone-200: 46 46 43;  /* #2e2e2b */
+  --stone-300: 62 62 57;  /* #3e3e39 */
+  --stone-400: 94 97 92;  /* #5e615c */
+  --stone-500: 138 142 140;  /* #8a8e8c */
+  --stone-600: 178 181 179;  /* #b2b5b3 */
+  --stone-700: 197 203 203;  /* #c5cbcb */
+  --stone-800: 227 230 230;  /* #e3e6e6 */
+  --stone-900: 241 243 243;  /* #f1f3f3 */
+  --stone-950: 249 250 250;  /* #f9fafa */
 
-  --brand-50: 30 27 75;  /* #1e1b4b */
-  --brand-100: 40 36 96;  /* #282460 */
-  --brand-200: 55 48 140;  /* #37308c */
-  --brand-300: 67 56 202;  /* #4338ca */
-  --brand-400: 79 70 229;  /* #4f46e5 */
-  --brand-500: 129 140 248;  /* #818cf8 */
-  --brand-600: 165 180 252;  /* #a5b4fc */
-  --brand-700: 199 210 254;  /* #c7d2fe */
-  --brand-800: 224 231 255;  /* #e0e7ff */
-  --brand-900: 238 242 255;  /* #eef2ff */
+  --brand-50: 42 26 18;  /* #2a1a12 */
+  --brand-100: 58 36 24;  /* #3a2418 */
+  --brand-200: 90 58 40;  /* #5a3a28 */
+  --brand-300: 122 82 64;  /* #7a5240 */
+  --brand-400: 165 122 97;  /* #a57a61 */
+  --brand-500: 205 182 164;  /* #cdb6a4 */
+  --brand-600: 230 218 207;  /* #e6dacf */
+  --brand-700: 244 237 231;  /* #f4ede7 */
+  --brand-800: 251 247 244;  /* #fbf7f4 */
+  --brand-900: 255 255 255;  /* #ffffff */
 
   --sand-50: 31 27 22;
   --sand-100: 42 36 28;
@@ -84,7 +84,7 @@
   --sand-800: 227 215 195;
   --sand-900: 239 231 218;
 
-  --hairline: 44 51 65;
-  --hairline-surface: 34 41 55;
+  --hairline: 46 46 43;
+  --hairline-surface: 42 42 40;
   --overlay: 0 0 0;
 }
